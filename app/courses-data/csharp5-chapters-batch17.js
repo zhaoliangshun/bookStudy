@@ -52,6 +52,12 @@ app.MapPost("/orders", (CreateOrderRequest request) =>
 统一 RFC 9457：\`type\`、\`title\`、\`status\`、\`detail\`、字段级 \`errors\`。客户端应按 \`code\` 分支，不要解析中文句子。
 
 下面 demo 把「格式校验」和「业务规则」分开，这是生产里最容易混在一起的点。
+
+### 练习
+
+1. 修改 demo 的 samples 数组：加入 quantity = 100（越界）、currency = ""（空串）、sku = "  "（纯空白）三个新样本，观察 \`Validate\` 聚合出的 400 字段错误信息；再把合法样本的 currency 改成小写 "cny"，确认 \`OrdinalIgnoreCase\` 比较仍通过业务规则。
+2. 独立实现 \`ToProblem\` 错误形状生成器：输入 \`ValidationResult\`，输出符合 RFC 9457 的对象（type/title/status/detail 加字段级 errors 数组）；格式错误（400）与业务冲突（409）映射到不同的 type URI，未知 code 走默认分支，保证客户端永远按 code 分支而不是解析中文句子。
+3. 生产场景：把 CreateOrderRequest 接入 ASP.NET Core 验证管道——\`AddValidation()\` 加 \`AddProblemDetails()\`，请求模型加 \`[Required]\` 与 \`[Range(1, 99)]\` 标注；写集成测试覆盖四条路径：缺 sku 返回 400 且 errors 指向字段、quantity 越界返回 400、USD 结算返回 409、合法输入返回 201；最后发一个带 Total 字段的请求体验证 over-posting 被忽略。
 `,
     code: `// 输入验证 demo：格式错误用 400，业务规则冲突用 409。
 // 生产中由 ASP.NET 模型绑定 + ProblemDetails 完成同样的分流。
@@ -113,8 +119,14 @@ public sealed record ValidationResult(int Status, string Code, string Detail);
 ### 三、过滤与排序
 
 排序字段必须走允许列表，禁止把用户字符串拼进 SQL。过滤条件要记录到日志/指标的低基数标签中，便于发现慢查询。
+
+### 练习
+
+1. 修改 demo：先用 key-1、body "sku=1,qty=2" 执行一次，再用相同 key、body 改为 "sku=1,qty=9" 调用，确认返回 422 指纹不匹配；把 \`KeysetPage\` 的 after 分别改成 7 与 0，观察末页（空结果）与首页的输出边界。
+2. 独立实现带“处理中”状态的幂等存储：并发两个相同 (tenant, key) 请求只允许一个执行 create，另一个等待其完成后复用结果；用 \`ConcurrentDictionary\` 加 \`SemaphoreSlim\`（或 Lazy 模式）实现，写并发测试验证 create 委托只执行一次、两个调用方拿到同一响应。
+3. 生产场景：把 cursor 分页落到 SQL——按 (createdAt, id) 稳定排序，写出形如 \`WHERE (createdAt, id) > (@afterCreatedAt, @afterId) ORDER BY createdAt, id LIMIT @take\` 的查询；把游标编码成 Base64 的 nextCursor 随响应返回，解码时校验格式并拒绝伪造游标；排序字段建允许列表（如只允许 createdAt 与 amount），防止用户输入拼进 ORDER BY。
 `,
-    code: `// 幂等 + cursor 分页。HashSet 只是教学存储；生产用数据库唯一索引。
+    code: `// 幂等 + cursor 分页。Dictionary 只是教学存储；生产用数据库唯一索引。
 var store = new IdempotencyStore();
 var first = store.Execute("tenant-a", "key-1", "sku=1,qty=2", () => "order-100");
 var retry = store.Execute("tenant-a", "key-1", "sku=1,qty=2", () => "order-SHOULD-NOT-CREATE");
@@ -183,6 +195,12 @@ Cookie 会话（尤其 SameSite=Lax/None）需要防 CSRF：anti-forgery token�
 - 用文件头魔数判断类型，不信 \`Content-Type\` 和文件名。
 - 存到对象存储的随机 key；病毒扫描在隔离环境。
 - 下载授权不能靠「URL 很难猜」。
+
+### 练习
+
+1. 修改 demo 的 \`Detect\`：补上 JPEG（FF D8 FF）与 GIF（GIF87a/GIF89a）两组魔数分支；构造一个扩展名是 .png、内容却以 "hello" 开头的样本，确认它被识别为 application/octet-stream；再给 \`IsAllowedOrigin\` 传入 null（模拟无 Origin 头的同源请求），观察当前行为并决定该放行还是拒绝。
+2. 独立实现 \`ValidateUpload(byte[] content, string fileName)\` 校验管道：魔数白名单（PNG/JPEG/GIF）加大小上限 5MB，加文件名规范化（\`Path.GetFileName\` 去掉 ../ 路径穿越、拒绝 Windows 保留名），返回 (ok, detectedType, reason) 三元组，并为每个失败原因写一个用例。
+3. 生产场景：为带前端的 BFF 配置安全基线——CORS 用显式 Origin 列表加 \`AllowCredentials\`；写一个中间件统一加 CSP、\`X-Content-Type-Options: nosniff\`、\`Referrer-Policy\` 与 HSTS 四个响应头；上传保存为对象存储的随机 key（扩展名取自魔数而非用户输入），病毒扫描放隔离容器异步执行；用集成测试断言每个响应头存在且上传目录不可枚举。
 `,
     code: `// 用魔数识别上传类型：扩展名可以伪造，文件头不能（仍需结合大小限制）。
 byte[] png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00];
@@ -239,6 +257,12 @@ builder.Services
 ### 三、IHostedLifecycleService
 
 .NET 8+ 可在 Starting/Started/Stopping/Stopped 等阶段挂钩。应用不能仅凭“进了 Started”就假定依赖可用：启动期完成必要初始化，随后才让 readiness 探针返回成功；Kubernetes / 负载均衡器看到 readiness 成功后再送流量。耗时预热要有超时，非关键依赖失败则保持降级而不是永久卡住启动。
+
+### 练习
+
+1. 修改 demo 的 MiniHost：新增 \`AddTransient<T>\`（每次解析都新建实例），在同一个 scope 里 Get 两次，对比 Transient 与 Scoped、Singleton 三者的实例差异；再把 \`AppClock\` 从 AddSingleton 改为 AddScoped，观察两个 scope 各拿一份、同一 scope 内复用。
+2. 独立实现 keyed 解析：给 MiniHost 加 \`AddKeyedSingleton<T>(string key)\` 与 \`Get<T>(string key)\`，注册 "redis" 与 "memory" 两个 \`ICache\` 实现，验证按 key 取到不同实例、未知 key 抛出清晰异常——模拟 .NET 8 keyed services 的语义。
+3. 生产场景：把配置校验搬进 Options 管道——\`AddOptions<PaymentOptions>().BindConfiguration("Payment").ValidateDataAnnotations().ValidateOnStart()\`，写一个宿主集成测试证明坏配置（如 ApiKey 为空）在启动阶段直接失败，而不是首次请求才 500；再实现 \`IHostedLifecycleService\` 在 Started 阶段做连接池预热（带 30 秒超时），预热完成后才把 readiness 标记为健康。
 `,
     code: `// 用最小容器演示：Singleton 不能安全捕获 Scoped。
 var root = new MiniHost();
@@ -316,6 +340,12 @@ HybridCache 组合 L1 内存 + L2 分布式，并内置 stampede 保护（同一
 ### 三、失效
 
 删除缓存失败不等于数据库回滚。短 TTL、发出版本号、或把版本放进 key，都比「相信每次 Remove 都成功」更稳。
+
+### 练习
+
+1. 修改 demo：把并发数从 5 提到 50，给 factory 加 \`Task.Delay(100)\` 模拟慢查询，确认“回源数据库”仍然只打印一次；把 key 换成 "tenant:orders:cold" 再跑一轮，观察发生第二次回源；最后让 factory 抛一次异常后重试，观察当前实现会把失败结果也缓存住——这正是练习 2 要修复的缺陷。
+2. 独立实现带 TTL 的 StampedeCache：\`GetOrCreateAsync(key, ttl, factory)\` 记录写入时间，过期后下一次请求触发回源且同 key 仍然单飞；写测试覆盖三个场景——过期瞬间的 10 个并发请求只执行一次 factory、未过期命中不回源、不同 key 各自回源；同时修复练习 1 发现的“异常结果被缓存”问题。
+3. 生产场景：为订单列表接口设计缓存方案——输出缓存层 \`VaryByQuery\` 加 \`VaryByAuthorization\` 防止跨用户串数据；HybridCache 的 key 设计为 \`tenant:{tenantId}:orders:v{schemaVersion}\`，TTL 60 秒加 ±10 秒 jitter 防同步过期；失效改为递增 schemaVersion 而不是依赖 Remove 成功；最后推演一遍：数据更新后旧缓存最长还能存活多久、回源风暴如何被单飞挡住。
 `,
     code: `// 单飞（single-flight）：缓存击穿时，同一 key 只让一个请求回源。
 var cache = new StampedeCache();
@@ -382,6 +412,12 @@ K8s/负载均衡靠探针决定流量。探针配错会导致：正常实例被�
 ### 三、超时
 
 健康检查自己也要超时。下游挂了时，检查必须快速失败，否则探针线程被拖死，集群会误判。
+
+### 练习
+
+1. 修改 demo 的 \`AppHealth\`：新增 Redis 字段并作为关键依赖纳入 \`IsReady\`，运行三种组合观察：Redis 挂导致 not ready、Analytics 挂仍然 ready、StartupDone 为 false 时 live 与 ready 全 false；对照结果写一份依赖分级结论（哪些进 readiness、哪些降级放行）。
+2. 独立实现 \`HealthCheckRunner\`：接收一组 (name, critical, check) 检查项，每项在 \`Task.Run\` 中执行并施加整体超时（超时即失败），返回 Healthy / Degraded / Unhealthy 三级——全部通过为 Healthy、仅非关键项失败为 Degraded、任一关键项失败为 Unhealthy；用一个故意 \`Task.Delay(Timeout.Infinite)\` 的检查项验证超时兜底生效。
+3. 生产场景：写出 K8s 探针配置草案——livenessProbe 只探测进程自身（/healthz 固定返回 200，不含依赖检查）；readinessProbe 挂 /ready 并包含数据库；startupProbe 的 failureThreshold 乘 periodSeconds 大于最坏预热时长；附一份依赖分级表（数据库、Redis、邮件、分析服务各自进 liveness、readiness 还是都不进），并说明每条决策的依据。
 `,
     code: `// 探针决策：分析服务挂了仍可就绪；数据库挂了不能接流量。
 foreach (var state in new[]
@@ -458,6 +494,12 @@ builder.Build().Run();
 Aspire Dashboard 适合看本地 logs、traces、metrics。生产导出到 OTLP 后端，认证、保留期、采样和基数规则必须单独设计，不能把开发 Dashboard 裸露到公网。
 
 验收至少覆盖：干净机器按锁定版本启动；数据库未就绪时 API 不抢跑；连接信息不写死端口；停止 AppHost 后容器无孤儿；应用脱离 Aspire、只靠标准配置也能在 CI / 生产运行。
+
+### 练习
+
+1. 修改 demo：新增一个 staging 环境的 \`EnvironmentBindings\`（analytics 连接指向 staging 域名），三个环境循环打印 shop 连接串；再对不存在的 key 调用 \`Get\`，把 \`KeyNotFoundException\` 改为返回默认值的 \`TryGet\`，体会“缺配置显式失败还是静默默认”的取舍。
+2. 独立实现 \`ResourceGraph\`：提供 \`AddProject\`、\`AddRedis\`、\`WithReference\`、\`WaitFor\` 方法描述资源与依赖关系，\`StartupOrder()\` 做拓扑排序输出启动顺序；构造 api WaitFor pg、pg 依赖 volume 的三层图，验证输出顺序正确，并让循环依赖的图抛出明确异常。
+3. 生产场景：为团队编写 Aspire 验收清单并逐条给出验证命令——aspire init 后核对 AppHost csproj 的 SDK 版本被仓库钉住；数据库容器健康检查未通过时 API 不发出首个请求（WaitFor 加应用侧重试双保险）；全局搜索确认没有写死 6379/5432 端口；Ctrl+C 停止后确认 docker ps 无孤儿容器；把 API 项目单独 dotnet run，仅靠环境变量注入连接串也能在 CI 启动。
 `,
     code: `// 用代码描述「资源引用」：应用不写死端口，只依赖资源名。
 var local = new EnvironmentBindings(
@@ -507,6 +549,12 @@ sealed record EnvironmentBindings(string Name, Dictionary<string, string> Values
 ### 三、缓存与日志
 
 缓存 key、队列分区、搜索索引都必须含租户。日志可记 tenantId，但不要把跨租户数据打进同一调试 dump 后发给错误的人。
+
+### 练习
+
+1. 修改 demo：给 orders 数组加一条租户 "C" 的记录，当前租户 A 过滤后确认看不到它；把 headerTenant 改成与 tokenTenant 相同的 "A"，观察走进“租户一致”分支；再试试 headerTenant 传空串，决定应该拒绝还是回退到 token 中的租户。
+2. 独立实现租户守卫封装：写 \`TenantScope\`（持有当前 TenantId）与扩展方法 \`ApplyTenantFilter\`，所有查询必须经过它；再写断言方法 \`AssertSameTenant\`，任何结果混入其它租户数据就抛异常——把它放进单元测试基类，让“忘记加租户条件”的查询在 CI 直接失败。
+3. 生产场景：设计缓存与日志两处的租户隔离——缓存层封装 \`TenantKey.Build("orders", id)\` 统一产出 \`tenant:{tenantId}:orders:{orderId}\` 前缀，禁止裸拼 key；日志结构化字段带 tenantId 但金额、邮箱脱敏；评估共享库 tenant_id 与数据库 RLS 组成双层防线，写一条回归测试：故意构造漏加租户过滤的查询，验证应用层守卫与 RLS 至少有一层拦截。
 `,
     code: `// 全局查询过滤器的教学模型：忘记 tenant 条件就会串数据。
 var orders = new[]
@@ -553,6 +601,12 @@ public sealed record OrderRow(string TenantId, string Id, decimal Total);
 ### 三、背压
 
 Channel/Queue 必须有界。满了要失败、丢弃或阻塞生产者——需要明确策略。无界队列等于把内存当缓存。
+
+### 练习
+
+1. 修改 demo：把 deadline 从 200ms 分别改成 50ms 与 2s，观察入队条数与 \`OperationCanceledException\` 触发时机的变化；再把 \`BoundedChannelOptions\` 容量从 4 改成 1，对比背压出现得更早——记录每种组合的入队与消费条数。
+2. 独立实现 \`DeadlineBudget\`：构造时记录总预算（如 5 秒）与起始时间，提供剩余时间属性与 \`CreateLinkedTokenSource()\`（内部按剩余时间创建 \`CancellationTokenSource\`）；模拟“首次调用花 3 秒、重试只剩 2 秒”的场景，验证第二次的超时预算自动收紧而不是重新给满 5 秒。
+3. 生产场景：为消息消费者设计背压策略——\`Channel.CreateBounded\` 容量按下游吞吐乘可容忍延迟估算；可丢消息（指标上报）用 \`BoundedChannelFullMode.DropOldest\`，不可丢消息（订单）用 Wait 并把 \`Reader.Count\` 作为 lag 指标暴露；写一次演练：把消费速度降到每秒 1 条，观察生产者阻塞、lag 告警、超过 deadline 后的降级动作分别如何触发。
 `,
     code: `await RunAsync();
 
@@ -612,6 +666,12 @@ static async Task RunAsync()
 ### 三、结构化
 
 用模板 + 属性：\`Order {OrderId} paid\`，不要 \`$\"user={email} token={jwt}\"\`。保留期限按法规设置，过期删除要可证明。
+
+### 练习
+
+1. 修改 demo 的 \`redact\` 数组：加入 "idCard" 与 "bankCard"，并给样本补一条含 18 位身份证号与长度恰好 4 的短 token 的事件；观察 \`Mask\` 对短值走 "****" 分支、长值保留首尾两字符的规则边界——长度 5 与 4 的值分别输出什么。
+2. 独立实现分级日志器：\`SensitivityClassifier\` 按字段名把数据分为公开、内部、机密、严格机密四级，\`Render\` 时机密字段走 Mask 脱敏、严格机密（password、idCard、bankCard）直接替换为 "[REDACTED]"；输出用模板加属性的形式（如 \`order {orderId} paid\`），保证结构化字段可被日志系统索引。
+3. 生产场景：为订单模块实现审计事件——审计表记录操作人、时间、资源 id、动作与变更前后的快照哈希；审计写入失败时业务写操作回滚或落入可靠 Outbox，禁止“审计挂了业务照常改”；保留期限按法规设为 180 天，到期删除任务要产出可导出的删除证明；写一个集成测试：让审计存储故意不可用，验证下单接口返回 503 而不是静默成功。
 `,
     code: `// 日志脱敏：手机号、邮箱不能原文输出。
 foreach (var line in new[]

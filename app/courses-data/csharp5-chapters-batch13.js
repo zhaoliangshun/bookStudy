@@ -165,7 +165,7 @@ GC.UnregisterForFullGCNotification();
 
 手调 \`GC.Collect()\` 会破坏 GC 的自适应统计，反而让后续回收更频繁。
 
-### 十三点、DATAS、堆区域与延迟模式
+### 十四、DATAS、堆区域与延迟模式
 
 .NET 8+ 的 **DATAS**（Dynamic Adaptation To Application Sizes）让 Server GC 按**实际存活集**伸缩堆，而不是“机器有多少内存就占多少”。容器里尤其重要：关掉它（或旧运行时）常见“工作集远大于业务数据”。用 \`DOTNET_GCDynamicAdaptationMode\` / 运行时配置开关，先看当前文档再改。
 
@@ -175,7 +175,7 @@ GC.UnregisterForFullGCNotification();
 
 固定（pin）数组会在堆上打洞，妨碍压缩；短固定用 \`fixed\`，长固定用 \`GC.AllocateArray(pinned: true)\` 或把缓冲放到 LOH 池，不要满地 \`GCHandle.Alloc\`。
 
-### 十四、本章小结
+### 十五、本章小结
 
 - GC 按 Gen0→Gen1→Gen2 分代回收，新对象死得快是核心假设。
 - 大对象（≥85000B）进 LOH，默认不压缩、直接 Gen2。
@@ -238,7 +238,9 @@ Console.WriteLine($"Gen1 回收后所在代: {GC.GetGeneration(survivor)}");  //
 // === 4. LOH（大对象堆）演示 ===
 Console.WriteLine("\\n=== LOH 大对象堆演示 ===");
 GCMemoryInfo infoBefore = GC.GetGCMemoryInfo();
-Console.WriteLine($"LOH 回收前大小: {infoBefore.HeapSizeBytes:N0} bytes 总计");
+// 注意：HeapSizeBytes 是整个托管堆总大小；GenerationInfo[3] 才是 LOH 这一代
+Console.WriteLine($"托管堆总大小: {infoBefore.HeapSizeBytes:N0} bytes");
+Console.WriteLine($"其中 LOH 大小: {infoBefore.GenerationInfo[3].SizeAfterBytes:N0} bytes");
 
 // 分配一个 ≥85000 字节的大数组 → 直接进 LOH（Gen2）
 var largeArray = new byte[100_000];
@@ -922,12 +924,12 @@ span[0] = 99;  // 直接改 list 内部数组
 \`String.Create<TState>(length, state, callback)\` 让你**直接在新建 string 的内存上写**，跳过中间 StringBuilder：
 
 \`\`\`csharp
-string result = string.Create(10, 42, (span, value) =>
+string result = string.Create(9, 42, (span, value) =>
 {
     "Value: ".AsSpan().CopyTo(span);
     value.TryFormat(span[7..], out _);
 });
-// "Value: 42"
+// "Value: 42"（长度 9 = 前缀 7 字符 + 两位数字）
 \`\`\`
 
 适合已知长度的字符串构造场景。
@@ -1054,9 +1056,9 @@ Console.WriteLine($"  Span 遍历求和: {sum}");
 
 // === 7. String.Create：跳过 StringBuilder 直接构造 ===
 Console.WriteLine("\\n=== String.Create ===");
-string formatted = string.Create(13, (123, 456), static (span, state) =>
+string formatted = string.Create(11, (123, 456), static (span, state) =>
 {
-    // span 是新 string 内部内存，直接写入
+    // span 是新 string 内部内存，直接写入（长度必须精确算好：x=123,y=456 共 11 字符）
     "x=".AsSpan().CopyTo(span);
     state.Item1.TryFormat(span[2..], out _);
     span[5] = ',';
@@ -1107,8 +1109,9 @@ Console.WriteLine("\\n=== 实战：CSV 行解析 ===");
 char[] csvBuf = ArrayPool<char>.Shared.Rent(256);
 try
 {
-    "Alice,30,Engineer".AsSpan().CopyTo(csvBuf);
-    ReadOnlySpan<char> csv = csvBuf.AsSpan(0, 19);
+    string csvLine = "Alice,30,Engineer";
+    csvLine.AsSpan().CopyTo(csvBuf);
+    ReadOnlySpan<char> csv = csvBuf.AsSpan(0, csvLine.Length);  // 只取有效长度，别带出租借数组里的旧数据
 
     int p = 0;
     while (p < csv.Length)
@@ -1432,10 +1435,13 @@ var sw = Stopwatch.StartNew();
 long memBefore = GC.GetAllocatedBytesForCurrentThread();
 
 // 用 ref struct 拼 10w 次
+// ⚠️ 坑：stackalloc 的内存要等当前方法返回才释放，写在循环体内会逐次累积
+//    （10w 次 × 128 字节 ≈ 12.8MB，直接打爆 8MB 线程栈）。
+//    生产写法：把 stackalloc 提到循环外，循环内复用同一块栈缓冲。
+Span<char> buf = stackalloc char[64];   // 循环外一次性分配
 for (int i = 0; i < 100_000; i++)
 {
-    Span<char> buf = stackalloc char[64];
-    ValueStringBuilder vsb = new(buf);
+    ValueStringBuilder vsb = new(buf);  // 每轮基于同一缓冲区重建，_length 归零
     vsb.Append("id=");
     vsb.Append(i);
     vsb.Append(";name=test");
@@ -1670,12 +1676,12 @@ string.Concat("a", "b", "c");          // "abc"
 #### 技巧 5：String.Create
 
 \`\`\`csharp
-string s = string.Create(7, 123, static (span, val) =>
+string s = string.Create(6, 123, static (span, val) =>
 {
     "id=".AsSpan().CopyTo(span);
     val.TryFormat(span[3..], out _);
 });
-// "id=123"
+// "id=123"（长度 6 = 前缀 3 字符 + 三位数字）
 \`\`\`
 
 直接在新 string 的内存上写，零中间分配。
@@ -1707,7 +1713,7 @@ var pool = new DefaultObjectPool<StringBuilder>(
     new DefaultPooledObjectPolicy<StringBuilder>());
 var sb = pool.Get();
 try { sb.Append("..."); /* use */ }
-finally { pool.Return(sb); sb.Clear(); }
+finally { sb.Clear(); pool.Return(sb); }  // 先清空再归还：归还后其他线程可能立刻 Get 到它
 \`\`\`
 
 适合频繁创建/销毁的对象（StringBuilder、DbContext 等可复用对象）。
@@ -1871,7 +1877,9 @@ int[] data = new int[100_000];
 for (int i = 0; i < data.Length; i++) data[i] = i;
 
 sw.Restart();
-long sumLinq = data.Where(x => x > 0).Select(x => x * 2).Sum();
+// ⚠️ 坑：int 序列的 Sum() 内部用 int 累加，10 万个元素 ×2 后必然溢出。
+//    必须 Select 时先转 long，让 Sum() 走 long 重载。
+long sumLinq = data.Where(x => x > 0).Select(x => (long)x * 2).Sum();
 sw.Stop();
 Console.WriteLine($"  LINQ: {sw.ElapsedMilliseconds} ms, sum={sumLinq}");
 
@@ -2033,8 +2041,9 @@ sw.Restart();
 memBefore = GC.GetAllocatedBytesForCurrentThread();
 for (int i = 0; i < 100_000; i++)
 {
-    // 已知长度，直接在新 string 内存上写
-    _ = string.Create(6, i, static (span, val) =>
+    // 已知长度，直接在新 string 内存上写。
+    // 长度按最大值算：i 最多 5 位数字，"id=" + 5 = 8。
+    _ = string.Create(8, i, static (span, val) =>
     {
         span[0] = 'i';
         span[1] = 'd';

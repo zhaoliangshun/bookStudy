@@ -448,7 +448,7 @@ using FileStream fs = new FileStream(...);
 2. 异步优先：\`ReadAsync\`/\`WriteAsync\`/\`CopyToAsync\`（下一章细讲）
 3. 写入后别忘了 \`Flush\` 或让 Dispose 触发 flush
 
-### 九点、MemoryStream 容量、编码与 PipeReader
+### 九、MemoryStream 容量、编码与 PipeReader
 
 \`new MemoryStream()\` 默认容量很小，反复写入会多次扩容复制。已知最终大小就 \`new MemoryStream(capacity)\`。\`ToArray()\` 总是再复制一份；能继续用 \`TryGetBuffer\` / \`GetBuffer\` 时不要 ToArray（\`GetBuffer\` 可能比 \`Length\` 更长，只读 \`Length\` 那段）。
 
@@ -456,7 +456,7 @@ using FileStream fs = new FileStream(...);
 
 \`Stream.CopyToAsync(dest, token)\` 是泵数据的首选。更高吞吐、需要“读一段处理一段”的协议解析用 \`System.IO.Pipelines\` 的 \`PipeReader\`（见高性能 IO 章），不要自己用 4KB 数组循环 \`ReadAsync\` 再拼消息。
 
-### 九、本章小结
+### 十、本章小结
 
 - 大文件、网络数据 → \`Stream\` 体系
 - 文本读写 → \`StreamReader\`/\`StreamWriter\`
@@ -637,7 +637,7 @@ JSON 是现代 API 的事实标准——REST 接口、配置文件、NoSQL 数�
 
 | 对比项 | System.Text.Json | Newtonsoft.Json |
 | --- | --- | --- |
-| 性能 | 快 2-5 倍 | 基准 |
+| 性能 | 常见模型下更低分配/更高吞吐（幅度取决于模型与选项，需自行基准测试） | 基准 |
 | 内置 | .NET 8 自带 | 需 NuGet |
 | AOT | 支持（Source Generator）| 不支持 |
 | 功能 | 略少，但够用 | 功能最全 |
@@ -681,7 +681,6 @@ var options = new JsonSerializerOptions
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,  // null 不输出
     AllowTrailingCommas = true,                              // 允许尾随逗号
     ReadCommentHandling = JsonCommentHandling.Skip,          // 跳过注释
-    WriteIndented = true,
 };
 options.Converters.Add(new JsonStringEnumConverter());  // 枚举转字符串
 \`\`\`
@@ -696,7 +695,7 @@ options.Converters.Add(new JsonStringEnumConverter());  // 枚举转字符串
 | \`[JsonIgnore]\` | 序列化时忽略 |
 | \`[JsonConverter(typeof(X))]\` | 字段级指定 converter |
 | \`[JsonNumberHandling(AllowReadingFromString)]\` | 数字字段允许从字符串读 |
-| \`[JsonExtensionData("Extra")]\` | 多余字段塞进字典 |
+| \`[JsonExtensionData]\` | 多余字段塞进 \`Dictionary<string, JsonElement>\` 属性（无参特性，不接收名字参数） |
 | \`[JsonRequired]\` | 反序列化时必须存在 |
 
 ### 五、JsonSerializerContext：Source Generator
@@ -802,7 +801,7 @@ public abstract class Animal { }
 
 序列化时自动加 \`"type": "dog"\`，反序列化时根据该字段创建正确类型。约定俗成也常用 \`"$type"\`（Newtonsoft 默认），STJ 必须自己用 \`TypeDiscriminatorPropertyName\` 指定，**不会**自动认 \`$type\`。
 
-### 十点、JsonDocument vs JsonNode vs 序列化到对象
+### 十一、JsonDocument vs JsonNode vs 序列化到对象
 
 | API | 可变 | 分配 | 适用 |
 | --- | --- | --- | --- |
@@ -813,7 +812,7 @@ public abstract class Animal { }
 
 \`JsonElement\` 不能活过所属 \`JsonDocument\`，要留下就 \`Clone()\`。源生成（\`JsonSerializerContext\`）和反射路径的选项要一致：命名策略、注释（\`ReadCommentHandling.Skip\`）、尾逗号（\`AllowTrailingCommas\`）漏配就会“本地能跑、AOT 失败”。
 
-### 十一、本章小结
+### 十二、本章小结
 
 - 简单场景 → \`JsonSerializer.Serialize/Deserialize\`
 - 性能 + AOT → \`JsonSerializerContext\`
@@ -1590,7 +1589,7 @@ Parallel.For(0, chunkCount, i =>
 
 \`\`\`csharp
 using MemoryMappedFile mmf = MemoryMappedFile.CreateFromFile("big.bin", FileMode.Open);
-using MemoryMappedAccessor accessor = mmf.CreateViewAccessor(offset: 0, size: 1024);
+using MemoryMappedViewAccessor accessor = mmf.CreateViewAccessor(offset: 0, size: 1024);
 accessor.Read(0, out int value);
 accessor.Write(0, 42);
 accessor.Flush();
@@ -1598,7 +1597,7 @@ accessor.Flush();
 
 优势：操作系统负责分页，不需要手动管理缓冲；多个进程可共享同一段映射做进程间通信。
 
-### 八点、PipeOptions、散聚 IO 与「真异步」FileStream
+### 九、PipeOptions、散聚 IO 与「真异步」FileStream
 
 \`Pipe\` 构造可传 \`PipeOptions\`：\`PauseWriterThreshold\` / \`ResumeWriterThreshold\` 控制背压，\`MinimumSegmentSize\` 影响租用块大小，\`Pool\` 可换成自定义 \`MemoryPool<byte>\`。默认池够用，不要把阈值设成 0。
 
@@ -1606,7 +1605,7 @@ accessor.Flush();
 
 Windows 上只有 \`FileOptions.Asynchronous\`（或 \`FileStreamOptions.Options\`）打开的文件，\`ReadAsync\` 才会走重叠 IO；否则线程池线程上同步读，高并发等于假异步。Linux 上实现不同，但显式声明异步意图仍然是对的。
 
-### 九、本章小结
+### 十、本章小结
 
 - 异步优先 + \`FileOptions.Asynchronous\`
 - 频繁分配 → \`ArrayPool<T>.Shared\`

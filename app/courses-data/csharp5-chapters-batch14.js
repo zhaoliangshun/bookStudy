@@ -3908,6 +3908,8 @@ ITaskRepository           →  持久化细节（JSON / EF / 内存）
 
 用第七十五章的 Fake 仓储测 Service；用临时目录测 JSON 仓储。覆盖率数字不重要，**这 8 条全绿**才算本章 demo 可合并。
 
+> ⚠️ **生产提示（对应 T8）**：demo 里 \`SaveAsync\` 用 \`File.WriteAllTextAsync\` 直接覆盖目标文件——进程写到一半崩溃会留下截断的 JSON。进程内并发靠 \`SemaphoreSlim\` 锁挡住了，但**多进程/崩溃场景**要用原子替换：先写临时文件，再 \`File.Replace(tmp, target, backup)\`（同卷保证原子性）。生产上多进程共享数据请直接换 SQLite 等数据库，不要用 JSON 文件。
+
 ### 十五、下一步（有意没做）与完成定义
 
 本章**故意不写**这些，留给你按需加，也作为第十三部分的出口作业：
@@ -4095,8 +4097,14 @@ public class JsonTaskRepository : ITaskRepository
 
     public async Task<TaskItem?> GetByIdAsync(int id)
     {
-        var tasks = await LoadAsync();
-        return tasks.FirstOrDefault(t => t.Id == id);
+        // 与其他方法一致：读文件也要拿锁，避免读到写一半的 JSON
+        await _lock.WaitAsync();
+        try
+        {
+            var tasks = await LoadAsync();
+            return tasks.FirstOrDefault(t => t.Id == id);
+        }
+        finally { _lock.Release(); }
     }
 
     public async Task<TaskItem> AddAsync(string title, string description)

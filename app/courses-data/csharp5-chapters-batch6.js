@@ -2,14 +2,14 @@
 // C# 从入门到精通大全（全新版）—— 第 6 批章节
 // 第四部分 泛型与集合（共 7 章）
 // -------------------------------------------------------------
-// 本批包含 7 章：
-//   csharp5-ch28 : 第二十八章 泛型基础
-//   csharp5-ch29 : 第二十九章 集合与 IEnumerable
-//   csharp5-ch30 : 第三十章 List 与 LinkedList
-//   csharp5-ch31 : 第三十一章 Dictionary 与 HashSet
-//   csharp5-ch32 : 第三十二章 Queue 与 Stack
-//   csharp5-ch33 : 第三十三章 SortedList 与 SortedDictionary
-//   csharp5-ch34 : 第三十四章 并发集合
+// 本批包含 7 章（正文讲次编号 = id + 1，因数组章占第 12 讲）：
+//   csharp5-ch28 : 第二十九章 泛型基础
+//   csharp5-ch29 : 第三十章 集合与 IEnumerable
+//   csharp5-ch30 : 第三十一章 List 与 LinkedList
+//   csharp5-ch31 : 第三十二章 Dictionary 与 HashSet
+//   csharp5-ch32 : 第三十三章 Queue 与 Stack
+//   csharp5-ch33 : 第三十四章 SortedList 与 SortedDictionary
+//   csharp5-ch34 : 第三十五章 并发集合
 //
 // 风格：demo 驱动，注释详尽，循序渐进。
 // 适用版本：.NET 8 LTS / C# 12，所有示例用顶级语句。
@@ -17,8 +17,7 @@
 
 const chapters = [
   // ============================================================
-  // 第二十八章：泛型基础
-  // ============================================================
+  // 第二十八章：泛型基础  // ============================================================
   {
     id: 'csharp5-ch28',
     group: '第四部分 泛型与集合',
@@ -181,7 +180,7 @@ class Factory<T> where T : class, IComparable<T>, new()
 
 \`IEnumerable<out T>\` 协变：\`IEnumerable<string>\` 当 \`IEnumerable<object>\`。\`Action<in T>\` 逆变：\`Action<object>\` 当 \`Action<string>\`。**可变的 \`List<T>\` 不变**，这是故意的。
 
-运行时构造闭包泛型：\`typeof(List<>).MakeGenericType(typeof(int))\` 得到 \`List<int>\`，再 \`Activator.CreateInstance\`。源生成器能写死类型时不要走反射。
+运行时构造**封闭**泛型（closed generic，注意不是"闭包"closure）：\`typeof(List<>).MakeGenericType(typeof(int))\` 得到 \`List<int>\`，再 \`Activator.CreateInstance\`。源生成器能写死类型时不要走反射。
 
 ### 练习
 
@@ -1166,11 +1165,11 @@ a.IntersectWith(b);  // a 变成 {3, 4}
 | \`IsSupersetOf(other)\` | 是否超集 |
 | \`Overlaps(other)\` | 是否有交集 |
 
-### 十、SortedSet<T>
+### 十一、SortedSet<T>
 
 \`SortedSet<T>\` 是"有序的 HashSet"——基于红黑树，元素自动排序。支持 \`Min\`、\`Max\`、\`GetViewBetween\` 等有序操作。添加/查找/删除都是 O(log n)。
 
-### 十一、Lookup<TKey, TElement>
+### 十二、Lookup<TKey, TElement>
 
 \`Dictionary<TKey, TValue>\` 是"一对一"映射；\`ILookup<TKey, TElement>\` 是"一对多"映射——一个 key 对应多个元素。用 \`Enumerable.ToLookup\` 创建：
 
@@ -1182,9 +1181,9 @@ foreach (Person p in byAge[28])  // 所有 28 岁的人
 
 本章 demo 演示 Dictionary 全套 API + 自定义比较器 + HashSet 集合运算。
 
-### 十二、GetValueOrDefault、CollectionsMarshal、集合代数
+### 十三、GetValueOrDefault、CollectionsMarshal、集合代数
 
-\`dict.GetValueOrDefault(key)\`（.NET 5+）没有键时给 \`default\`，不会抛。与 \`TryGetValue\` 相比少一个 out，但分不清「键不存在」和「值就是 default」。
+\`dict.GetValueOrDefault(key)\`（.NET Core 2.0+）没有键时给 \`default\`，不会抛。与 \`TryGetValue\` 相比少一个 out，但分不清「键不存在」和「值就是 default」。
 
 热路径批量改值可用 \`CollectionsMarshal.GetValueRefOrAddDefault\`（小心：不要在持有 ref 时再扩容字典）。只读、启动后不再改的映射用 **\`FrozenDictionary\`**（.NET 8）——创建贵、查找更快。
 

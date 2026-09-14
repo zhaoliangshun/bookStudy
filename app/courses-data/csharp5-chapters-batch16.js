@@ -138,6 +138,12 @@ aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData);
 3. MAC / 密码比较是否恒定时间？
 4. 密钥是否在 KMS/秘密管理系统里，能否轮换，是否出现在日志与 Git？
 5. 依赖的加密库是否有已知 CVE（\`dotnet list package --vulnerable\`）？
+
+### 练习
+
+1. 把 demo 中 PBKDF2 的 \`Iterations\` 从 210_000 分别改成 1_000 与 5_000_000，用 \`Stopwatch\` 对比两次登录校验的耗时差异，体会“慢哈希”的成本就是暴力破解的代价；再传入一个错误密码，确认 \`CryptographicOperations.FixedTimeEquals\` 返回 false。
+2. 独立实现一对 \`Seal\`/\`Open\` 方法：用 \`AesGcm\` 加密任意明文，每次调用 \`RandomNumberGenerator.GetBytes(12)\` 生成新 nonce，把 nonce、ciphertext、tag 拼成一个 byte[] 返回，解密端按固定偏移拆开还原；篡改密文中一个字节，验证 \`Decrypt\` 抛出 \`CryptographicException\`。
+3. 生产场景：为 Webhook 回调实现 HMAC-SHA256 验签模块——用 \`HMACSHA256.HashData\` 计算签名、\`FixedTimeEquals\` 做恒定时间比较；再设计 PBKDF2 存储串格式 \`pbkdf2-sha256$iterations$salt$hash\`（salt 与 hash 用 Base64），登录时从记录解析迭代次数重算，并预留 kid 字段为密钥轮换做准备。
 `,
     code: `using System.Security.Cryptography;
 using System.Text;
@@ -301,6 +307,12 @@ a.Normalize() == b.Normalize(); // true（FormC）
 3. 键比较与协议字段是否全部 Ordinal？
 4. 需要去重的文本是否做了规范化？
 5. UI 文案是否全部资源化并验证过回退链？
+
+### 练习
+
+1. 把 demo 里 \`SubstringByTextElements(0, 4)\` 的截断长度分别改成 2 与 6，和直接 \`nickname.Substring(0, 4)\` 的输出对比，观察哪种写法把 😀 切成了乱码；再用 \`Encoding.UTF8.GetByteCount\` 算出各截断结果的字节数，体会“文本元素”与“字节”两种长度单位的差别。
+2. 独立实现 \`SafeTruncate(string text, int maxTextElements)\`：用 \`StringInfo\` 按文本元素计数截断，超长时追加省略号；截断后用 \`new UTF8Encoding(false, throwOnInvalidBytes: true)\` 严格模式重新编码，证明结果里没有 U+FFFD 替换字符或孤立代理项。
+3. 生产场景：为用户名注册写去重管道——先 \`Normalize(NormalizationForm.FormC)\` 规范化，再以 \`OrdinalIgnoreCase\` 查重；昵称限制用 \`StringInfo.LengthInTextElements\` 不超过 20、数据库列宽按 \`Encoding.UTF8.GetByteCount\` 校验；准备含 emoji、组合重音（é 的两种码位写法）、RTL 文本的测试集，验证同一个视觉名称只能注册一个账号。
 `,
     code: `using System.Globalization;
 using System.Text;
@@ -455,6 +467,12 @@ var result = partitioner.AsParallel().Select(Expensive).ToArray();
 3. 是否需要顺序（AsOrdered）与取消（WithCancellation）？
 4. 异常处理是否覆盖 AggregateException？
 5. 上线前是否对比过串行与并行的真实耗时（Release 构建）？
+
+### 练习
+
+1. 把 demo 的数据量从 \`Enumerable.Range(2, 1_000_000)\` 改成 1 万与 10 万，对比串行与 PLINQ 的耗时，找出“并行反而更慢”的临界点；再给查询加 \`WithDegreeOfParallelism(1)\` 验证它退化为近似串行，并对比 \`AsOrdered()\` 前后 \`Take(10)\` 输出顺序的差异。
+2. 独立实现并行词频统计：对一批长文本用 \`AsParallel()\` 加四参数 \`Aggregate\`（局部字典累加 + 合并函数 + 结果选择器）统计词频，全程不允许 \`lock\` 或共享可变 \`List\`，最后与串行 \`GroupBy\` 的结果对拍一致。
+3. 生产场景：为评分批处理管道补齐治理——\`WithCancellation(token)\` 接 \`CancellationTokenSource(TimeSpan)\` 实现总预算超时；\`catch (AggregateException ex)\` 后用 \`ex.Flatten()\` 逐个记录内层异常；\`WithDegreeOfParallelism(Math.Max(1, Environment.ProcessorCount - 2))\` 避免与 Web 请求抢核，并产出 Release 构建下串行/并行的基准对比表。
 `,
     code: `using System.Diagnostics;
 
@@ -622,6 +640,12 @@ ImmutableInterlocked.Update(ref map, m => m.Remove("usd"));
 2. 池化对象是否有“归还即失效”的纪律与容量上限？
 3. ArrayPool 使用是否显式传有效长度、敏感数据是否清零归还？
 4. 池化决策是否基于分配剖析与基准，而不是直觉？
+
+### 练习
+
+1. 把 demo 中 \`StringBuilderPool\` 的 capacity 改成 0 与 5，连续 Rent/Return 四次观察 \`Available\` 的变化（容量 0 时每次都新建对象）；再把 \`ArrayPool<byte>.Shared.Rent\` 的请求长度改成 100 与 8192，打印实际 \`buffer.Length\`，验证“不小于请求值、按 2 的幂对齐”的租借规则。
+2. 独立实现汇率表热更新：存储用 \`ImmutableDictionary<string, decimal>\`，写操作用 \`ImmutableInterlocked.AddOrUpdate\` 与 \`ImmutableInterlocked.Update\` 实现 \`UpsertRate\` 与 \`RemoveRate\`，读取方永远拿到完整快照；写一个多线程交替读写的小测试，证明无锁也没有撕裂读。
+3. 生产场景：把启动加载的币种码表改为 \`ToFrozenDictionary()\`，用 BenchmarkDotNet 对比 \`Dictionary\`、\`ImmutableDictionary\`、\`FrozenDictionary\` 三者 \`TryGetValue\` 的吞吐与分配；用 \`dotnet-counters\` 观察 Gen0 分配速率变化，最后写结论：什么数据该 Frozen（启动建一次的码表）、什么该 Immutable（配置热更新）、什么根本不该池化。
 `,
     code: `using System.Buffers;
 using System.Collections.Frozen;
@@ -792,6 +816,12 @@ JSON 可读、通用、够快——直到吞吐、体积或延迟成为硬指标
 2. 解码器是否对所有长度做了上限校验与资源预算？
 3. 契约演进是否有旧样本回归测试？
 4. 是否固定端序与版本号？
+
+### 练习
+
+1. 给 demo 的 \`Order\` record 增加 \`Remark\`（string）字段，同步修改 \`Encode\`/\`Decode\` 的长度计算与偏移量；再手工把 packet[0] 改成 200（nameLength 与实际不符），确认解码器抛出 \`ArgumentOutOfRangeException\` 而不是读出垃圾数据。
+2. 独立实现带版本号的 TLV 编解码器：帧格式为 \`[version:1][fieldType:1][length:2 大端][payload]\`，长度用 \`BinaryPrimitives.WriteUInt16BigEndian\` 写入；解码器遇到未知 fieldType 时按 length 跳过该块继续解析（前向兼容），主版本不匹配的帧直接拒绝。
+3. 生产场景：为消息队列载荷做序列化选型 PoC——同一批 10 万条订单分别用 \`System.Text.Json\` 与 MessagePack-CSharp 序列化，对比字节数、耗时与 P99；解码入口加长度上限校验（超过 1 MB 直接丢弃并计数），把 v1 格式的样本字节存进仓库，作为每次升级编解码器的往返回归测试。
 `,
     code: `using System.Buffers.Binary;
 using System.Text;
@@ -953,6 +983,12 @@ public sealed class PluginLoadContext : AssemblyLoadContext
 3. 插件调用是否有超时、取消、异常隔离？
 4. 卸载路径是否验证过（WeakReference 观察）？
 5. 插件来源是否经过签名校验，是否需要进程级隔离？
+
+### 练习
+
+1. 把 demo 中 \`PluginLoadContext\` 的 \`isCollectible: true\` 改成 false 再调用 \`context.Unload()\`，观察抛出的 \`InvalidOperationException\`；把 \`Load\` 重写里对 System/Microsoft 前缀返回 null 的分支去掉，重新运行对比 \`plugin is IPlugin\` 与反射调用的行为变化。
+2. 独立实现契约共享：新建一个只含 \`IPlugin\` 接口的独立契约程序集，让 \`PluginLoadContext.Load\` 对契约程序集名返回 null（回落默认上下文），宿主与插件即可拿到同一个接口类型；把 demo 里的反射 \`Invoke\` 改成 \`((IPlugin)plugin).Execute(...)\` 强转调用并验证成功。
+3. 生产场景：给插件宿主补齐治理三件套——\`plugin.json\` 清单记录 id、SHA-256 哈希与契约版本，加载前校验哈希不符即拒绝；每次调用包 \`CancellationTokenSource(TimeSpan.FromSeconds(5))\` 超时，并在宿主边界 catch 插件异常后熔断该 id；卸载用 \`WeakReference\` 循环 GC 断言真的释放，三个行为各写一个测试。
 `,
     code: `using System.Reflection;
 using System.Runtime.Loader;
@@ -1148,6 +1184,12 @@ Blazor 没有 HWND 线程，但有**电路 / 渲染同步上下文**：在任意
 2. ViewModel 与业务逻辑是否可以在无 UI 环境下测试？
 3. UI 线程规则是否有工具（分析器/代码评审）保障？
 4. 无障碍与本地化是否已纳入验收标准？
+
+### 练习
+
+1. 给 demo 的 \`OrderViewModel\` 加 \`Discount\`（0 到 1 的 decimal）属性，让 \`Total\` 改为 \`UnitPrice * Quantity * (1 - Discount)\`；订阅 \`PropertyChanged\` 验证：改 Quantity 时 Quantity 与 Total 都触发通知，改 Discount 时只有 Discount 与 Total 触发。
+2. 独立实现 \`AsyncRelayCommand\`：实现 \`ICommand\`，Execute 调用返回 Task 的委托，执行期间 \`CanExecute\` 返回 false 防止重复触发，完成后调用 \`RaiseCanExecuteChanged\` 恢复；整个类不引用任何 UI 命名空间，在控制台里连续两次 Execute 验证第二次被拒绝。
+3. 生产场景：为一个 WPF 内部工具写现代化评估报告——对比“原地升级到 .NET 8”与“Blazor Hybrid 重写”两条路线，覆盖：UI 线程规则（\`Dispatcher.InvokeAsync\` 与组件 \`InvokeAsync\` 的差异）、ViewModel 可测试性（业务下沉到 net8.0 类库）、无障碍与本地化验收项、按模块绞杀式迁移的顺序与回滚方案，最后给出带量化依据的选型结论。
 `,
     code: `using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -1312,6 +1354,12 @@ var response = await chatClient.GetResponseAsync<SupportTicket>(
 3. 是否有语义缓存与 token 成本计量？
 4. 评测集与回归基线是否建立？
 5. 提示注入与内容安全是否评估过？
+
+### 练习
+
+1. 把 demo 中 \`SemanticCache\` 的阈值从 0.95f 分别改成 0.50f 与 0.99f，依次用“如何重置密码”“密码怎么重置”“如何开发票”三个问句查询，记录每种阈值下的命中组合，体会阈值在“误命中”与“漏命中”之间的权衡。
+2. 独立实现 \`FakeChatClient\`（实现 \`IChatClient\` 接口）：可配置三种故障模式——固定延迟、返回畸形 JSON、超时抛 \`OperationCanceledException\`；再写结构化提取管线：\`GetResponseAsync<T>\` 失败后校验错误并把信息回喂重试一次，再失败降级返回“转人工”，用伪客户端把三条路径全部测到。
+3. 生产场景：为客服 RAG 接入设计成本与安全基线——每次调用把模型名、prompt 版本、输入/输出 token 数、延迟、缓存是否命中写入结构化日志并按功能维度聚合；API Key 只从 \`dotnet user-secrets\` 或 Key Vault 读取并纳入轮换演练；准备 50 条标注评测集，改 prompt 前后各跑一次，对比命中率与拒答率。
 `,
     code: `using System.Numerics;
 
@@ -1488,6 +1536,12 @@ CI 里用 \`dotnet format --verify-no-changes\` 和编辑器配置把语言版�
 1. 团队是否统一了 LangVersion 与目标框架？
 2. 新特性引入是否有评审与示例沉淀？
 3. 老代码现代化是否列入技术债计划而不是“永不”？
+
+### 练习
+
+1. 修改 demo：把 \`tier\` 的 switch 表达式改成 > 500 / > 200 两档并新增“VIP”分支；再把统计最高订单的 LINQ 查询语法改写为方法语法链（\`Where(...).OrderByDescending(...).First()\`），对比两种写法的可读性，并标注它们分别引入于 C# 8 与 C# 3。
+2. 独立扩展“特性博物馆”：在一个文件里分别用 C# 6 表达式体属性、C# 7 元组解构、C# 9 record 与 with 表达式、C# 11 required 成员、C# 12 集合表达式各写一个可编译示例并注明最低 LangVersion；在 net8.0 项目验证全部通过后，再写一个使用 \`field\` 关键字的属性，观察它在 C# 12 下报错——说明为什么它是 C# 14 特性。
+3. 生产场景：为团队制定 LangVersion 治理方案——用 Directory.Build.props 把所有项目钉在具体版本数字（如 12），CI 加 \`dotnet format --verify-no-changes\` 防止格式与语法漂移；挑一个 C# 7 风格模块做现代化改造（out var 改 is 模式匹配、匿名方法改 lambda、补可空标注），做成独立 PR，并在说明里写清为什么 \`preview\` 与 \`latest\` 禁止进生产 csproj。
 `,
     code: `// 语言特性“博物馆”：每处标注引入版本
 var orders = new Order[]
@@ -1663,6 +1717,12 @@ COM 组件、Office 自动化往往要求 STA。迁到 ASP.NET Core（默认 MTA
 3. 流量切换是否有粘性与回滚预案？
 4. 双写不一致是否有人工核对与告警？
 5. 遗留路径的退役是否有明确日期与下线清单？
+
+### 练习
+
+1. 把 demo 中 \`StranglerRouter\` 的 newTrafficRatio 从 0.7m 分别改成 0.1m 与 0.9m，各跑 1000 个请求统计 legacy/modern 的分布；再验证粘性——同一个 requestId 连续 \`Route\` 10 次结果完全一致，说明灰度期间同一用户不会被两边来回切换。
+2. 独立实现特征测试快照：对 \`LegacyReport.Render\` 的一组固定输入（orders-2023 到 orders-2026）把输出哈希写入黄金文件；随后重构 \`ReportRenderer\` 的内部实现（比如改字符串拼接方式）重新对拍，验证快照不变；再故意改动一个输出字符，确认测试会失败。
+3. 生产场景：为一个 System.Web 单体设计绞杀迁移方案——列出按路由粒度的迁移顺序清单；订单表迁移用 Expand–Contract（先双写、后台比对、切读、最后删旧列，双写经 Outbox 保证幂等）；旧入口全部套 \`[Obsolete]\` 转发壳收敛调用点；粘性灰度按 5% → 50% → 100% 推进且每步带回滚预案，并定义验收指标（下单成功率、P99 与旧系统的对比阈值）。
 `,
     code: `// —— 1. 绞杀者路由：粘性哈希灰度切流 ——
 var router = new StranglerRouter(newTrafficRatio: 0.7m);

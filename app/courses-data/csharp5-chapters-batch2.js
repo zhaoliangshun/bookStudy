@@ -1253,7 +1253,7 @@ var moved = pt with { X = pt.X + 1 }; // record class 从 C# 9 支持；普通 s
 - \`..\` 是范围，\`arr[1..^1]\` 去掉头尾。
 - \`+=\` \`-=\` \`*=\` \`/=\` \`&= \` \`|= \` \`^= \` \`??= \` 都是复合赋值；\`x += y\` 只求值 \`x\` 一次。
 - \`&&\` / \`||\` **短路**：左边已能定结果就不跑右边。\`&\` / \`|\` 对 \`bool\` 不短路，两边都算。
-- \`++\` / \`--\` 在 unchecked 下会绕回：\`int.MaxValue++\` 变成 \`MinValue\`。计数靠近边界请 \`checked\`。
+- \`++\` / \`--\` 在 unchecked 下会绕回：\`int x = int.MaxValue; x++;\` 后 \`x\` 变成 \`MinValue\`。计数靠近边界请 \`checked\`。
 
 ### 十六、true / false 运算符与优先级备忘
 
@@ -1367,8 +1367,8 @@ v = 0b1010;
 v <<= 2; Console.WriteLine($"v <<= 2 → {v}"); // 40
 v >>= 1; Console.WriteLine($"v >>= 1 → {v}"); // 20
 
-// ??= null 合并赋值
-string name = null;
+// ??= null 合并赋值（nullable 上下文中用 string? 声明可空变量）
+string? name = null;
 name ??= "默认名";   // name 为 null 才赋值
 Console.WriteLine($"name ??= 后 = {name}");
 name ??= "不会被覆盖";
@@ -1386,7 +1386,7 @@ Console.WriteLine($"分数 {score} → {level}");
 // 7. null 合并运算符 ??
 // ============================================================
 Console.WriteLine("\\n===== null 合并运算符 ?? =====");
-string input = null;
+string? input = null;
 string displayName = input ?? "匿名用户";    // input 为 null 用默认值
 Console.WriteLine($"显示名 = {displayName}");
 
@@ -1395,7 +1395,8 @@ int realAge = age ?? 0;                       // 可空 int 用 ?? 提供默认�
 Console.WriteLine($"年龄 = {realAge}");
 
 // 链式 ??
-string nickname = null, realName = null, fallback = "游客";
+string? nickname = null, realName = null;
+string fallback = "游客";
 string final = nickname ?? realName ?? fallback;
 Console.WriteLine($"链式 ?? = {final}");
 
@@ -1403,7 +1404,7 @@ Console.WriteLine($"链式 ?? = {final}");
 // 8. null 条件运算符 ?.
 // ============================================================
 Console.WriteLine("\\n===== null 条件运算符 ?. =====");
-User user = null;
+User? user = null;
 int? nameLen = user?.Name?.Length;            // 链式 ?.，任一为 null 则整体 null
 Console.WriteLine($"user?.Name?.Length = {nameLen?.ToString() ?? "null"}");
 
@@ -1417,7 +1418,7 @@ Console.WriteLine($"?. 配合 ?? = {safeLen}");
 
 // ?. 调用方法
 user?.SayHello();                             // user 非 null 才调用
-User nullUser = null;
+User? nullUser = null;
 nullUser?.SayHello();                         // 不会抛异常
 
 // ============================================================
@@ -1928,9 +1929,13 @@ string lit1 = "interned";
 string lit2 = "interned";
 Console.WriteLine($"两个字面量同一引用：{ReferenceEquals(lit1, lit2)}"); // True
 
-// 运行时拼接的不驻留
-string concat2 = "inter" + "ned";
-Console.WriteLine($"拼接结果同一引用：{ReferenceEquals(lit1, concat2)}");
+// 运行时拼接的结果不驻留
+// ⚠️ 注意：两个字面量直接相加（"inter" + "ned"）会在编译期被
+//    常量折叠成一个驻留字面量，ReferenceEquals 会得到 True。
+//    要演示"运行时拼接不驻留"，至少要让其中一个操作数是变量。
+string part = "inter";
+string concat2 = part + "ned";
+Console.WriteLine($"拼接结果同一引用：{ReferenceEquals(lit1, concat2)}"); // False
 
 // 手动驻留
 string interned = string.Intern(concat2);
@@ -2099,17 +2104,17 @@ string path = $@"C:\\Users\\{name}\\file.txt";
 
 字符串插值在 C# 10+ 经过优化，性能接近 \`string.Concat\`。对于简单场景，插值是首选。
 
-C# 10 起，可以用 \`const string\` 拼接常量：
+C# 10 起，插值字符串也可以是 \`const\`——前提是所有插值 hole 都是字符串常量（数字等需要运行时格式化的不行）：
 
 \`\`\`csharp
 const string Prefix = "User";
-string name = "Tom";
-// 注意：const 不能用于插值，只能用字面量拼接
+const string Full = $"{Prefix}_v1";   // 合法：hole 是字符串常量
+// const string Bad = $"{123}";       // 编译错误：123 不是字符串常量
 \`\`\`
 
 ### 九、IFormattable 接口
 
-插值字符串 \`$"..."\` 实际上是 \`IFormattable\` 类型，可以延迟格式化：
+插值字符串默认就是 \`string\`；但当目标类型是 \`FormattableString\`（它实现了 \`IFormattable\`）时会按该类型处理，从而保留格式信息、支持延迟格式化：
 
 \`\`\`csharp
 IFormattable msg = $"时间 {DateTime.Now:O}";
@@ -2636,9 +2641,6 @@ Console.WriteLine(string.Join(" | ", names));
 Array.Sort(names, StringComparer.Ordinal);
 Console.WriteLine($"按序排序：{string.Join(",", names)}");
 
-Console.WriteLine("\\n本程序演示完毕！");
-
-
 Console.WriteLine("\\n===== 8. BinarySearch / Clear / Rank / 下界 =====");
 int[] ordered = [1, 3, 5, 7, 9];
 int found = Array.BinarySearch(ordered, 7);
@@ -2686,6 +2688,8 @@ Console.WriteLine("foreach+按值方法后仍是：" + boxes[0].N);
 for (int i = 0; i < boxes.Length; i++)
     boxes[i].N = 99;
 Console.WriteLine("for 下标可改：boxes[0].N=" + boxes[0].N);
+
+Console.WriteLine("\\n本程序演示完毕！");
 
 struct Box { public int N; }
 `,

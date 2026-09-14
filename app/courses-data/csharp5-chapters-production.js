@@ -35,7 +35,7 @@ export const csharp5Preface = {
 | 生产基线 | **.NET 10 LTS / C# 14** | 2026 年新系统应以此规划，并持续打补丁 |
 | 在线主 demo | **net8.0 / C# 12** | 当前运行器安装 .NET 8 SDK；ImplicitUsings + Nullable |
 | 专属新 API | C# 13/14、.NET 10、ASP.NET / EF 新表面 | 正文代码块会标注版本与 NuGet，不混进主 demo |
-| 支持窗口 | .NET 8 / .NET 9 于 **2026-11-10** 结束支持 | 学习可用旧 SDK，生产不可假装“还能再拖一年” |
+| 支持窗口 | .NET 8 于 **2026-11-10** 结束支持（.NET 9 已于 2026-05 结束） | 学习可用旧 SDK，生产不可假装“还能再拖一年” |
 
 主 demo 必须是单个 \`Program.cs\`，不引用需要额外 NuGet 的 ASP.NET Host、EF Provider、Redis 客户端等。涉及真实框架的片段，请在本机或 CI 的真实项目里验证。章末 demo 用纯 C# **模拟语义**（中间件顺序、Inbox 去重、错误预算、预签名校验），这不等于“已经会用 ASP.NET / Redis / Kubernetes”。
 
@@ -225,6 +225,12 @@ chore(ci): require CODEOWNERS review on /infra
 标签与发布：\`v2.1.0\` 打在合并到主干且流水线变绿的提交上，不要打在功能分支尖上。发布说明从 conventional commits 生成（\`feat\`/\`fix\`/\`BREAKING CHANGE\`），避免 liberally 手写一份和 Git 对不上的“本周更新”。热修必须从发布标签拉 \`hotfix/*\`，修完立刻回到主干，否则会出现“生产已修、主干仍坏”的分叉。
 
 最后，权限模型：能推 \`main\` 的人越少越好；机器人账号用细粒度 PAT 或 OIDC 联邦，过期日写进日历。fork 进来的 PR 默认不跑含密钥的作业。这些不是“高级 Git”，是让第九十三章的门禁在真实组织里站得住的底座。
+
+### 练习
+
+1. 修改主 demo：把 \`security\` 检查改成 \`CheckState.Failed\`，再新增一项 \`migrations\` 检查，观察 \`mergeable\` 如何变化；交换数组中检查的顺序，验证 \`All\` 的判定与顺序无关。
+2. 脱离示例实现一个 \`MergeGate\` 类：支持按名称配置必需检查（build/tests/security 必须 Passed，review 允许 Pending），不满足时输出具体缺少哪一项，而不是笼统的 false。
+3. 生产场景：给毕业项目补齐 \`CONTRIBUTING.md\`、PR 模板（动机/行为变化/测试证据/回滚步骤/风险）和 \`CODEOWNERS\`（\`/infra/\` 指向平台组）；再用 \`git bisect\` 配合 \`dotnet test\` 定位一次故意注入的回归提交，把步骤记进 runbook。
 `,
     code: `// 用代码表达一个简单的合并门禁
 var checks = new[]
@@ -345,6 +351,12 @@ static T Sum<T>(ReadOnlySpan<T> values) where T : INumber<T>
 \`Result<T>\` 不要变成新的异常体系：在应用边界（用例返回）使用它，在基础设施（网络超时、死锁）仍可用异常或特定错误码。全公司每个方法都返回 Result 会让调用链充满样板，和“到处 throw”一样糟。约定写进 ADR：领域规则用 Result，编程错误（空引用进了不该空的内部）仍抛。
 
 最后，测量类型包装的成本。\`readonly record struct OrderId(Guid Value)\` 在热路径通常可接受；若剖析显示复制过多，再考虑 \`record class\` 或保持 Guid 并在 API 边界转换。过早“全部是 class 值对象”会造成 GC 压力，过早“全部是 struct”会造成意外复制。用 BenchmarkDotNet 回答具体问题，而不是用感觉选择。
+
+### 练习
+
+1. 修改主 demo：把 \`shipping\` 的币种改成带空格小写的 \`" usd"\`，观察 \`Money.Create\` 的 Trim 与大写规范化；再试 \`Money.Create(-5m, "cny")\` 与 \`Money.Create(99.999m, "cny")\`，确认负数被拒、金额舍入到分。
+2. 独立实现 \`readonly record struct Sku\`：工厂拒绝空白、超过 16 字符以及 \`[A-Z0-9-]\` 之外的字符；再写泛型方法 \`static T Sum<T>(ReadOnlySpan<T>) where T : INumber<T>\`，分别用 int、decimal、BigInteger 调用，体会泛型数学的能力与边界。
+3. 生产场景：为订单域实现封闭的 \`OrderStatus\` 状态机（Pending→Paid→Shipped/Cancelled，\`Pay()\`/\`Cancel()\` 拒绝非法迁移），查询未命中返回 \`Maybe<T>\`、业务拒绝返回 \`Result<T,TError>\`；用单元测试断言“已取消不能再支付”，并在 ADR 里约定哪些规则用 Result、哪些编程错误仍抛异常。
 `,
     code: `var price = Money.Create(99.90m, "cny");
 var shipping = Money.Create(10m, "CNY");
@@ -470,6 +482,11 @@ var safe = new Regex(
 
 排障时把“时间错了”拆成四问：存的是时刻还是日历日？转换用了哪个时区 ID？比较用了哪种文化？正则有没有超时？十次生产事故里有八次能在这四问里结束。把 TimeProvider 注入不到的静态 DateTime.Now 当成缺陷，和空引用一样拦 CI。跨年、月末、夏令时切换日各做一条集成测试，比再解释一遍 DateTimeKind 更管用。
 
+### 练习
+
+1. 修改主 demo：把时间戳换成 \`"2026-12-31T23:30:00Z"\` 再转 \`America/New_York\`，观察跨日结果；把用户名输入改成带空格与超长字符串，看 \`safe.IsMatch\` 的判定；对 \`"A😀é"\` 分别统计 \`Length\` 与 \`EnumerateRunes()\`。
+2. 独立实现注入 \`TimeProvider\` 的 \`RefundPolicy\`（14 天退款窗口），用 \`FakeTimeProvider\` 写“刚好第 14 天”的拨钟边界测试；再实现按文本元素计数的 \`Truncate(string text, int maxRunes)\`，保证 emoji 与组合音标不被截断成乱码。
+3. 生产场景：把毕业项目的时刻字段统一为 \`DateTimeOffset\` + ISO 8601（OpenAPI 标 \`format: date-time\`），标识符比较改用 \`StringComparer.Ordinal\`；用 \`[GeneratedRegex]\` 加 \`RegexOptions.NonBacktracking\` 重写用户名/Sku 校验并设置 \`matchTimeout\`；在 CI 的 Linux 容器里跑 tr-TR 大小写与夏令时切换日的 Theory 测试。
 `,
     code: `using System.Globalization;
 using System.Text;
@@ -577,10 +594,20 @@ Native AOT 下，运行时封送、运行时 \`DllImport\` 搜索、反射调 na
 
 审查提问单写成 interop.md：许可证、CVE 订阅、Win/Linux 是否同测、回调会否重入死锁、错误码是否立刻翻译、public API 是否泄漏 IntPtr、AOT 能否 Load 到 RID 文件。只有一名“懂 C 的人”时，文档和测试就是备份。宁可多写托管长度检查，也不把未校验缓冲交给 native。COM 与 Office 自动化关在专用 Windows 工人进程，不要进 Web 副本。
 
-`,
-    code: `using System.Buffers.Binary;
+### 练习
 
-// 不使用指针也能高效解析网络协议
+1. 修改主 demo：把 \`packet\` 前 4 字节换成 \`0x7F 0xFF 0xFF 0xFF\`，观察 \`ReadInt32BigEndian\` 的输出；把 \`TryParsePacket\` 的长度校验从 6 放宽到 4，再喂 5 字节输入，看异常在哪个切片抛出；对调 \`PacketHeader\` 里 \`Version\` 与 \`Flags\` 的 \`FieldOffset\`，对比 \`Convert.ToHexString(buffer)\` 字节视图的变化。
+2. 脱离示例独立实现 \`static bool TryParseVarint(ReadOnlySpan<byte> raw, out int value, out int consumed)\`：按 LEB128 规则解析变长整数，长度不足或第 5 字节仍带延续位时返回 false——只用 \`ReadOnlySpan<byte>\` 与算术运算，全程不写 \`unsafe\`，并为每个拒绝分支各写一个测试。
+3. 生产场景：为虚构的 \`libchecksum\` 用 \`[LibraryImport("libchecksum", StringMarshalling = StringMarshalling.Utf8)]\` 声明封装，返回句柄交给 \`SafeHandle\`、C 返回码在托管边界立刻转异常；按 RID 图打包进 \`runtimes/linux-x64/native\`，在 ubuntu + windows 双矩阵 CI 里真实加载，再发一次 Native AOT 产物做 smoke，最后把 interop.md 审查单（许可证、CVE、回调重入、错误码翻译、AOT 加载）补进仓库。
+
+`,
+    code: `// ============================================================
+    // Native Interop：安全解析二进制协议 + 显式内存布局 + 非指针技巧
+// ============================================================
+using System.Buffers.Binary;
+using System.Runtime.InteropServices;
+
+// ---------- 1. 不使用指针也能高效解析网络协议 ----------
 byte[] packet =
 [
     0x00, 0x00, 0x00, 0x2A, // big-endian id = 42
@@ -591,7 +618,57 @@ ReadOnlySpan<byte> data = packet;
 int id = BinaryPrimitives.ReadInt32BigEndian(data[..4]);
 ushort amount = BinaryPrimitives.ReadUInt16BigEndian(data.Slice(4, 2));
 
+Console.WriteLine($"=== 1. 二进制协议解析 ===");
 Console.WriteLine($"id={id}, amount={amount}");
+
+// ---------- 2. 显式内存布局（与 native 结构体对齐的前提） ----------
+// StructLayout.Explicit + FieldOffset 精确控制每个字段的位置（类型定义见文件末尾）
+Console.WriteLine("\\n=== 2. 结构体布局 ===");
+Console.WriteLine($"sizeof(PacketHeader) = {Marshal.SizeOf<PacketHeader>()} 字节（与 native 侧约定一致）");
+
+// ---------- 3. 无指针读写结构体到字节数组（MemoryMarshal） ----------
+// 把 8 字节头部按 little-endian 写进 buffer，再原样读回——封送不进 unsafe
+Span<byte> buffer = stackalloc byte[8];
+var header = new PacketHeader { Magic = 0xDEADBEEF, Version = 3, Flags = 0x0001 };
+MemoryMarshal.Write(buffer, in header);          // 托管 struct → 字节
+var roundTrip = MemoryMarshal.Read<PacketHeader>(buffer);  // 字节 → 托管 struct
+
+Console.WriteLine("\\n=== 3. MemoryMarshal 读写 ===");
+Console.WriteLine($"  写入: Magic=0x{roundTrip.Magic:X}, Version={roundTrip.Version}, Flags=0x{roundTrip.Flags:X}");
+Console.WriteLine($"  字节视图: {Convert.ToHexString(buffer)}");
+
+// ---------- 4. 按协议字段逐段解析（带边界检查的健壮写法） ----------
+// 生产代码解析外来字节必须先验长度，再切片——宁可多写托管检查，不把未校验缓冲交给 native
+static bool TryParsePacket(ReadOnlySpan<byte> raw, out int parsedId, out ushort parsedAmount)
+{
+    parsedId = 0; parsedAmount = 0;
+    if (raw.Length < 6) return false;           // 长度校验：头 4 + 体 2
+    parsedId = BinaryPrimitives.ReadInt32BigEndian(raw[..4]);
+    parsedAmount = BinaryPrimitives.ReadUInt16BigEndian(raw.Slice(4, 2));
+    return true;
+}
+
+Console.WriteLine("\\n=== 4. 带边界检查的解析 ===");
+Console.WriteLine($"  合法包(6字节): {TryParsePacket(packet, out var pid, out var pa)} → id={pid}, amount={pa}");
+Console.WriteLine($"  截断包(3字节): {TryParsePacket(packet[..3], out _, out _)} → 拒绝解析");
+
+// ---------- 5. ASCII 字节比较（避免 Encoding 分配） ----------
+// 协议里的魔数/命令字常用 ASCII，直接按字节比较零分配
+ReadOnlySpan<byte> magic = "PING"u8;             // u8 后缀：UTF-8 字面量 → ReadOnlySpan<byte>
+ReadOnlySpan<byte> received = "PING"u8;
+Console.WriteLine($"\\n=== 5. 魔数字节比较 ===");
+Console.WriteLine($"  magic == received: {magic.SequenceEqual(received)}（零字符串分配）");
+
+// ============== 类型定义区（顶级语句程序中类型必须放在末尾） ==============
+
+// 显式布局的结构体：与 native 侧逐字节对齐的前提
+[StructLayout(LayoutKind.Explicit, Size = 8, Pack = 8)]
+struct PacketHeader
+{
+    [FieldOffset(0)] public uint Magic;      // 0-3 字节
+    [FieldOffset(4)] public ushort Version;   // 4-5 字节
+    [FieldOffset(6)] public ushort Flags;     // 6-7 字节
+}
 `,
     lang: "cs",
   },
@@ -685,6 +762,12 @@ Schema 变更用 **expand/contract**：先加可空列/新表并双写，再回�
 常见错觉：SELECT * 加 ORM 缓存不是索引；单列 updated_at 帮不了“某租户最近订单”；varchar(max) 状态没有选择性；UUID v4 主键随机写页。建表 PR 先问 PK/UK/FK/覆盖索引/CHECK/隔离假设。EXPLAIN 当附件，不接受“我本地挺快”。统计信息过期与锁等待进仪表盘，事故当天才第一次查 pg_stat_activity 已经晚了。
 
 再补一句当验收：没有 EXPLAIN 附件的索引 PR 视为未完成。把慢查询和锁等待做成周报，比临时救火更接近第九十七章的目标。
+
+### 练习
+
+1. 修改主 demo：把 \`cursor\` 换成 \`orders[0]\`（最新一单）和 \`orders[11]\`（最旧一单），观察 \`nextPage\` 分别输出什么；给几条订单相同的 \`CreatedAt\` 并去掉 \`ThenByDescending(order => order.Id)\`，看只按时间比较会丢行还是重行；把 \`Take(5)\` 改成 \`Take(100)\`，确认 12 行一次取完。
+2. 脱离示例独立实现 \`KeysetCursor\`：把 \`(CreatedAt, Id)\` 编码成 Base64 不透明 token，内含排序方向与版本号，提供 \`TryParse\`；伪造、过期或排序规则变更后的旧游标返回失败而不是错页，用 xUnit 覆盖“篡改 token”与“换排序方向后复用旧游标”两个用例。
+3. 生产场景：在 PostgreSQL 灌 10 万行订单种子，建 \`(tenant_id, created_at DESC, id DESC) INCLUDE (total, status)\` 覆盖索引，用 \`EXPLAIN (ANALYZE, BUFFERS)\` 对比 \`OFFSET 50000\` 与 keyset 翻页的 Buffers 读数并贴进 PR；再写“扣库存 + 插订单”事务：固定先 \`orders\` 后 \`inventory\` 的锁顺序，死锁重试上限 3 次且整段幂等可重放，用两个并发事务验证不会超卖。
 
 
 `,
@@ -803,6 +886,12 @@ var rows = await connection.QueryAsync<OrderRow, LineRow, OrderRow>(
 
 禁止热路径 Query<dynamic>。报表 SQL 必须带参数列表和预期行数级。用池空闲计数抓连接泄漏。Application Name 设成服务名，DBA 才能按应用杀会话。只读副本单独连接串，分析查询误打主库要在审查里一眼看见。异步 API 禁止 Task.Run 包同步读取。这几条能消掉大半“ADO 危险 / EF 慢”的宗教争论。
 
+### 练习
+
+1. 修改主 demo：把 \`requested\` 依次改成 \`"DROP TABLE orders"\`、\`""\`、\`"TOTAL"\`，观察它们如何回落到 \`created_at\`；往 \`allowedSorts\` 新增 \`["amount"] = "total_amount"\` 验证映射生效；把 \`StringComparer.OrdinalIgnoreCase\` 换成默认比较器后再请求大写形式，确认行为差异。
+2. 脱离示例独立实现 \`static string BuildOrderBy(IReadOnlyList<string> requested, IReadOnlyDictionary<string, string> allowed)\`：支持多列排序与 \`ASC\`/\`DESC\` 方向（方向同样走允许列表），未知列直接报错而不是静默回落，用参数化测试覆盖 \`sort=drop table\`、\`sort=created,-total\` 等输入。
+3. 生产场景：给毕业项目落地“EF 写、Dapper 读”的分工——订单保存走 \`DbContext.SaveChanges\`，跨月报表用 \`QueryAsync<OrderRow, LineRow, OrderRow>\` 多映射（\`splitOn\` 对准 \`LineId\`）并把 EXPLAIN 贴进 PR；把 \`CommandTimeout\` 设 2 秒跑一条 \`pg_sleep(5)\` 验证取消路径；批量导入用 \`SqlBulkCopy\`/\`COPY\` 按 5000 行分批、整批失败可重入、按业务键去重；连接串加 \`Application Name=graduation-api\`，在数据库侧验证能按应用查杀会话。
+
 `,
     code: `// 动态排序必须从允许列表映射，不能拼接用户原文
 var allowedSorts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -912,6 +1001,12 @@ Redis 超时或宕机时“全部回源”会压垮数据库。要有：回源�
 缓存设计评审会问五件事：键是否含租户与版本？TTL 有没有抖动？写后删除失败怎么办？Redis 宕机是否限流回源？锁有没有 fencing 还是根本不该用锁？答不全就不要合并。把这五问贴进 PR 模板。演示日当场杀掉 Redis，下单 API 必须仍返回正确错误或降级成功，而不是 30 秒超时 cascade。这比再背一遍“旁路缓存”定义更接近生产。
 
 把 Redis 课堂收成一份可执行的周计划。周一：画出每个缓存键的组成，强制包含环境、租户、资源和 schema 版本，缺一列就重画。周二：给 TTL 加上百分之十五左右的抖动，并用脚本创建一千个键观察过期时间是否打散。周三：对不存在的 SKU 做空值短缓存，再用爬虫式循环证明数据库 QPS 不再被穿透。周四：写后删除失败时只依赖 TTL 的路径要有指标，不能沉默。周五：在预发杀掉 Redis，确认回源被限流、页面可降级、错误预算没有被一次演练烧光。周末把 Pub/Sub 从订单事件路径上拆掉，改到第一百章的总线。若某天做不完，宁可减少键的数量，也不要留下一个“临时永不过期”的热键。分布式锁如果没有 fencing 和数据库约束，就从设计里删掉，改用唯一索引和乐观版本。把这周的笔记连同键命名表检入仓库，下个新人才能接着做而不是重猜。
+
+### 练习
+
+1. 修改主 demo：把 \`AddJitter\` 的 \`ratio\` 分别改成 0 和 0.5，各跑 5 个键，观察 TTL 是否重新对齐、抖动范围如何变化；把 \`Random(2026)\` 的固定种子换成 \`Random()\`，体会测试可重复与生产随机的取舍；再想想穿透场景下空值缓存该配多短的 TTL。
+2. 脱离示例独立实现 \`static async Task<T> GetOrCreateAsync<T>(string key, Func<Task<T>> factory)\`：未命中时单飞（同一 key 的并发请求只放一个回源，其余等待同一任务），回填时写入带 15% 抖动的 TTL，工厂查出空值时写 30 秒空对象缓存防穿透；用 \`Task.WhenAll\` 发起 100 个并发读，断言 \`factory\` 只执行一次。
+3. 生产场景：给毕业项目的商品详情接口加 cache-aside：键按 \`app:env:tenant:product:{id}:v{schema}\` 构造，写库成功后删缓存、删除失败靠 TTL 兜底并打指标；用 Testcontainers 起本地 Redis 写集成测试，再演练“预发杀掉 Redis 后下单 API 仍返回正确错误或降级，而不是 30 秒超时”；把命中率按接口拆开打点，验证首页 99% 是否掩盖了下单校验的低命中。
 
 
 
@@ -1033,6 +1128,12 @@ Schema 演进：只加可选字段；改含义就升 \`schemaVersion\` 并双读
 
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
+
+### 练习
+
+1. 修改主 demo：往 \`deliveries\` 里再加一条同 \`messageId\` 的 \`OrderPaid\` 和一条新 \`messageId\` 的 \`OrderCancelled\`，观察跳过与处理的分界；把 \`inbox\` 从 \`HashSet<Guid>\` 换成 \`List<Guid>\` 配合 \`Contains\`，模拟 10 万次投递对比两者耗时，体会该把唯一约束建在数据库还是内存。
+2. 脱离示例独立实现 \`InboxProcessor\`：\`TryBegin(messageId)\` 用 \`ConcurrentDictionary<Guid, byte>.TryAdd\` 模拟数据库唯一约束，业务处理成功与 inbox 占用一起提交、失败一起释放以便重投重试；用两个并行 \`Task\` 验证同一 \`messageId\` 只有一个能进入处理分支。
+3. 生产场景：在毕业项目落地完整 Outbox/Inbox 链路——下单事务同插业务行与 \`outbox\` 行（含 messageId、type、schemaVersion、occurredAt），发布前 kill -9 杀进程、重启后消息仍在；同一 \`OrderPaid\` 重复投递三次库存只扣一次；无法反序列化的毒消息 3 次后进 DLQ 并告警；分区键取 \`orderId\` 保证同单有序——这三条全部写成自动化测试当验收。
 
 
 
@@ -1163,6 +1264,13 @@ SignalR 的扩展模式要测广播放大：给 10 万用户推同一条，Redis
 10. 钱与库存状态以查询为准，推送只提示刷新。
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
+
+### 练习
+
+1. 修改主 demo：往 \`incoming\` 加一条 \`RealtimeEvent(102, "price.updated")\` 让序号连续，确认 gap 提示消失；再加一条倒退事件（如 99），观察 \`lastSeen\` 被拉低后后续事件如何被误判；把判断条件从 \`!=\` 改成 \`>\`，体会缺口检测背后的严格递增假设。
+2. 脱离示例独立实现 \`SequenceTracker\`：\`Observe(long sequence)\` 返回本次发现的缺口区间，支持乱序到达（103 先到、102 后到则缺口自动关闭）与重复事件忽略，用测试覆盖 100→103→102 与同号重放两条路径。
+3. 生产场景：给毕业项目的价格推送落地“推送 + 可查询”：Hub 方法全部 \`[Authorize]\`，分组名由服务端按 \`tenant:{id}\` 计算而不接受客户端传入；事件带 sequence，客户端重连后先走 HTTP 补拉再订阅；gRPC 内部调用把入口剩余时间递减进 \`CallOptions.Deadline\`，用 100ms 预算调 500ms 下游验证取消传播而不是堆请求；protobuf 废弃字段 3 写 \`reserved\` 并让新旧客户端各跑一次。
+
 
 
 
@@ -1520,6 +1628,13 @@ K8s 验收：三探针语义不同且有测试或手册；PDB 存在；SIGTERM �
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
 
+### 练习
+
+1. 修改主 demo：把 \`DatabaseReachable\` 改成 false，观察 readiness 变为 not-ready 而“分析服务失败不触发重启”的语义不变；给 \`ApplicationState\` 增加 \`MigrationRunning\` 字段并讨论它该影响 startup 还是 readiness；解释 \`OptionalAnalyticsReachable\` 为什么不该进任何探针。
+2. 脱离示例独立实现 \`static HealthStatus Evaluate(ApplicationState state, ProbeKind kind)\`：\`ProbeKind\` 分 Startup/Readiness/Liveness 三种语义——readiness 只看“启动完成 + 核心依赖可接流量”，liveness 只看进程本身；用测试覆盖“分析服务挂了 readiness 仍就绪”“数据库挂了摘流但不重启”两条断言。
+3. 生产场景：给毕业项目编写 Deployment + Service + Ingress 与 PDB（\`minAvailable: 2\`），三探针分别指向 \`/health/startup\`、\`/health/ready\`、\`/health/live\`（用 \`MapHealthChecks\` 分组），readiness 查库、liveness 不查；演练 SIGTERM 确认在途请求在 \`terminationGracePeriodSeconds\` 内完成；把 memory limit 压到工作集以下观察 OOMKill 再回调合理值；数据库迁移改成独立 Job 执行，禁止每个副本启动抢跑。
+
+
 
 
 
@@ -1643,6 +1758,13 @@ IaC 验收：PR 必贴 plan；state 加密加锁；生产 apply 仅流水线；�
 
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
+
+### 练习
+
+1. 修改主 demo：把 \`PublicApiBreaking\` 也改成 true，确认 risk 升到 8 仍走"双人审批 + 演练 + 维护窗口"；把三个开关全设 false，观察落入"自动发布"；调整权重（如 \`SecuritySensitive\` 计 5 分），体会阈值与权重的取舍得反映真实 blast radius。
+2. 脱离示例独立实现 \`ReleasePolicy.Evaluate(Change change)\`：返回结构化结果——门禁级别、必须的审批角色列表、是否允许夜间发布；\`DatabaseDestructive\` 强制双人加演练，用表驱动测试覆盖 risk 为 0/2/5/8 的四档输出。
+3. 生产场景：把毕业项目的基础设施落进 \`infra/\` 目录用 Terraform 或 Bicep 管理：state 远程加密加锁、PR 必贴 \`terraform plan\` 输出、apply 仅在受保护流水线执行；给数据库和 Key Vault 加 \`lifecycle { prevent_destroy = true }\`；在 staging 用控制台故意改一个标签制造漂移，验证下次 plan 能检出并回写；\`/infra/\` 的 CODEOWNERS 指向平台组。
+
 
 
 
@@ -1897,6 +2019,13 @@ SLO 验收：一条用户可感知 SLI、30 天目标、burn-rate 告警、SEV �
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
 
+### 练习
+
+1. 修改主 demo：把 \`failedRequests\` 改成 5000 与 5001，观察"仍在预算内/SLO 已违反"在 1 倍预算处的翻转；把 \`target\` 换成 0.99 与 0.9995，对比允许失败数的变化；把窗口换成 7 天（\`totalRequests\` 相应缩小），体会预算窗口与告警节奏的关系。
+2. 脱离示例独立实现 \`ErrorBudget\` 类型：构造传入（窗口、总请求、目标），提供 \`Remaining\` 与 \`BurnRate(TimeSpan window)\`（1 小时快烧、6 小时慢烧双阈值），超阈值时输出"页面还是传呼"的建议；用 99.9% × 30 天 ≈ 43 分钟不可用做断言测试。
+3. 生产场景：给毕业项目的下单旅程定义 SLI（非 5xx 且 < 300ms 的比例）与 30 天 99.9% 的 SLO，用真实流量算出允许失败数并做成仪表盘；配置多窗口 burn-rate 告警，每条绑定 owner、dashboard、runbook；写一份 SEV 分级表与 IC 检查单；删掉三条不可行动的 CPU 告警；把"错误预算耗尽冻结高风险发布"写进发布政策并让产品方签字。
+
+
 
 
 
@@ -1966,7 +2095,7 @@ RPO=0 几乎意味着同步复制和双活，成本高且有脑裂风险。RPO=5
 - [ ] 区域切换与 failback 有 runbook
 - [ ] 勒索场景假设备份也被删，仍有离线副本
 
-### 六、排障证据链与恢复后对账
+### 四、排障证据链与恢复后对账
 
 生产排障要像写实验记录。先冻结时间范围：开始、发现、最近发布、相关 flag。保存 \`kubectl get events\`、仪表盘截图时间、变更 SHA。dump 太大时先 counters 再 trace 再 dump，避免一上来把节点打满磁盘。内存转储按保密级别存放，到期删除。
 
@@ -2014,6 +2143,13 @@ RPO=0 几乎意味着同步复制和双活，成本高且有脑裂风险。RPO=5
 
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
+
+### 练习
+
+1. 修改主 demo：把 \`LastBackup\` 改成 10 分钟前（超过 RPO=5 分钟），确认输出变为"禁止宣称已具备灾备能力"；再把 \`RestoreTestPassed\` 改成 false 观察同样被拒；把 RPO/RTO 分别调成 15 分钟与 4 小时，体会指标与门禁的联动。
+2. 脱离示例独立实现 \`static DrStatus Evaluate(RecoveryPlan plan, DateTimeOffset now)\`：同时校验备份新鲜度（RPO）、演练有效期（90 天内必须有一次带日期的恢复演练）与跨域副本存在，返回"可宣称灾备"或风险项列表；用表驱动测试覆盖"备份新鲜但演练过期""演练通过但备份超窗"等组合。
+3. 生产场景：给毕业项目做一次完整灾备演练：在隔离环境用 PostgreSQL WAL 做 PITR 恢复到指定时刻，记录实际分钟数并跑对账（订单-支付-对象 key）；备份加密、密钥分存、删除需双人；勒索场景假设主账号备份被删，验证离线副本仍可恢复；把一页纸恢复清单（谁有权发起、密钥位置、对账脚本、对外公告模板）贴进值班手册，演练日期做成指标并接入发布门禁。
+
 
 
 
@@ -2237,6 +2373,13 @@ Kestrel / YARP 的限制与应用限制要对齐，否则反代已 413，应用�
 8. 问：管道图为何要入库？ 答：新人改中间件先改图，避免口头传统。
 把这些问题打印出来，找同事当评委抽三问。抽不到证据的那一问，就是下一周唯一任务。
 
+### 练习
+
+1. 修改主 demo：在 \`Build\` 的参数里最前面加一个 \`"forwarded-headers"\`、末尾再加一个 \`"rate-limiter"\`，先在纸上预测 enter/exit 顺序再运行验证；把 \`names.Reverse()\` 改成正序遍历，看管道顺序如何整个反转；故意在 \`authorization\` 里抛异常，观察所有 \`exit\` 都不再打印——体会为什么 ExceptionHandler 必须排在最外层。
+2. 脱离示例独立实现 \`app.Use(...)\` 风格的构建器：\`PipelineBuilder.Use(Func<RequestContext, Func<Task>, Task> middleware)\` 支持链式注册与短路（不调用 next 直接返回），验证短路时内层中间件不再 enter；再写一个计时中间件包住 endpoint 输出耗时。
+3. 生产场景：在真实 ASP.NET 项目里按表落中间件顺序（ExceptionHandler → ForwardedHeaders → HttpsRedirection → Authentication → Authorization → RateLimiter → Map*），用 WebApplicationFactory 写三条集成测试：伪造 \`X-Forwarded-For\` 验证白名单、匿名访问受保护端点得 401、未处理异常被包成 Problem Details 且带 traceId；把管道图画进 docs/pipeline.md；限流按用户分区并返回 429 + Retry-After。
+
+
 
 
 
@@ -2372,6 +2515,13 @@ CI：对 OpenAPI 做语义 diff（oasdiff 等），破坏性变更必须 major �
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
 
+### 练习
+
+1. 修改主 demo：把 \`code\` 改成字典里不存在的 \`"order.gone"\`，观察 \`errors[code]\` 抛出的 \`KeyNotFoundException\`——想想生产代码该返回什么而不是崩；往 \`errors\` 加 \`["order.rate_limited"] = new(429, "Too many requests")\` 并查询；给 \`ApiProblem\` 加 \`string? TraceId\` 扩展字段。
+2. 脱离示例独立实现 \`ProblemDetailsFactory\`：输入（errorCode、detail、traceId）输出 RFC 9457 形态——\`type\` 为稳定 URI（如 \`https://api.shop.dev/errors/order.not_found\`）、\`title\`、\`status\`、\`instance\` 加扩展字段；错误码表从 \`errors.md\` 加载，未知错误码返回 500 + \`internal_error\` 而不是抛异常。
+3. 生产场景：把毕业项目的 OpenAPI 快照检入 \`contracts/openapi.v1.json\`，CI 用 oasdiff 做语义 diff——加可选字段应显示非破坏、删字段必须变红并要求 major 或豁免；错误统一走 \`IProblemDetailsService\` 附加 traceId；弃用字段时响应带 \`Deprecation\`/\`Sunset\` 头并有集成测试断言；金额字段用整数分避免 JS number 精度。
+
+
 
 
 
@@ -2492,6 +2642,13 @@ Redirect URI 白名单精确匹配，开放重定向是 OAuth 经典洞。state 
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
 
+### 练习
+
+1. 修改主 demo：把 payload 里的 \`exp\` 换成早已过去的时间戳（如 1600000000），加一行判断输出"已过期"；把 \`scope\` 改成 \`"orders.write"\` 再解码；故意改动 payload 的一个 Base64 字符再运行，观察异常——体会"解码 ≠ 验证"。
+2. 脱离示例独立实现 \`TokenGuard\`：\`Read(token)\` 容错解析 header/payload（非法 Base64Url 返回失败而非抛出），\`Validate(token, expectedIssuer, expectedAudience)\` 骨架包含算法白名单、\`iss\` 精确匹配、\`aud\` 包含本 API、\`exp\`/\`nbf\` 检查；单测断言 \`alg=none\` 直接拒绝、\`iss\` 不匹配拒绝。
+3. 生产场景：给毕业项目接真实 OIDC：浏览器端走 Authorization Code + PKCE 或 BFF（令牌留服务器、浏览器只持 \`HttpOnly; Secure; SameSite\` 会话 cookie）；API 用 \`AddJwtBearer\` 固定 \`Authority\` 与 \`Audience\` 验签；写四条自动化测试——过期 401、错误 audience 403、跨租户 404、匿名 401；refresh token 每次轮换、旧令牌再现即吊销整个家族；Redirect URI 精确匹配白名单。
+
+
 
 
 
@@ -2566,7 +2723,7 @@ modelBuilder.Entity<Order>(entity =>
 - [ ] 编译模型在 CI 保持新鲜（若启用）
 - [ ] 集成测试打真实 Provider
 
-### 六、查询卫生、拦截器与多 DbContext
+### 四、查询卫生、拦截器与多 DbContext
 
 热路径禁止 \`Select *\` 式的实体物化再映射。需要列表就投影匿名/DTO。\`AsNoTrackingWithIdentityResolution\` 仅在需要图去重时用。原始 SQL 必须参数化，表名白名单。拦截器可以补 \`tenant_id\` 和审计字段，但不要在拦截器里偷偷发 HTTP。多个 DbContext（读写分离、不同库）明确生命周期，避免跨上下文事务却以为自己在一个 \`SaveChanges\`。
 
@@ -2737,6 +2894,13 @@ WAF 替换配置时小心把生产中间件摘光。测试认证处理程序应�
 
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
+
+### 练习
+
+1. 修改主 demo：加一条故意失败的用例 \`new TestCase("boom", () => AssertEqual(200, 404))\`，观察未捕获异常如何中断整个循环；把 \`AssertEqual\` 改成返回 bool 并统计通过/失败数；体会 xUnit 替你解决了用例隔离、发现与并行哪些问题。
+2. 脱离示例独立实现 \`MiniTestRunner.RunAsync(params TestCase[])\`：失败不中断后续用例、结束时汇总 pass/fail 并以非零退出码收场，失败时打印用例名与异常详情；再用 \`CancellationTokenSource\` 给每条用例加超时包装，体会 flaky 用例的危害。
+3. 生产场景：给毕业项目搭 \`ShopApiFactory : WebApplicationFactory<Program>\`：\`UseEnvironment("Testing")\`、容器连接串、测试认证 handler 签发带租户声明的票，替换邮件/支付为假实现但保持 DI 注册形状；Testcontainers 钉死 \`postgres:16.4\`、程序集级启动一次、Respawn 复位时排除 \`__EFMigrationsHistory\`；覆盖匿名 401、错误 audience 403、跨租户 404、合法 201 四条；失败时输出应用与容器日志（脱敏连接串）；就绪等待用探测、禁止 \`Thread.Sleep\`。
+
 
 
 
@@ -3002,6 +3166,13 @@ infra/                  Terraform 或 Bicep，含环境变量而非密钥
 10. 第十日故障注入与恢复演练留证据，准备十分钟答辩。
 
 十日结束后开一次十五分钟回顾：哪一天没有证据、哪一条会在毕业答辩被问到。把缺口列进下一周，而不是开始下一章收藏。
+
+### 练习
+
+1. 修改主 demo：把 \`rollback rehearsed\` 与 \`restore tested\` 都改成 true，确认输出变为"可以进入灰度发布"；再加两个真实门禁（如 \`sbom scanned\`、\`slo dashboards\`）并留一个 BLOCK；把 \`Passed\` 换成枚举（Passed/Blocked/Waived + 豁免期限），体会"有期限的风险批准"如何建模。
+2. 脱离示例独立实现 \`ReleaseGate\`：支持门禁注册、\`Waive(name, owner, expiresOn)\` 豁免到期自动变回 BLOCK，\`CanDeploy()\` 输出全部阻断项；用测试覆盖"全部通过""有未到期豁免""豁免已过期"三种状态。
+3. 生产场景：正式启动毕业项目——按本章的解决方案结构建真实 Git 仓库（Shop.Api/Application/Domain/Infrastructure/Worker + tests + infra），按四周节奏推进：容器里的迁移、真实 OIDC、幂等键与 409、Outbox/Inbox、缓存降级、OTel 三探针、加固镜像；把九条故障注入逐条做成自动测试或签名演练记录；最后用十分钟演示答辩——重复下单不双扣、杀 Redis 仍能下单、重复消息不重复出库、备份恢复对账、CI 一键出镜像。
+
 
 
 

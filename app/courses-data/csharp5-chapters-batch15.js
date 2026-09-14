@@ -197,6 +197,12 @@ dotnet workload restore # 仅当仓库声明了 MAUI / WASM 等 workload
 5. 可打包库是否打开 PackageValidation，并与上一稳定版本比 API？
 6. CI 是否启用确定性构建与 Source Link，PDB 能否对上 commit？
 7. 需要原生 RID 或 workload 的项目，还原矩阵是否写进仓库？
+
+### 练习
+
+1. 修改 demo 观察构建差异：先用 \`dotnet run\` 再用 \`dotnet run -c Release\` 运行本章 code，对比 \`#if DEBUG\` 分支输出的 Configuration；再在 csproj 里加 \`<Version>2.3.0</Version>\` 重跑，观察 \`Assembly.Version\` 的变化。
+2. 新建一个 \`Shop.Tools\` classlib，脱离 demo 搭生产骨架：\`global.json\` 固定 SDK（\`rollForward: latestPatch\`）、\`Directory.Build.props\` 打开 \`Nullable\` 与 \`TreatWarningsAsErrors\`、\`Directory.Packages.props\` 用 CPM 管理包版本；写一个声明了可空返回值却忘记赋值的方法，验证警告直接变成编译错误。
+3. 模拟供应链事故：给库打开 \`EnablePackageValidation\` 并 pack 出 1.0.0 作为基线（\`PackageValidationBaselineVersion\`），删除一个 public 方法再 \`dotnet pack\`，观察构建失败；随后按正文配置 \`NuGetAudit\`，跑 \`dotnet list package --vulnerable --include-transitive\` 并把输出当缺陷记录处理。
 `,
     code: `// 读取运行时与构建信息：生产排障时先确认「跑的是哪一份制品」。
 // 把 Version / InformationalVersion 与 CI 的 commit 对齐，比只看机器名有用。
@@ -370,6 +376,12 @@ public partial class Order
 3. 公共库的语言版本是否低于或等于文档承诺的消费者工具链？
 4. C# 13 params 集合是否引起过载决议变化？API 基线测了吗？
 5. 新语法的引入是否单独 PR，并能用基准或可读性说明理由？
+
+### 练习
+
+1. 修改 demo 的 \`orders\`：新增一个 \`OrderState.Cancelled\` 订单和一个金额 \`0m\` 的已付订单，观察 \`Describe\` 分别落到哪个分支；把属性模式里的 \`>= 100m\` 改成 \`>= 50m\`，对比 \`paidTotal\` 不变而 \`Describe\` 输出变化，说明 LINQ 过滤与模式匹配各自依赖什么条件。
+2. 脱离订单场景，用 C# 12 兼容语法实现 \`Track(string Title, TimeSpan Duration)\` 与 \`Playlist\`：集合表达式初始化曲目、\`TotalDuration()\` 用 \`Sum\` 聚合、\`Describe(Track)\` 用 switch 表达式按时长分类（超过 5 分钟为 long track）——综合运用本章 demo 的 record、集合表达式与属性模式。
+3. 若本机有 .NET 9+ SDK：新建 net9.0 项目，用 \`System.Threading.Lock\` 实现 \`Counter\`（\`private readonly Lock _gate = new();\`），\`Parallel.For\` 并发自增后验证总数正确；再按正文迁移注意点，同时提供 \`Sum(params int[])\` 与 \`Sum(params ReadOnlySpan<int>)\` 两个重载，用既有调用点的测试钉住重载决议没有被 Span 版本抢走。
 `,
     code: `// net8.0 / C# 12 兼容 demo；正文另列 C# 13/14 专属语法。
 // 这里用集合表达式、record 和属性模式表达「先校验形状，再聚合」——
@@ -540,6 +552,12 @@ CRUD 够用时不要假装事件驱动。一条 \`UPDATE\` 能维护的不变量
 5. 组合根是否只在 Host / 测试主机出现？
 6. 当前复杂度是否真的需要 CQRS / 多服务，还是 CRUD + 模块边界就够？
 7. 跨模块类型是否尽量 \`internal\`，公开面是否当契约管理？
+
+### 练习
+
+1. 修改 demo 输入，观察 \`EmailAddress.Create\` 的四种结局：\`"no-at-sign"\`、空串、\`"  "\`（纯空白）与 \`" User@Example.COM "\`（规范化成功）；再用大小写不同的同一邮箱各创建一次，验证 trim + lower 之后 record 相等性成立。
+2. 脱离邮箱场景实现 \`Money\` 值对象：私有构造 + \`static Result<Money> Create(decimal amount, string currency)\`，校验非负金额与三字母币种；实现 \`Result<Money> Add(Money other)\`，币种不同返回 \`Failure\`——沿用 demo 的 \`Result<T>\` 形状，把不变量挡在构造入口。
+3. 生产进阶：用 NetArchTest 写架构测试，断言 Domain 程序集 \`Types.InAssembly(...).ShouldNot().HaveDependencyOn("Microsoft.EntityFrameworkCore")\`；先跑绿，再故意在 Domain 实体里加一行 \`using Microsoft.EntityFrameworkCore;\` 验证测试变红，最后把该测试纳入 CI 门禁——失败的架构测试必须红，不能只当警告。
 `,
     code: `// 值对象把「非法邮箱」挡在边界：应用层拿到的是 Result，而不是半规范化的 string。
 // 这是正文 Result vs 异常表的最小实现——预期失败走 Result，不抛。
@@ -634,7 +652,7 @@ app.Run();
 | 409 | 业务冲突（状态不允许） | 单纯校验失败 |
 | 412 | 前置条件失败（If-Match） | 普通乐观锁想偷懒 |
 | 415 | 媒体类型不支持 | 字段校验失败 |
-| 422 | 语义校验失败（可选） | 与 400 双标准却不文档化 |
+| 422 | 语义校验失败；幂等键指纹不匹配（同 key 换 body） | 与 400 双标准却不文档化 |
 | 429 | 限流 | 应用自己的业务拒绝 |
 | 500 | 未处理异常 | 把可预期业务错误装成 500 |
 
@@ -709,7 +727,7 @@ HATEOAS（响应里带 \`links\`）能降低客户端硬编码路径，但对大
 收到 POST + Idempotency-Key
   → 查存储 (key, 哈希(请求体), 用户)
   → 命中且请求体相同：返回第一次的状态码与正文
-  → 命中但请求体不同：409
+  → 命中但请求体不同：422
   → 未命中：处理，把响应写入存储（带 TTL），再返回
 \`\`\`
 
@@ -738,6 +756,12 @@ Minimal API 可直接注入 \`CancellationToken\`，它会关联客户端断开�
 4. 过滤器是否只做跨切，不藏业务流程？
 5. 分页是否有上限？内容协商失败是否 406？
 6. 契约变更是否有弃用窗口，而不是周五直接删字段？
+
+### 练习
+
+1. 修改 demo 的请求参数：分别传入 \`("p-1", 0m)\`、\`("p-1", 100m)\`、\`("", 5m)\`，观察状态码与 \`errors\` 字典内容的变化；再给 \`ProductId\` 增加「必须以 p- 开头」的规则，用 \`"x-1"\` 验证新错误出现在 Problem Details 中。
+2. 脱离创建订单场景，实现 \`CancelOrder(string id, long expectedVersion, Dictionary<string, StoredOrder> store)\`：订单不存在返回 404、版本不匹配返回 409 且 Problem 带稳定业务码 \`version_conflict\`、成功返回 200——沿用 demo 的 \`ApiResponse\`/\`Problem\` 结构，把乐观并发语义翻译成 HTTP 契约。
+3. 生产进阶：按正文幂等键草图实现 \`IdempotencyFilter\`：以 \`(Idempotency-Key, 请求体哈希)\` 为字典键，命中且指纹相同返回第一次的 \`ApiResponse\`，指纹不同返回 422；用注入的 \`TimeProvider\` 给存储加 24h TTL，并写测试覆盖「同 key 同体重放」「同 key 换金额」「过期后 key 可复用」三个场景。
 `,
     code: `// 用纯 C# 模拟边界验证和统一 Problem Details。
 // 真实 ASP.NET 里用 AddProblemDetails + 验证过滤器；结构应对齐 RFC 9457。
@@ -884,22 +908,90 @@ STRIDE 速记：假冒（认证）、篡改（完整性/HMAC）、抵赖（审�
 5. Data Protection 密钥环是否外置且可轮换？密钥是否有重叠窗口？
 6. 安全头、HSTS、可信代理是否在预发环境用浏览器和 curl 对过？
 7. 日志与异常是否脱敏？密钥扫描是否进 CI？
+
+### 练习
+
+1. 修改 demo 的 \`UserContext\` 与 \`Order\`：分别把 alice 的权限换成 \`["orders.write"]\`、把订单租户换成 \`tenant-b\`、把 eve 的租户换成 \`tenant-a\`，观察 \`Decide\` 各自返回 403 / 404 / 200 的原因；再给 \`Decide\` 补一个「owner 本人（同租户且 \`UserId == OwnerId\`）即使无权限声明也可读」的判定分支并测试。
+2. 脱离 demo 实现 \`CanApproveOrder\`：需要 \`orders.approve\` 权限且（同租户且是 owner，或有 \`orders.approve.any\`）；返回 \`AuthorizationDecision(bool Allowed, string Reason)\` 记录拒绝原因而不是裸 bool，模仿 Result 模式让审计日志能解释每一次拒绝。
+3. 生产进阶：扩展 demo 的 \`Redact\` 成整行脱敏 \`RedactLine(string logLine)\`：用正则把 \`Bearer\` 令牌、\`Password=\` 连接串片段与 16 位卡号替换为 \`[REDACTED]\`，同时保留 \`X-Correlation-ID\` 这类低敏字段；写单元测试断言脱敏后输出不再包含原始令牌与卡号，并让该测试进入 CI——未脱敏的日志直接红。
 `,
-    code: `// 资源级授权：权限声明 + 租户匹配。角色字符串散落控制器是常见越权源。
-// 真实项目把这段放进 IAuthorizationHandler，并覆盖「邻租户」测试。
-var user = new UserContext("u-1", ["orders.read"], TenantId: "tenant-a");
+    code: `// ============================================================
+// 认证、授权与安全的五个关键点（纯 C# 最小实现）：
+//   1. 认证 vs 授权分开：先确认「你是谁」，再判断「你能干什么」
+//   2. 资源级授权：权限声明 + 租户匹配（角色字符串散落控制器是常见越权源）
+//   3. 常量时间比较：FixedTimeEquals 防时序侧信道
+//   4. 日志脱敏：令牌绝不整串进日志
+//   5. 开放重定向校验：returnUrl 只允许同源相对路径
+// 真实项目把这些放进 IAuthorizationHandler / 中间件 / 日志包装器。
+// ============================================================
+using System.Security.Cryptography;
+
+// ---------- 1 & 2. 认证与授权分开 + 资源级授权 ----------
+// 认证（Authentication）：身份是否可信（token 是否有效、有没有过期）
+// 授权（Authorization）：该身份对「这个具体资源」能不能做「这个动作」
+// 未认证用户连授权判断都不该进——否则容易把 401（没登录）误报成 403（没权限）。
+var anon = new UserContext(null, [], TenantId: null);                          // 匿名请求
+var alice = new UserContext("u-1", ["orders.read"], TenantId: "tenant-a");    // 只有读权限
+var bob = new UserContext("u-2", ["orders.read", "orders.write"], TenantId: "tenant-a");
+var eve = new UserContext("u-3", ["orders.read"], TenantId: "tenant-b");      // 邻租户
+
 var order = new Order("o-1", "tenant-a", OwnerId: "u-2");
 
-Console.WriteLine(CanReadOrder(user, order));
+foreach (var u in new[] { anon, alice, bob, eve })
+{
+    var (code, why) = Decide(u, order, "read");
+    var who = u.UserId is null ? "(匿名)" : u.UserId;
+    Console.WriteLine($"{who,-8} -> {code}  {why}");
+}
 
-static bool CanReadOrder(UserContext user, Order order) =>
-    user.Permissions.Contains("orders.read", StringComparer.Ordinal)
-    && string.Equals(user.TenantId, order.TenantId, StringComparison.Ordinal);
+// 授权决定：返回 (状态码语义, 拒绝原因)——生产里对应 401 / 403 / 404 / 200。
+// 注意跨租户故意返回 404「当作不存在」而不是 403「存在但无权」——防止租户枚举。
+static (int, string?) Decide(UserContext? user, Order order, string action)
+{
+    if (user?.UserId is null)
+        return (401, "未认证：先验 token，再谈权限");
+    if (!user.Permissions.Contains($"orders.{action}", StringComparer.Ordinal))
+        return (403, "缺权限声明");
+    if (!string.Equals(user.TenantId, order.TenantId, StringComparison.Ordinal))
+        return (404, "跨租户：当作不存在（防枚举）");
+    return (200, null);
+}
 
-public sealed record UserContext(
-    string UserId,
-    IReadOnlyCollection<string> Permissions,
-    string TenantId);
+// ---------- 3. 常量时间比较：校验签名/令牌片段不许提前 return ----------
+// 逐字节短路比较（!=）会在第一个不同字节处提前返回；
+// 攻击者测量响应耗时就能逐字节猜出正确值（时序侧信道）。
+// FixedTimeEquals 的耗时与内容无关，签名字节级的比较必须用它。
+byte[] realTag = Convert.FromHexString("a1b2c3d4e5f60718");
+byte[] forgedTag = Convert.FromHexString("a1b2c3d4e5f60719");  // 只差最后一字节
+Console.WriteLine($"\\nFixedTimeEquals = {CryptographicOperations.FixedTimeEquals(realTag, forgedTag)}（7/8 字节相同也整体判否，且耗时恒定）");
+
+// ---------- 4. 日志脱敏：输出前把敏感值打码 ----------
+// 令牌整串进日志 = 会话泄漏：日志的 readers 可能远多于服务的调用者。
+static string Redact(string? token, int keep = 4) =>
+    string.IsNullOrEmpty(token) || token.Length <= keep
+        ? "***"
+        : token[..keep] + new string('*', Math.Min(12, token.Length - keep)) + $"(len={token.Length})";
+
+var bearer = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1LTEifQ.sig";
+Console.WriteLine($"raw      {bearer}");        // 反例：整串令牌进日志
+Console.WriteLine($"redacted {Redact(bearer)}"); // 只留前 4 位 + 长度：够排查、不够重放
+
+// ---------- 5. 开放重定向：returnUrl 必须同源校验 ----------
+// 攻击：/login?returnUrl=https://evil.com —— 登录成功后把用户（连同刚种下的会话 Cookie 上下文）送进钓鱼站。
+static bool IsSafeReturnUrl(string? url) =>
+    !string.IsNullOrEmpty(url)
+    && !url.StartsWith("http:", StringComparison.OrdinalIgnoreCase)    // 只允许相对路径
+    && !url.StartsWith("https:", StringComparison.OrdinalIgnoreCase)
+    && !url.StartsWith("//", StringComparison.Ordinal)                 // 协议相对 //evil.com 也拦截
+    && url.StartsWith("/", StringComparison.Ordinal);                // 必须以 / 开头
+
+foreach (var u in new[] { "/orders", "https://evil.com", "//evil.com", "" })
+{
+    var safe = IsSafeReturnUrl(u);
+    Console.WriteLine($"returnUrl {u,-20} -> {(safe ? "放行" : "拦截")}");
+}
+
+public sealed record UserContext(string? UserId, IReadOnlyCollection<string> Permissions, string? TenantId);
 public sealed record Order(string Id, string TenantId, string OwnerId);
 `,
     lang: 'cs',
@@ -1025,6 +1117,12 @@ var sql = "SELECT * FROM Orders WHERE Code = '" + userInput + "'";
 4. 原生 SQL 是否全部参数化？动态排序是否白名单？
 5. 迁移是否在流水线审 SQL、无启动时多实例抢迁、有冲突合并约定？
 6. 跨系统副作用是否走 Outbox，而不是 SaveChanges 后裸发消息？
+
+### 练习
+
+1. 修改 demo 参数：把第二次取款的 \`expectedVersion\` 改成 4（第一次成功后的新版本）、金额改成 \`200m\`（超过余额），对比「409 concurrency conflict」与「business rule rejected」两条失败路径；再把初始 \`Version\` 改成 0，验证所有请求都返回 409。
+2. 脱离取款场景实现 \`TryTransfer\`：从 A 账户扣款、给 B 账户入账，两个账户版本都匹配才提交，任一不匹配则整体失败且两个账户都不变（先校验后写入，模拟事务原子性），返回 demo 风格的字符串结果。
+3. 生产进阶：给 \`TryWithdraw\` 包一层 \`WithdrawWithRetry\`：捕获版本冲突后重新读取最新 \`Version\` 再试，最多 3 次，仍失败返回「409 after retries」；用注入的 \`TimeProvider\` 记录每次重试时间戳（模拟 \`ISaveChangesInterceptor\` 写 \`UpdatedAt\` 审计列），并加规则「余额不足属于业务拒绝，不进入重试」。
 `,
     code: `// 乐观并发的最小模型：更新必须携带读到的版本。
 // 第二次用过期 version 必须失败——对应 DbUpdateConcurrencyException → 409/412。
@@ -1200,9 +1298,23 @@ Redis 不是银弹：热 key 会打满单分片 CPU；大 value 会拖高 P99；
 6. 敏感响应是否 \`no-store\`？SWR 是否只用在允许旧数据的读模型？
 7. 预发是否做过依赖故障注入，而不是只在单元测试里 Mock 成功路径？
 8. 写后失效是否可靠？L1/L2 叠缓存时失效顺序是否明确？
+
+### 练习
+
+1. 修改 demo：把基础延迟从 \`200ms\` 改成 \`50ms\`、尝试次数改成 8 次，观察 \`Math.Min\` 的 10 秒封顶何时生效；固定 \`Random(42)\` 与换三个不同 seed 各跑一遍，统计 jitter 把等待时间分散到什么程度。
+2. 脱离 demo 实现 \`CallWithRetryAsync\`：接收一个前 N 次抛 \`TimeoutException\` 的模拟下游 \`Func<int, Task<string>>\`，用 \`Backoff\` 指数退避重试至成功；当下游给出 \`RetryAfter\` 提示（\`TimeSpan?\` 参数）时优先按它等待，且总尝试次数与总时间不超过预算（如 3 次 / 5 秒），超预算抛出失败汇总。
+3. 生产进阶：实现简化断路器 \`CircuitBreaker\`：Closed/Open/HalfOpen 三态、连续失败 5 次打开、冷却 10 秒后半开只放行 1 个探针；对一个失败率 50% 的模拟下游发起 100 次调用并统计快速失败次数，再用 \`Stopwatch\` 对比「有断路器」与「直连」面对 100% 故障下游的总耗时差异。
 `,
-    code: `// 指数退避 + jitter：避免所有实例在同一毫秒重试。
-// 生产请用 Microsoft.Extensions.Http.Resilience，并设置总时间预算。
+    code: `// ============================================================
+// HTTP 韧性三件套（纯 C# 模拟策略语义，便于观察状态转换）：
+//   1. 指数退避 + jitter 重试
+//   2. 断路器 Closed → Open → HalfOpen 状态机
+//   3. 服务端滑动窗口限流（超出立刻 429）
+// 生产请直接用 Microsoft.Extensions.Http.Resilience（Polly v8 策略集），
+// 并为整条重试链设置总时间预算，而不是每个尝试各自超时。
+// ============================================================
+
+// ---------- 1. 指数退避 + jitter：避免所有实例在同一毫秒重试 ----------
 var random = new Random(42);
 for (var attempt = 0; attempt < 5; attempt++)
 {
@@ -1210,11 +1322,97 @@ for (var attempt = 0; attempt < 5; attempt++)
     Console.WriteLine($"attempt {attempt + 1}: wait {delay.TotalMilliseconds:F0} ms");
 }
 
+// ---------- 2. 断路器：连续失败熔断，冷静期后半开试探 ----------
+// 演示序列：3 次失败触发熔断 → 第 4 次被直接拦截（根本不发给下游）
+//          → 等过冷静期进入 HalfOpen，放行试探，成功则恢复 Closed
+var cb = new CircuitBreaker(failureThreshold: 3, cooldown: TimeSpan.FromMilliseconds(300));
+bool[] calls = [false, false, false, false, true, true];
+foreach (var ok in calls)
+{
+    var (allowed, stateAfter) = cb.Call(ok);
+    Console.WriteLine($"下游成败={ok}  放行={allowed}  状态→{stateAfter}");
+    if (!allowed)
+        Thread.Sleep(400);  // 被熔断拦截后等过冷静期，才可能进入 HalfOpen
+}
+
+// ---------- 3. 服务端限流：滑动窗口内最多 3 个请求，超出立即 429 ----------
+var limiter = new SlidingWindowLimiter(maxPerWindow: 3, window: TimeSpan.FromMilliseconds(200));
+var start = DateTime.UtcNow;
+for (var i = 1; i <= 8; i++)
+{
+    var now = DateTime.UtcNow - start;  // 相对时间轴
+    var allowed = limiter.TryAcquire(now);
+    Console.WriteLine($"request {i} @ {now.TotalMilliseconds:F0} ms -> {(allowed ? "200 OK" : "429 Too Many Requests")}");
+    Thread.Sleep(60);  // 前 3 个挤进同一窗口，后面的先被拒；旧许可滑出窗口又能放行
+}
+
+// 指数退避：seed * 2^attempt + [0, seed) 抖动，封顶 10 秒（防止重试链无限放大）
 static TimeSpan Backoff(int attempt, TimeSpan seed, Random random)
 {
     var exponential = seed.TotalMilliseconds * Math.Pow(2, attempt);
     var jitter = random.NextDouble() * seed.TotalMilliseconds;
     return TimeSpan.FromMilliseconds(Math.Min(exponential + jitter, 10_000));
+}
+
+// 断路器三态语义（与 Polly CircuitBreaker 一致）：
+//   Closed   正常放行，累计连续失败
+//   Open     熔断中：请求被拦截（保护下游 + 调用方快速失败，不占线程干等）
+//   HalfOpen 冷静期已过：放行试探请求，成功恢复 Closed，失败重回 Open
+sealed class CircuitBreaker(int failureThreshold, TimeSpan cooldown)
+{
+    private int _consecutiveFailures;
+    private DateTime _openedAt = DateTime.MinValue;  // MinValue 表示未熔断（Closed）
+
+    // 每次调用：ok 表示该请求（若真正发出）是否成功
+    public (bool allowed, string stateAfter) Call(bool ok)
+    {
+        var before = State;
+        if (before == "Open")
+            return (false, "Open（拦截，未发给下游）");  // 冷静期内直接拒绝
+
+        if (ok)
+        {
+            _consecutiveFailures = 0;
+            _openedAt = DateTime.MinValue;               // 成功：彻底恢复
+            return (true, before == "HalfOpen" ? "HalfOpen → Closed（恢复）" : "Closed");
+        }
+
+        if (before == "HalfOpen")                         // 试探失败：立即重新熔断
+        {
+            _openedAt = DateTime.UtcNow;
+            return (true, "HalfOpen → Open（再熔断）");
+        }
+
+        if (++_consecutiveFailures >= failureThreshold)   // 连续失败达阈值：熔断
+        {
+            _openedAt = DateTime.UtcNow;
+            return (true, $"Closed → Open（连续失败 {failureThreshold} 次）");
+        }
+        return (true, $"Closed（失败计数 {_consecutiveFailures}/{failureThreshold}）");
+    }
+
+    private string State => _openedAt == DateTime.MinValue
+        ? "Closed"
+        : DateTime.UtcNow - _openedAt < cooldown ? "Open" : "HalfOpen";
+}
+
+// 滑动窗口限流器：只记「最近 window 内被放行的时刻」，
+// 队列头滑出窗口就出队——窗口满则拒绝，空出一个位置立刻又能放行。
+// 与固定窗口相比不会在窗口边界出现 2 倍突发。
+sealed class SlidingWindowLimiter(int maxPerWindow, TimeSpan window)
+{
+    private readonly Queue<TimeSpan> _granted = new();
+
+    public bool TryAcquire(TimeSpan now)
+    {
+        while (_granted.Count > 0 && now - _granted.Peek() >= window)
+            _granted.Dequeue();      // 清理已滑出窗口的旧许可
+
+        if (_granted.Count >= maxPerWindow)
+            return false;            // 窗口已满：429
+        _granted.Enqueue(now);
+        return true;
+    }
 }
 `,
     lang: 'cs',
@@ -1334,6 +1532,12 @@ Channel 只解决进程内；跨进程立刻换成 broker。不要用数据库�
 6. 定时任务在多副本下是否有租约或外置调度，避免重复执行？
 7. Inbox/Outbox 是否覆盖「写库 + 发消息」的双边？
 8. 可见性超时是否大于处理时间，长任务是否续租？
+
+### 练习
+
+1. 修改 demo：把 \`BoundedChannelOptions(2)\` 的容量改成 4 并写入 6 个 \`WorkItem\`，观察生产者的等待点变化；再把 \`FullMode\` 改成 \`DropWrite\` 并改用 \`TryWrite\`，打印哪些 job 被丢弃——体会 \`Wait\`（背压）与丢弃模式各自的适用面。
+2. 脱离 demo 实现 \`LogPipeline\`：\`Channel.CreateBounded<string>\` 容量 100、\`FullMode = Wait\`；两个 \`Task.Run\` 生产者模拟并发写日志，单个消费者用 \`ReadAllAsync\` 攒批（满 5 条或 \`Task.Delay(500ms)\` 到期即 flush），\`Writer.Complete()\` 后排空并输出总条数。
+3. 生产进阶：给消费者加毒消息处理：每个 \`WorkItem\` 按固定 seed 的 \`Random\` 有 20% 概率抛 \`TransientException\`，失败按指数退避重试 3 次后进入 dead-letter 列表并输出告警；收到停止信号后先停止领取，把在途项处理完再退出（优雅停机），最后打印 processed / retried / dead-lettered 统计。
 `,
     code: `using System.Threading.Channels;
 
@@ -1486,6 +1690,12 @@ internal static class Telemetry
 6. 告警是否对应用户影响并带 runbook？仪表盘是否另用途？
 7. 探针语义是否正确？转储与日志是否脱敏、可按版本检索？
 8. 日志、错误体、出站 HTTP、消息信封是否共用同一相关 ID？
+
+### 练习
+
+1. 修改 demo：把 \`ActivitySource("Shop")\` 与 listener 的 \`ShouldListenTo\` 过滤同步改成 \`"Shop.Api"\`，确认 traceId 仍输出；再故意只改 source 不改 listener，验证 \`activity\` 变成 null——复现正文「服务名与仪表盘过滤对不上」的陷阱。
+2. 脱离 demo 实现 \`StructuredLogger\`：\`Log(string template, params object[] args)\` 把 \`{OrderId}\` 占位符按序替换并输出 JSON 行，\`TraceId\` 取 \`Activity.Current?.TraceId\`；对照正文说明为什么字符串插值版日志无法被后端索引。
+3. 生产进阶：给 demo 的 \`Meter\` 增加 \`CreateHistogram<double>("order.duration.ms")\`，用 \`Stopwatch\` 记录一次模拟下单耗时并打低基数标签 \`channel\`；再实现探针语义模拟 \`CheckLiveness()\`（恒健康）与 \`CheckReadiness(deps)\`（任一依赖 down 即不健康），写测试证明「DB down 时 readiness 失败而 liveness 仍通过」。
 `,
     code: `using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -1670,15 +1880,54 @@ builder 比「整个库 dump」好维护：\`OrderBuilder.Paid().WithAmount(20m)
 6. 核心规则是否至少做过一次变异测试？快照是否排除易变字段？
 7. 测试数据是否 builder 化、可并行、不依赖顺序？
 8. 高风险解析器是否有 fuzz 回归语料？核心不变量是否有属性测试？模块边界是否由架构测试守住？
+
+### 练习
+
+1. 修改 demo：把窗口 \`TimeSpan.FromDays(14)\` 改成 7 天，验证 day 13/14 两条用例立刻变红（断言信息应带场景名）；再给 \`RefundPolicy\` 加规则「折扣价商品不可退（\`IsDiscounted\` 为 true 直接拒绝）」，并在 cases 表里补两条用例钉住新行为。
+2. 脱离退款场景实现 \`DiscountPolicy\` 与测试表：按会员等级（None/Silver/Gold）与金额档位（低于 100、100 到 999、1000 及以上）返回折扣率，用参数化用例覆盖全部组合与边界值，断言失败信息带场景名（模仿 demo 的 \`Assert(condition, scenario)\`）。
+3. 生产进阶：给 \`RefundPolicy\` 写属性测试——用固定 seed 随机生成购买时间与当前时间偏移，断言「窗口内必可退、窗口外必不可退」，失败时打印 seed 与输入；再做一次变异演练：把 \`CanRefund\` 的 \`<=\` 改成 \`<\`，确认第 14 天边界用例立刻变红——存活的变异就是假安全感的量化。
 `,
-    code: `// 可测试的业务规则：时间由调用方传入，对应生产里的 TimeProvider。
-// 不要在政策类内部读 DateTime.UtcNow，否则集成测试只能 Sleep。
+    code: `// ============================================================
+// 高质量测试的三个关键习惯（模拟 xUnit 的断言与数据驱动）：
+//   1. 时间注入：被测类不读 DateTime.UtcNow，测试才不用 Sleep
+//   2. 数据驱动：一张表覆盖全部边界（相当于 xUnit [Theory] + InlineData）
+//   3. 稳定性：不可控输入（真实时间/随机/时区）是 flaky 测试之源
+// ============================================================
+
+// ---------- 1 & 2. 时间注入 + 数据驱动 ----------
 var policy = new RefundPolicy(TimeSpan.FromDays(14));
 var purchasedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
 
-Assert(policy.CanRefund(purchasedAt, purchasedAt.AddDays(13)), "day 13");
-Assert(!policy.CanRefund(purchasedAt, purchasedAt.AddDays(15)), "day 15");
-Console.WriteLine("tests passed");
+// 相当于 xUnit 的 Theory：一行一个用例，边界（第 0/13/14/15 天）全部显式钉死。
+// 恰好 14 天的「等于」行为必须写进用例——这是规则，不是巧合。
+var cases = new (int DayOffset, bool Expected)[]
+{
+    (0, true),    // 购买当天
+    (13, true),   // 窗口内
+    (14, true),   // 恰好最后一天（边界含等于）
+    (15, false),  // 超过一天
+    (-1, false),  // 时间倒流（now < purchasedAt）也要显式拒绝
+};
+
+foreach (var (dayOffset, expected) in cases)
+{
+    var actual = policy.CanRefund(purchasedAt, purchasedAt.AddDays(dayOffset));
+    Assert(actual == expected, $"day {dayOffset}: expected {expected}, got {actual}");
+}
+Console.WriteLine("Theory 5/5 passed（含边界用例）");
+
+// ---------- 3. flaky 之源：依赖不可控输入 ----------
+// 反例模式：断言依赖真实时间 / 全局随机数 / 本机时区——
+// 每次跑结果都可能变。它不是「偶尔失败」，而是「必然偶尔失败」，
+// 一旦 CI 重试能把它跑绿，它就会永久污染信号（团队开始无视红灯）。
+var passed = 0;
+for (var run = 1; run <= 100; run++)
+{
+    var rng = new Random(run);        // 模拟：seed 固定时结果可复现
+    if (rng.Next(100) < 70) passed++;  // ~70% 通过率的"测试"
+}
+Console.WriteLine($"100 次运行通过率 {passed}%——不可控输入让同一份代码给出不同判决");
+Console.WriteLine("治理三板斧：时间走 TimeProvider 注入、随机注入固定 seed、时间统一存 UTC DateTimeOffset");
 
 static void Assert(bool condition, string scenario)
 {
@@ -1687,6 +1936,7 @@ static void Assert(bool condition, string scenario)
 
 public sealed class RefundPolicy(TimeSpan window)
 {
+    // 时间全部由调用方传入：对应生产里的 TimeProvider 抽象
     public bool CanRefund(DateTimeOffset purchasedAt, DateTimeOffset now) =>
         now >= purchasedAt && now - purchasedAt <= window;
 }
@@ -1843,6 +2093,12 @@ TimeoutStopSec=35
 5. startup/live/ready 三条探针是否语义分离？YAML 端口是否正确？
 6. 必需配置是否启动即校验？临时目录在只读根下是否可写？
 7. 若不用容器，systemd / Windows Service / IIS 的账号、重启、停止、反代与回滚是否同样可复现？
+
+### 练习
+
+1. 修改 demo：把 \`Task.Delay(80)\` 缩短到 20ms（令牌在第一批处理中到达）、把循环内 \`Task.Delay(30, ...)\` 拉长到 200ms，观察「处理中收到取消」的退出路径；再删掉 \`catch (OperationCanceledException)\` 分支，把 \`await worker\` 包进 try/catch，观察未处理取消如何把任务变成 faulted 而不是优雅退出。
+2. 脱离 demo 实现 \`DrainableQueue<T>\`：\`Channel.CreateBounded<T>\` + \`StopAsync()\`——先 \`Writer.Complete()\` 停止领取，消费者用 \`Reader.Completion\` 排空在途项，超过 \`ShutdownTimeout\`（如 1 秒）强制退出并打印「dropped N items」。
+3. 生产进阶：写一份多阶段 Dockerfile（先 COPY csproj/props、再 restore --locked-mode、然后 COPY src、publish 到 aspnet 基础镜像并设 \`USER $APP_UID\`，\`.dockerignore\` 排除 bin/obj/.git）；再写一版 \`COPY . .\` 的反例，改动一个 \`.cs\` 后用 \`docker build --progress=plain\` 对比两版 restore 层是否重跑；最后接入 \`IHostApplicationLifetime\`，在日志中验证 SIGTERM 后 \`ApplicationStopping\` → 排空 → 退出的顺序。
 `,
     code: `// Generic Host 收到 SIGTERM 后会取消 stoppingToken。
 // 必须用 OperationCanceledException 退出循环，而不是忽略取消继续拉取。
@@ -1992,16 +2248,53 @@ Conventional Commits 配合 \`feat!\` / \`BREAKING CHANGE\` 脚注，让 CI 能�
 6. 回滚步骤是否包含数据，而不是只 \`kubectl rollout undo\`？
 7. 扫描例外是否有主人和到期日？
 8. 第三方 Action 是否钉 SHA？生产角色是否按环境隔离？
+
+### 练习
+
+1. 修改 demo：把 \`imageTag\` 换成 \`"deadbee"\`，观察一致性校验输出「不一致，阻断发布」；再把依赖比较里的 \`13.0.3\` 换成 \`12.0.0\`，观察 Newtonsoft.Json 的兼容判断翻转——体会镜像标签、SBOM 与程序集 commit 三者对齐的门禁含义。
+2. 脱离 demo 实现 \`ReleaseGate.CanPromote(BuildInfo build, string imageTag, Version minVersion)\`：校验镜像 tag 与 commit 一致、版本满足最低要求、SemVer 主版本未变，任一不满足就返回带拒绝原因列表的失败结果——把 demo 第 3、4 节拼成可复用的晋级检查。
+3. 生产进阶：实现 \`FeatureFlagService\`：开关默认关闭、带 \`ExpiresAt\`（注入 \`TimeProvider\`），\`IsEnabled(flag)\` 在过期时记警告并返回默认值；再加 \`AuditLog\` 记录每次开关变更（谁、何时、哪个 flag、开或关），写测试覆盖「过期自动失效」与「变更可追溯」——对应正文「开关配置本身也是发布」。
 `,
-    code: `// 将提交信息注入程序集后，可在 /version 或启动日志中暴露。
+    code: `// ============================================================
+// CI/CD 与供应链：构建信息注入 + 发布元数据校验
+// ============================================================
+using System.Reflection;
+
+// ---------- 1. 构建信息注入 ----------
+// 将提交信息注入程序集后，可在 /version 或启动日志中暴露。
 // 该对象应与 SBOM、镜像标签是同一 commit，禁止生产现场再编译一份。
 var build = new BuildInfo(
     Version: "2.3.0",
     Commit: "a1b2c3d",
     BuiltAt: DateTimeOffset.Parse("2026-09-09T08:00:00Z"));
 
+Console.WriteLine("=== 1. 构建元数据 ===");
 Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(build));
 
+// ---------- 2. 读取程序集版本（生产自检常用） ----------
+// AssemblyInformationalVersion 对应 csproj 的 <Version>（含 commit 后缀由 CI 注入）
+var asm = Assembly.GetEntryAssembly();
+Console.WriteLine("\\n=== 2. 程序集版本 ===");
+Console.WriteLine($"  AssemblyVersion:    {asm?.GetName().Version}");
+Console.WriteLine($"  信息版本(含commit): {asm?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion}");
+
+// ---------- 3. 制品元数据一致性校验 ----------
+// 上线检查：镜像标签、SBOM、程序集里的 commit 必须一致，否则拒绝启动
+Console.WriteLine("\\n=== 3. 一致性校验（镜像 tag vs 构建 commit） ===");
+string imageTag = "a1b2c3d";  // 假设来自容器环境变量 IMAGE_TAG
+bool matches = build.Commit == imageTag;
+Console.WriteLine($"  镜像 tag: {imageTag}, 构建 commit: {build.Commit} → {(matches ? "一致，允许发布" : "不一致，阻断发布")}");
+
+// ---------- 4. 版本号语义与兼容性判断 ----------
+// SemVer：主版本变化=破坏性，次版本=新增功能，修订=修复
+Console.WriteLine("\\n=== 4. 兼容性判断 ===");
+foreach (var (dep, min) in new[] { ("Newtonsoft.Json", "13.0.1"), ("Polly", "8.0.0") })
+{
+    var ok = Version.Parse(min) <= Version.Parse("13.0.3");  // 简化演示：实际要按依赖树比较
+    Console.WriteLine($"  {dep} 要求 >= {min} → {(ok ? "满足" : "不满足")}");
+}
+
+// 构建信息记录：CI 注入，与 SBOM / 镜像标签同源
 public sealed record BuildInfo(
     string Version,
     string Commit,
@@ -2126,6 +2419,12 @@ public sealed record BuildInfo(
 编排 saga 的状态机请显式列出：已创建、已预留库存、已付款、已发货、已补偿。每个状态只允许若干命令，非法迁移要记审计而不是静默忽略。协同 saga 至少要有一处「超时守望」——定时扫描卡在中间态的流程并告警，否则事件一丢就永不相见。补偿失败本身也是事故：退款渠道 500 时要进待办，而不是假装库存回补即闭环。
 
 Inbox 去重键建议用「消费者组 + 消息 ID」，同一事件被两个不同消费者（邮件、积分）处理是合法的，不要用全局一个 ID 互斥。Outbox 转发器要记录尝试次数和最后错误，便于和 DLQ 对账。幂等键、inbox 行、outbox 行的保留期写进运维文档，和备份恢复演练一起做。
+
+### 练习
+
+1. 修改 demo：第二次调用改成 \`Handle("key-123", 80m, processed)\`（同 key 不同金额），观察仍返回第一次 50m 的 \`Receipt\`——复现正文「换金额复用同一 key」的重放漏洞；再换一个新 key，验证生成了新的 \`Receipt\`。
+2. 脱离 demo 实现带指纹的 \`IdempotencyStore\`：\`TryProcess(string key, string bodyHash)\` 同 key 同指纹返回缓存结果、同 key 不同指纹返回冲突（对应 422），并用注入的 \`TimeProvider\` 实现 24h TTL 过期后 key 可复用；用三个测试分别钉住这三种行为。
+3. 生产进阶：实现最小 Outbox/Inbox 内存模拟：扣库存与写入 \`OrderCreated\` outbox 行在同一个「事务」里提交（要么都发生要么都不发生），后台转发器可能重复转发（模拟 at-least-once），消费者用 \`HashSet<string>\` inbox 按消息 ID 去重保证副作用只发生一次；注入「转发后、标记完成前」的崩溃再重启，验证库存不会被扣两次。
 `,
     code: `// 幂等命令：相同 key 返回第一次的结果。生产还要存请求指纹与 TTL。
 // 这是 Inbox / Idempotency-Key 的内存版，不能替代跨进程存储。
@@ -2212,7 +2511,7 @@ public sealed record Receipt(Guid PaymentId, decimal Amount, DateTimeOffset Crea
 
 1. 未带令牌调用写接口 → 401；带 A 租户令牌读 B 租户订单 → 404 或 403（与安全方案一致）。
 2. 非法金额 → 400 Problem Details，\`errors.amount\` 存在。
-3. 同一 \`Idempotency-Key\` + 同一正文提交两次 → 同一订单 ID；换金额复用该键 → 409。
+3. 同一 \`Idempotency-Key\` + 同一正文提交两次 → 同一订单 ID；换金额复用该键 → 422。
 4. 库存并发：两个请求各扣到边界，一个成功一个 409，库存不为负。
 5. 杀掉进程发生在 \`SaveChanges\` 之后、消息发出之前（可用测试钩子）→ 重启后 Outbox 补发，消费者不产生两份副作用。
 6. 支付模拟返回 503 → 客户端看到明确错误或异步 202，重试不制造双订单。
@@ -2278,24 +2577,69 @@ public sealed record Receipt(Guid PaymentId, decimal Amount, DateTimeOffset Crea
 5. 根据观测证据修复，再进入第一百一十六章的长期订单项目。
 
 做到这些，你才从「会写 C#」迈向「能负责 C# 生产服务」。
+
+### 练习
+
+1. 修改 demo：把 \`rollback rehearsed\` 改成 true，观察输出从 BLOCK 变为 PASS；再新增三条检查（\`migrations replayable\`、\`no secrets in repo\`、\`traceId queryable\`），把其中一条设为 false，验证「任一 BLOCK 即拒绝发布」的门禁逻辑。
+2. 脱离 demo 实现评分量规 \`Rubric\`：按正文表格录入八个维度得分（契约与校验 10、身份与授权 15、数据与并发 15、消息与幂等 15、韧性 10、可观测 10、测试 15、交付 10），\`Evaluate\` 返回 \`Verdict(bool Pass, List<string> Reasons)\`，实现「总分低于 70 不合格」与「消息幂等或身份任一整块缺失直接不及格」两条规则。
+3. 生产进阶（真动手）：按正文第 1 周范围搭最小订单 API 骨架——\`global.json\` + CPM + Domain/Application/Infrastructure/Host 四项目 + \`Order\`/\`Stock\` 实体与值对象 + 「不能超卖」单元测试 + 第一次 EF 迁移；最后用 demo 的 \`Check\` 模式给自己写 5 条完成度检查（nullable enabled、警告当错误、迁移可在空库重放、测试绿、无密钥入库），全部 PASS 才进入第 2 周。
 `,
-    code: `// 发布门禁：任一 BLOCK 都不能靠「演示能跑」蒙混。
-// 对照正文评分量规，rollback 未演练就是未完成。
+    code: `// ============================================================
+// 发布门禁（Release Gate）：BLOCK / WARN 两级体检。
+//   BLOCK = 不清零就不能发布（正确性 / 可回滚性底线）
+//   WARN  = 已知悉即可放行（体验 / 完善度建议）
+// 对照正文的评分量规与运行清单：rollback 未演练就是未完成。
+// ============================================================
+
 var checks = new[]
 {
-    new Check("nullable enabled", true),
-    new Check("tests green", true),
-    new Check("secrets externalized", true),
-    new Check("rollback rehearsed", false),
+    // 类别     检查项                    级别            是否通过
+    new Check("build", "nullable enabled",          Severity.Block, Passed: true),
+    new Check("build", "warnings as errors",       Severity.Block, Passed: true),
+    new Check("test",  "unit tests green",          Severity.Block, Passed: true),
+    new Check("test",  "integration tests green",  Severity.Block, Passed: true),
+    new Check("ops",   "secrets externalized",      Severity.Block, Passed: true),
+    new Check("ops",   "rollback rehearsed",        Severity.Block, Passed: false),  // ← 未演练：一票否决
+    new Check("ops",   "dashboard links in README", Severity.Warn,  Passed: false),  // ← 只是提醒
+    new Check("test",  "staging load test",         Severity.Warn,  Passed: false),
 };
 
-foreach (var check in checks)
-    Console.WriteLine($"[{(check.Passed ? "PASS" : "BLOCK")}] {check.Name}");
+// 按 build / test / ops 分组打印，一眼看出哪一块拖了后腿
+foreach (var g in checks.GroupBy(c => c.Category).OrderBy(g => g.Key))
+{
+    Console.WriteLine($"[{g.Key}]");
+    foreach (var c in g)
+        Console.WriteLine($"  {(c.Passed ? "PASS " : c.Level == Severity.Block ? "BLOCK" : "WARN ")}  {c.Name}");
+}
 
-if (checks.Any(static check => !check.Passed))
-    Console.WriteLine("Release blocked: resolve all BLOCK items.");
+// 发布结论：任一未通过的 BLOCK 都拒绝发布；只剩 WARN 时提示后放行
+var blockers = checks.Where(c => !c.Passed && c.Level == Severity.Block).ToList();
+var warns    = checks.Where(c => !c.Passed && c.Level == Severity.Warn).ToList();
 
-public sealed record Check(string Name, bool Passed);
+Console.WriteLine($"\\n汇总：{checks.Count(c => c.Passed)}/{checks.Length} 项通过，" +
+                  $"{blockers.Count} 个 BLOCK 未清零，{warns.Count} 个 WARN 待跟进。");
+
+if (blockers.Count > 0)
+{
+    Console.WriteLine("Release blocked —— 发布前必须清零：");
+    foreach (var c in blockers)
+        Console.WriteLine($"  ✗ {c.Category}/{c.Name}");
+}
+else if (warns.Count > 0)
+{
+    Console.WriteLine("允许发布（WARN 已知悉），发布后跟进：");
+    foreach (var c in warns)
+        Console.WriteLine($"  ! {c.Category}/{c.Name}");
+}
+else
+{
+    Console.WriteLine("All green —— 按计划发布。");
+}
+
+public enum Severity { Block, Warn }
+
+// 生产检查项：类别（build/test/ops）+ 名称 + 级别 + 是否通过
+public sealed record Check(string Category, string Name, Severity Level, bool Passed);
 `,
     lang: 'cs',
   },
