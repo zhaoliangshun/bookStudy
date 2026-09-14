@@ -151,6 +151,22 @@ b.Hi();  // 输出 Base.Hi（隐藏不参与多态）
 
 本章 demo 演示 Animal → Dog → Cat 三层结构，覆盖 base、virtual、override、new、ToString 重写。
 
+### 十一、record 继承、sealed、\`base()\` 与脆弱基类
+
+record 可以继承 record（\`record Student : Person\`），编译器继续生成拷贝构造 / \`with\` / 值相等——**相等会包含运行时类型**，\`Person\` 与 \`Student\` 即使字段碰巧一样也不相等。\`sealed record\` 阻止再派生。
+
+构造链必须落到 \`base(...)\`（或主构造函数转发）。忘记传基类必填项会编译失败，这是好事。
+
+**脆弱基类**：基类「随便加一个 virtual、改一下方法顺序」就可能让十年前的派生类行为改变。能 \`sealed\` 就封；必须开放继承时，virtual 点要少、契约要写清、用测试锁行为。\`new\` 隐藏不是多态，基类引用会走基类方法，团队里视为味道。
+
+### 十二、new vs override 再钉一次
+
+\`override\`：基类引用也走派生实现，这是多态。\`new\`：只是派生类型自己的另一套方法，基类引用仍走基类——调用方换个变量类型行为就变，极难查。看到编译器提示「隐藏了基类成员」不要随手加 \`new\` 消警告，先问该不该 \`override\`，或不该用同一个名字。
+
+\`base()\` 必须是构造函数体之前的第一件事（或主构造转发）。派生类字段初始器在基类构造**之后**跑，所以基类构造里调用 virtual，派生字段还是默认值——这是继承里最阴的坑之一。
+
+继承深度建议不超过两层业务基类。再深，优先组合（字段里握一个策略对象）而不是继续 : Base。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -444,6 +460,24 @@ class FixedDiscount : IDiscount
 \`\`\`
 
 本章 demo 完整演示运行时多态 + 策略模式：定义一组支付方式，运行时切换。
+
+### 十、虚分派、sealed override、何时不要 virtual
+
+调用 \`animal.Speak()\` 时，CLR 查对象**真实类型**的虚表，不是变量的静态类型。这就是运行时多态。\`sealed override\` 允许你重写一次后禁止孙子再重写，既保留对基类的多态，又锁住后续继承。
+
+**协变返回**（C# 9）：重写方法可以返回更派生的类型，\`override Student Clone()\` 替代 \`object Clone()\`。
+
+不要默认 virtual：
+
+- 没有第二处实现就不要虚——虚方法不能内联、契约永久化。
+- 构造函数里不要调 virtual：派生字段还没初始化。
+- 安全 / 不变式关键路径宁可模板方法 + protected abstract，也不要开放任意 override。
+
+### 十一、虚方法清单（写进设计评审）
+
+开放一个 virtual 等于公开一份**永久契约**：签名、线程安全、是否可重入、失败时对象是否半残。能 \`sealed class\` 就封类；只能封方法就 \`sealed override\`。模板方法模式：基类 \`public void Run()\` 非虚，里面调 \`protected abstract void Step()\`，比整条链路 virtual 安全。协变返回用来收窄工厂/Clone，不要用来隐藏失败类型。
+
+测多态请用基类引用调方法：\`Animal a = new Dog(); a.Speak();\`。用派生变量调用证明不了虚分派。
 
 ### 练习
 
@@ -777,6 +811,23 @@ record Point(double X, double Y) : IComparable<Point>
 
 本章 demo 定义 IShape 接口 + 抽象类 Shape + Circle / Square 实现，演示默认方法、显式实现、is/as 转换。
 
+### 十一、IDisposable 与「接口 vs 抽象类」再表
+
+持有文件、连接、\`CancellationTokenSource\` 的类型实现 \`IDisposable\`，调用方 \`using\`。接口可以继承 \`IDisposable\` 强制实现者释放。抽象类适合「已有部分实现 + 身份层次」；接口适合「能力」（能比较、能释放、能异步枚举）。
+
+| 问题 | 偏接口 | 偏抽象类 |
+| --- | --- | --- |
+| 需要多能力组合 | ✅ | ❌ 单继承 |
+| 要共享字段 / 构造逻辑 | 默认接口方法只能到方法 | ✅ |
+| 版本升级加方法 | DIM 可加默认体 | 加具体方法也行 |
+| 表示 is-a 家族 | 谨慎 | ✅ |
+
+DIM（默认接口方法）让你能给接口加方法而不打碎旧实现；显式接口实现用于两个接口同名方法冲突，或故意把实现藏到接口背后。
+
+### 十二、显式实现与 IDisposable 组合
+
+\`void IDisposable.Dispose()\` 显式实现时，类自己还应有 \`public void Dispose()\` 或 \`Close()\`，否则 \`using\` 可以、直接 \`obj.Dispose()\` 却找不到。多个接口撞名（\`IEnumerable.GetEnumerator\` vs 泛型版）几乎总是显式实现非泛型那份。抽象类已经实现接口时，派生类只 override 抽象钩子即可，不必再写一遍接口成员。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -1035,6 +1086,28 @@ s.SafeLen();  // 不报错，但要在 SafeLen 内部判 null
 C# 不支持扩展属性。但可以模拟：写一个返回值的扩展方法当"属性"用，或者用 expression-bodied 的方式接近属性语法。
 
 本章 demo 演示 sealed 类 + 扩展方法（给 string 加 Repeat、给 IEnumerable<T> 加 Print、链式调用）。
+
+### 十二、为什么要封、扩展解析、\`[Obsolete]\`
+
+密封默认好处：虚表更稳、JIT 更好内联、没人能覆写你的安全检查。框架里 \`string\` / \`int\` 装箱类型都是 sealed 思路（值类型本就不能继承）。只有真正设计了扩展点才打开。
+
+扩展方法解析：1) 实例方法；2) 当前命名空间的扩展；3) using 进来的命名空间。两个扩展同样「合适」会 \`CS0121\` 歧义。**不要**给 \`object\` / \`T\` 无约束扩展。
+
+\`[Obsolete("用 Bar 代替", error: true)]\` 让调用方编译失败。公开库改名先 \`error: false\` 警告一个版本。
+
+### 十三、C# 14 扩展成员（标注）
+
+本章旧文写「没有扩展属性」——在 **C# 14** 里过时了：可以用扩展成员声明扩展属性/方法块。本教程交互 demo 仍是 C# 12，请继续写 \`public static class XxxExtensions { public static T M(this T x) }\`。升级 \`<LangVersion>14</LangVersion>\` 后再用新语法，解析规则仍然是「实例成员优先」。
+
+### 十四、扩展方法解析四规则
+
+1. 实例方法永远赢。2. 更具体的接收者类型赢（\`this string\` 优于 \`this object\`）。3. 内层命名空间优于外层。4. 同样合适 → 歧义错误，用静态方法调用消歧：\`FooExt.Bar(x)\`。
+
+\`[Obsolete]\` 可以打在扩展方法上，引导人去新扩展。C# 14 扩展成员只是换皮，解析顺序不变。给接口写扩展（\`this IEnumerable<T>\`）是 LINQ 的路子，很强大，也很容易把 IntelliSense 变成一页清单——请放进专门的 \`MyApp.Linq\` 命名空间，按需 using。
+
+### 十五、什么时候不该写扩展
+
+类型是你自己能改的，优先加实例方法。扩展留给：密封类型（string）、接口补能力、以及不想引入依赖的跨层语法糖。扩展方法看不到 \`private\`，所以它不能替代子类。单元测试里为了 mock 而给一切加扩展，通常是设计味道，应改接口。\`[Obsolete]\` 迁移期可以让新旧扩展并存一个版本，下个版本再删旧名。公开库的扩展要放在独立程序集，避免为了一个 \`TrimToNull\` 拖进整个 Web 栈。
 
 ### 练习
 
@@ -1326,6 +1399,20 @@ C# 项目默认会按文件夹结构生成命名空间（SDK 风格项目）。�
 \`\`\`
 
 本章 demo 演示 namespace、file-scoped namespace、using 别名、自定义命名空间层次、internal 跨程序集可见性（注释说明）。
+
+### 十三、using static、extern alias、命名空间 ≠ 文件夹
+
+\`using static System.Math;\` 后可直接写 \`Sin(x)\`。适合数学/常量多的文件；不要 using static 一个什么都有的上帝类。
+
+\`extern alias\` 极少用：两个程序集有同名类型时，在 csproj 给引用起别名，源里 \`extern alias OldLib;\` 再 \`OldLib::Foo.Bar\`。先考虑改包，而不是 alias。
+
+命名空间**不必**等于文件夹，但约定 \`MyApp/Services/Foo.cs\` → \`namespace MyApp.Services\`。file-scoped namespace（\`namespace MyApp.Services;\`）减少一层缩进。\`global using\` 放在 \`GlobalUsings.cs\`，团队共享；隐式 using 由 SDK 注入，关掉就自己写。
+
+### 十四、global using 与文件作用域的落地约定
+
+一个仓库只放一份 \`GlobalUsings.cs\`（或 csproj \`<Using Include="..." />\`），写 \`System\` / \`System.Linq\` / 项目内最常用命名空间。测试项目不要继承生产 global using 里的 Web 类型。file-scoped namespace 与文件夹同名；偶尔为了和旧程序集对齐可以不一致，但要在 README 写一句。\`extern alias\` 出现就记一条债：计划合并重复类型。
+
+文件夹改名时一并改 namespace，避免 \`MyApp.Old\` 物理上躺在 \`New/\` 下。CI 可用简单脚本抽查。
 
 ### 练习
 

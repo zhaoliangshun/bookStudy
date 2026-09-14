@@ -186,10 +186,19 @@ bool isSerializable = Attribute.IsDefined(typeof(Person), typeof(SerializableAtt
 - \`MethodInfo.Invoke\` 动态调用方法
 - \`GetCustomAttribute<T>\` 读取特性
 
-### 练习
+### 十、typeof vs GetType、Type vs TypeInfo、以及检查 vs 调用
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「反射基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+| 写法 | 含义 |
+| --- | --- |
+| \`typeof(Foo)\` | 编译期锁定的元数据，**不需要实例**，静态类也能用 |
+| \`obj.GetType()\` | 运行时最派生类型；\`obj\` 为 null 会 NRE |
+| \`Type.GetType("Foo, Bar")\` | 按字符串加载，AOT/裁剪很难分析 |
+
+\`TypeInfo\`（\`type.GetTypeInfo()\`）是 .NET Core 早期把部分成员拆到反射表面时的类型；今天大多数场景直接用 \`Type\` 即可，两者信息重叠。
+
+**只读元数据**（\`GetProperties\`、判断 \`IsEnum\`）相对便宜，可缓存 \`Type\` / \`PropertyInfo\`。**Invoke / SetValue** 每次都有装箱、参数数组和权限检查，热路径应 \`Delegate.CreateDelegate\` 或源生成。发布 Native AOT / trimming 时未标注的反射会出 IL2026 / IL3050 警告，运行时可能缺方法而不是当场抛同一种异常。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 —— 反射基础演示
 
@@ -533,6 +542,14 @@ public class Container
 \`\`\`
 
 实际框架（Microsoft.Extensions.DependencyInjection）还支持：生命周期（单例/作用域/瞬时）、构造函数选择策略、循环依赖检测、编译期优化（用 IL 或表达式树缓存构造）。
+
+### 七点、Emit vs 源生成、私有绑定、Activator vs RuntimeHelpers
+
+运行时 \`ILGenerator\` / \`DynamicMethod\` 在 **Native AOT 里不可用**（没有 JIT 往自己进程里填 IL）。能在编译期生成的（JSON、正则、日志、DI）一律走源生成器。Emit 只留给必须根据**运行时才知道**的形状造方法的完整 CLR。
+
+读 private 要用 \`BindingFlags.NonPublic | Instance\`，并且在 trimming 下极易被裁掉；库代码应提供内部可见性或源生成，而不是去掏别人的私有字段。表达式树 \`Compile()\` 是“比 Invoke 快、比 Emit 简单”的中间层，同样依赖 JIT。
+
+\`Activator.CreateInstance(type)\` 方便但慢、且对无参构造失败信息不友好。已知 \`T : new()\` 时 \`new T()\` 由 JIT 内联；无约束时可 \`RuntimeHelpers.GetUninitializedObject(type)\` **跳过构造函数**（字段全默认值，容易拿到半成品，仅反序列化等场景）。优先有参 \`ConstructorInfo.Invoke\` 或源生成工厂。
 
 ### 八、本章小结
 
@@ -989,10 +1006,15 @@ string BuildInsert<T>(T entity)
 - 内置常用：\`Obsolete\` / \`Conditional\` / \`Flags\` / \`JsonPropertyName\` ……
 - 实战：ORM 表名/列名映射、序列化字段名、API 路由、单元测试发现
 
-### 练习
+### 十点、Caller*、ModuleInitializer、Obsolete vs Experimental
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「特性 Attribute」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+\`[CallerMemberName]\` / \`CallerFilePath\` / \`CallerLineNumber\` / \`CallerArgumentExpression\`（C# 10）由**编译器填实参**，运行时零反射，是 \`INotifyPropertyChanged\` 和 \`ArgumentNullException.ThrowIfNull(value)\` 能打出参数名的原因。这不是普通特性读取。
+
+\`[ModuleInitializer]\`（C# 9）标记 \`static void\` 方法，模块加载时自动跑——适合注册源生成的转换器，**不要**做重 IO 或等异步。
+
+\`[Obsolete("msg")]\` 出警告，\`error: true\` 变编译错误。\`[Experimental("DIAGID")]\`（.NET 8+）表示**预览 API**：调用方必须用 \`#pragma warning disable DIAGID\` 显式接受，比 Obsolete 更适合“还不稳定、但不是弃用”。\`AllowMultiple = true\` 的特性才能贴多次，默认第二次会编译错误。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 —— 特性 Attribute 演示
 
@@ -1458,10 +1480,13 @@ context.RegisterPostInitializationOutput(ctx =>
 - Native AOT + trimming 是有约束的发布选项，不是所有应用的“终极方案”
 - 只有静态已知且收益明确的反射路径才适合改为源生成器
 
-### 练习
+### 十一、拦截器（预览）以及 AOT 为什么不用 IL Emit
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「源生成器简介」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+C# 12 引入 **interceptors（拦截器）**：生成器可以声明“用我的方法替换这次调用”，实现编译期挂钩。它长期标为预览，要在项目里开 \`InterceptorsPreviewNamespaces\`（各 SDK 版本开关名可能不同）。没读当前预览文档不要当稳定功能用。
+
+Native AOT **没有**运行时 JIT，\`AssemblyBuilder.DefineDynamicAssembly\` / \`DynamicMethod\` 会失败或直接不可用。源生成器输出的是普通 C#，跟着用户代码一起被 AOT 编译，这才是正路。增量生成器必须实现 \`IIncrementalGenerator\`，用 \`SyntaxProvider\` / \`ForAttributeWithMetadataName\` 做缓存；再写初代 \`ISourceGenerator\` 全量扫语法树会拖垮 IDE。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 —— 源生成器演示
 // 注意：本 demo 演示【运行时可见的部分】，即 JsonSerializerContext 实战。

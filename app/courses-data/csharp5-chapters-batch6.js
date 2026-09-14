@@ -166,6 +166,23 @@ class Factory<T> where T : class, IComparable<T>, new()
 
 本章 demo 实现完整的泛型 Stack<T>，演示泛型方法 Max<T>、约束、协变逆变。
 
+### 十三、约束一览与 Type.MakeGenericType
+
+| 约束 | 含义 |
+| --- | --- |
+| \`class\` | 引用类型（含 string、接口装箱后的引用） |
+| \`struct\` | 非可空值类型（**不含** \`int?\`） |
+| \`class?\` / \`notnull\` | 可空引用 / 非 null |
+| \`new()\` | 有无参构造（与 \`struct\` 组合时 struct 已满足） |
+| \`unmanaged\` | 不含引用的非托管值类型 |
+| \`enum\` / \`delegate\` | 枚举 / 委托 |
+| \`T : U\` | 继承或实现 U |
+| \`allows ref struct\` | C# 13 标注：允许 Span 等 |
+
+\`IEnumerable<out T>\` 协变：\`IEnumerable<string>\` 当 \`IEnumerable<object>\`。\`Action<in T>\` 逆变：\`Action<object>\` 当 \`Action<string>\`。**可变的 \`List<T>\` 不变**，这是故意的。
+
+运行时构造闭包泛型：\`typeof(List<>).MakeGenericType(typeof(int))\` 得到 \`List<int>\`，再 \`Activator.CreateInstance\`。源生成器能写死类型时不要走反射。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -512,6 +529,14 @@ int[] b = [.. a, 3, 4];  // [1, 2, 3, 4]
 
 本章 demo 实现一个自定义 \`MyLinkedList<T>\`，演示 IEnumerable、yield return、集合初始化器、Collection 表达式。
 
+### 十二、延迟执行陷阱、多次枚举、yield break
+
+\`query.Where(...).Select(...)\` 在你 \`foreach\` / \`ToList\` **之前什么都不算**。数据源若是数据库或可变 List，每次枚举结果可能不同，或把 SQL 执行两遍。需要稳定快照就 \`ToArray()\`。
+
+\`IEnumerable<T>\` 不保证能安全枚举两次（网络流、生成器）。\`IReadOnlyCollection<T>\` / \`ICollection<T>\` 带 \`Count\`；\`IReadOnlyList<T>\` 带下标。API 只要「能看几个」就暴露只读接口，不要先 \`ToList\` 再给出去除非你需要快照。
+
+\`yield break\` 立即结束序列（0 个或提前停）。\`yield return\` 之间的代码在两次 \`MoveNext\` 之间不跑。LINQ 全部建立在这套模型上——下一章 List，再往后才是查询语法。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -828,6 +853,22 @@ ll.AddAfter(node, "c");  // 在 a 后面插入 c
 
 本章 demo 演示 List<T> 全套 API + Find/Sort/BinarySearch + LinkedList<string> 操作。
 
+### 十、Capacity、EnsureCapacity、Slice、Find vs LINQ
+
+\`Count\` 是元素个数，\`Capacity\` 是内部数组长度。\`EnsureCapacity(n)\`（.NET 6+）一次扩够，循环 \`Add\` 前调用可少几次拷贝。删到很少时 \`TrimExcess\` 才收缩。
+
+\`List<T>\` **没有**数组那种 \`Slice\` 实例方法。只读热路径用 \`CollectionsMarshal.AsSpan(list).Slice(start, length)\`（.NET 8 项目常用、零拷贝）；需要独立 \`List<T>\` 用 \`GetRange\`（拷贝）。不要写 \`list[1..3]\` 指望和数组一样——List 未实现 Slice 模式，多数 SDK 会直接编译失败。
+
+\`Find\` / \`FindAll\` / \`Exists\` 是 List 实例方法，立刻遍历；LINQ \`FirstOrDefault\` / \`Where\` 延迟且分配迭代器。已有 List、只要一个元素，用 \`Find\` 更直接。
+
+### 十一、LinkedListNode 什么时候才值得
+
+只有频繁「在已知节点前/后插入删除」才用 \`LinkedList<T>\`。节点是堆对象，缓存不友好。队列/栈请用 \`Queue\`/\`Stack\`。拿到 \`LinkedListNode<T>\` 才能 O(1) 删；先 \`Find\` 再删已经是 O(n)。默认 \`List<T>\`。
+
+### 十二、Find 与 LINQ 怎么选（一句话）
+
+已有 \`List<T>\`、要立刻得到一个元素或空：\`Find\` / \`FindIndex\`。还要继续 Where/Select 链式：LINQ。不要 \`list.Where(x => x > 0).FirstOrDefault()\` 只为了替代 \`Find\`——多一次委托分配，读起来也不更短。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -1141,6 +1182,14 @@ foreach (Person p in byAge[28])  // 所有 28 岁的人
 
 本章 demo 演示 Dictionary 全套 API + 自定义比较器 + HashSet 集合运算。
 
+### 十二、GetValueOrDefault、CollectionsMarshal、集合代数
+
+\`dict.GetValueOrDefault(key)\`（.NET 5+）没有键时给 \`default\`，不会抛。与 \`TryGetValue\` 相比少一个 out，但分不清「键不存在」和「值就是 default」。
+
+热路径批量改值可用 \`CollectionsMarshal.GetValueRefOrAddDefault\`（小心：不要在持有 ref 时再扩容字典）。只读、启动后不再改的映射用 **\`FrozenDictionary\`**（.NET 8）——创建贵、查找更快。
+
+\`HashSet<T>\` 代数：\`UnionWith\` \`IntersectWith\` \`ExceptWith\` \`SymmetricExceptWith\`，就地改左操作数。需要新集合就先 \`new HashSet<T>(a)\` 再运算。比较器必须从一开始就定好，中途换 \`StringComparer\` 等于毁哈希。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -1438,6 +1487,34 @@ string next = pq.Dequeue();  // "紧急任务"（优先级 1 最小）
 
 本章 demo 演示 Queue 任务调度 + Stack 撤销操作 + PriorityQueue 优先级处理。
 
+### 九、环形队列思想与 TryDequeue / TryPeek
+
+\`Queue<T>\` 内部就是**环形缓冲**：head/tail 在数组上取模前进，避免每次出队都 \`Array.Copy\`。自己实现固定容量缓冲时也是 \`(_tail + 1) % cap == _head\` 判满。不要用 \`List.RemoveAt(0)\` 冒充队列——那是 O(n)。
+
+空队列上 \`Dequeue\`/\`Peek\` 抛 \`InvalidOperationException\`。不确定是否为空（尤其并发边界）用 \`TryDequeue\` / \`TryPeek\`（现代 .NET 都有，不是「只有 .NET 6」）。
+
+### 十、当成 IEnumerable 的坑
+
+\`foreach (var x in queue)\` **只看看出队顺序的快照语义，不会 Dequeue**。枚举后 \`Count\` 不变。若你写了生产者循环「foreach 消费任务」，任务还在队列里。消费必须 \`while (q.TryDequeue(out var x))\`。多次 \`foreach\` 同一 Queue 会反复看见同一批元素。
+
+多生产者多消费者、需要阻塞等待时用 \`BlockingCollection<T>\`（内部常包 \`ConcurrentQueue\`）或 \`Channel<T>\`，不要在 \`Queue<T>\` 外包一层 \`lock\` 却忘了 \`Pulse\`。
+
+### 十一、场景对照表
+
+| 场景 | 结构 |
+| --- | --- |
+| BFS、任务 FIFO、打印队列 | \`Queue<T>\` |
+| 撤销、括号匹配、DFS | \`Stack<T>\` |
+| 急诊、定时最近到期 | \`PriorityQueue<TElement,TPriority>\` |
+| 固定槽位的缓冲/播放器 | 环形数组（或有界 Channel） |
+| 跨线程交接 | \`ConcurrentQueue\` / Channel / \`BlockingCollection\` |
+
+### 十二、优先队列不是稳定排序
+
+\`PriorityQueue\` 同优先级元素**不保证**入队顺序。需要「同样紧急则先来先服务」请把优先级做成 \`(priority, seq)\`，\`seq\` 单调递增。\`Enqueue(elem, prio)\` 的比较器比较的是 **TPriority**，不是元素。清空用循环 Dequeue 或丢掉整个实例；没有 \`Clear\` 的旧版本要自己包一层。BFS 用 Queue，撤销用 Stack，别互相替代图个新鲜。
+
+Channel 能替代「Queue + lock + 手动阻塞」的大多数新代码；单线程算法题继续用 Queue/Stack 即可。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -1592,7 +1669,44 @@ Console.WriteLine("\\n=== 7. 队列容量预分配 ===");
 var bigQueue = new Queue<int>(capacity: 1000);
 for (int i = 0; i < 1000; i++)
     bigQueue.Enqueue(i);
-Console.WriteLine($"预分配 1000 容量后入队 1000 个，Count = {bigQueue.Count}");`,
+Console.WriteLine($"预分配 1000 容量后入队 1000 个，Count = {bigQueue.Count}");
+
+Console.WriteLine("\\n===== 8. IEnumerable 不会出队 =====");
+var look = new Queue<int>([1, 2, 3]);
+foreach (var n in look)
+    Console.Write(n + " ");
+Console.WriteLine("\\nforeach 后 Count 仍是 " + look.Count + "（没有 Dequeue）");
+while (look.TryDequeue(out int n))
+    Console.Write("出队 " + n + " ");
+Console.WriteLine();
+Console.WriteLine("空队列 TryPeek？" + look.TryPeek(out _));
+
+Console.WriteLine("\\n===== 9. 环形缓冲思想（容量 4） =====");
+var ring = new int[4];
+int head = 0, tail = 0, count = 0;
+void RingEnqueue(int v)
+{
+    if (count == ring.Length) throw new InvalidOperationException("满");
+    ring[tail] = v;
+    tail = (tail + 1) % ring.Length;
+    count++;
+}
+int RingDequeue()
+{
+    int v = ring[head];
+    head = (head + 1) % ring.Length;
+    count--;
+    return v;
+}
+RingEnqueue(10); RingEnqueue(20); RingEnqueue(30);
+Console.WriteLine("环形出队 " + RingDequeue() + "，再入 40 后 Count=" + count);
+
+Console.WriteLine("\\n===== 10. BlockingCollection 一句 =====");
+var blocking = new System.Collections.Concurrent.BlockingCollection<int>(boundedCapacity: 2);
+blocking.Add(1);
+Console.WriteLine("Take=" + blocking.Take());
+blocking.CompleteAdding();
+`,
     lang: 'cs',
   },
 
@@ -1717,6 +1831,25 @@ var list2 = list.Add(1);  // 返回新集合，list 不变
 详细在第三十四章讲。
 
 本章 demo 对比三种排序集合的性能，并演示自定义 IComparer。
+
+### 十、先字典后排序，往往更便宜
+
+若「大多数时间按 key 查、偶尔才要有序列表」，用 \`Dictionary\` 查询，需要展示时 \`OrderBy\` / 拷到数组 \`Array.Sort\`。\`SortedDictionary\` / \`SortedList\` 每次写入都维持有序，读多写少且**必须随时有序**才值得。
+
+\`SortedSet<T>\` 是有序不重复集合，\`GetViewBetween\` 做范围查询。比较器 \`IComparer<T>\` 必须与相等语义一致，否则能插进「重复」。
+
+不可变家族：\`ImmutableSortedDictionary\` / \`ImmutableSortedSet\`（\`System.Collections.Immutable\`）适合快照、多线程只读分享；每次「修改」返回新根，旧版本仍可用。不要在热循环里当可变字典用。
+
+### 十一、四套「有序」怎么挑
+
+| 需求 | 选择 |
+| --- | --- |
+| 按 key 查，偶尔排序输出 | \`Dictionary\` + 读时 \`OrderBy\` |
+| 始终按 key 有序、写少 | \`SortedDictionary\`（树）或数据很少时 \`SortedList\` |
+| 有序且唯一的元素 | \`SortedSet\` |
+| 多线程只读快照 | \`ImmutableSortedDictionary\` / \`ImmutableSortedSet\` |
+
+\`SortedList\` 的 key/value 是平行数组，索引访问快、中间插入慢。\`Comparer<T>.Create\` 捕获外部状态时注意不要在比较中改集合。永远让 \`Compare(a,b)==0\` 与业务「同一条」一致，否则集合会悄悄吞重复或查不到。
 
 ### 练习
 
@@ -2040,6 +2173,20 @@ await foreach (var item in channel.Reader.ReadAllAsync())
 - **不可变集合**：不可变，多线程自然安全，但写性能较差（每次复制）
 
 本章 demo 演示 BlockingCollection 生产者-消费者 + ConcurrentDictionary 并发累加 + Channel 异步管道。
+
+### 十二、GetOrAdd 工厂竞态、Channel vs 队列、Bag vs Queue
+
+\`ConcurrentDictionary.GetOrAdd(key, k => Create(k))\` **不保证工厂只跑一次**：两个线程可能都 Create，其中一个结果被丢掉。工厂必须可重复、无副作用（或改用 \`Lazy<T>\` 做值）。\`AddOrUpdate\` 的 update 委托也可能重试。
+
+| | 顺序 | 阻塞 | 适用 |
+| --- | --- | --- | --- |
+| \`ConcurrentQueue<T>\` | FIFO | 否（Try*） | 已有自己的等待逻辑 |
+| \`BlockingCollection<T>\` | 取决于内部 | \`Take\` 可阻塞 | 经典生产者-消费者 |
+| \`Channel<T>\` | FIFO | \`ReadAsync\` | 异步管道，首选现代写法 |
+| \`ConcurrentBag<T>\` | 无 | 否 | 线程本地囤积、不在乎顺序 |
+| \`ConcurrentStack<T>\` | LIFO | 否 | 池化、撤销式并发 |
+
+Bag 可能让你「刚 Add 的自己 Take 走」，别当任务队列。需要公平交接用 Queue/Channel。
 
 ### 练习
 

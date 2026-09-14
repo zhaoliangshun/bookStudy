@@ -11,8 +11,9 @@
 // =============================================================
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useFloatingButtonVisibility } from "./FloatingButtonVisibility";
+import { getBookLabel } from "./Sidebar";
 
 const STORAGE_KEY = "bookmarks";
 const MAX_BOOKMARKS = 20;
@@ -130,10 +131,14 @@ function getRouteName(pathname) {
   if (!pathname) return "";
   const path = pathname.replace(/\/$/, "") || "/";
   if (ROUTE_NAMES[path]) return ROUTE_NAMES[path];
+  const catalogLabel = getBookLabel(path);
+  if (catalogLabel) return catalogLabel;
   const segments = path.split("/").filter(Boolean);
   for (let i = segments.length; i > 0; i--) {
     const sub = "/" + segments.slice(0, i).join("/");
     if (ROUTE_NAMES[sub]) return ROUTE_NAMES[sub];
+    const nested = getBookLabel(sub);
+    if (nested) return nested;
   }
   return "";
 }
@@ -222,17 +227,20 @@ export default function BookmarkManager() {
   const [open, setOpen] = useState(false);
   const [bookmarks, setBookmarks] = useState([]);
   const [addedFlash, setAddedFlash] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState("");
+  const [prefsReady, setPrefsReady] = useState(false);
   const containerRef = useRef(null);
   const flashTimerRef = useRef(null);
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   // 读取「浮动按钮可见性」设置：用户在齿轮设置里关掉书签时，整个按钮不渲染
   const { visibility } = useFloatingButtonVisibility();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBookmarks(loadBookmarks());
+    setCurrentUrl(getFullUrl());
+    setPrefsReady(true);
     return () => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     };
@@ -241,6 +249,7 @@ export default function BookmarkManager() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpen(false);
+    setCurrentUrl(getFullUrl());
 
     const timer = setTimeout(() => {
       const url = getFullUrl();
@@ -259,7 +268,7 @@ export default function BookmarkManager() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   useEffect(() => {
     if (!open) return;
@@ -312,24 +321,30 @@ export default function BookmarkManager() {
   const goToBookmark = useCallback(
     (url) => {
       try {
-        const u = new URL(url);
+        const u = new URL(url, window.location.origin);
+        if (u.origin !== window.location.origin) return;
+        if (!u.pathname.startsWith("/") || u.pathname.startsWith("//")) return;
         router.push(u.pathname + u.search + u.hash);
       } catch {
-        router.push(url);
+        // 非法 URL 不跳转，避免把书签当成任意地址打开
       }
       setOpen(false);
     },
     [router]
   );
 
-  // 隐藏时直接返回 null（所有 hooks 已调用完毕，不会破坏 hooks 顺序）
-  if (visibility.bookmark === false) return null;
-
-  const currentUrl = getFullUrl();
-  const isCurrentPageBookmarked = bookmarks.some((b) => b.url === currentUrl);
+  // 首屏必须和 SSR 一样渲染按钮，不能在 render 里读 window / localStorage。
+  // 用户关掉书签后用 CSS 隐藏，避免服务端有节点、客户端 return null 造成 hydration mismatch。
+  const hideBookmark = prefsReady && visibility.bookmark === false;
+  const isCurrentPageBookmarked = Boolean(currentUrl) && bookmarks.some((b) => b.url === currentUrl);
 
   return (
-    <div className="bookmark-corner" ref={containerRef}>
+    <div
+      className="bookmark-corner"
+      ref={containerRef}
+      hidden={hideBookmark}
+      style={hideBookmark ? { display: "none" } : undefined}
+    >
       <button
         className={`bookmark-corner-btn${addedFlash ? " flash" : ""}${open ? " active" : ""}`}
         onClick={() => setOpen((v) => !v)}

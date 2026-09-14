@@ -86,7 +86,7 @@ finally
 
 - 命名以 \`Exception\` 结尾。
 - 提供三个构造函数：无参、带 message、带 message + innerException。
-- 标记 \`[Serializable]\` 以支持跨域/跨进程序列化（传统做法）。
+- 旧代码常标 \`[Serializable]\` 以配合 \`BinaryFormatter\`。**.NET 5+ 已弃用、.NET 9 默认禁用该序列化器**，新项目不必再为异常加 \`[Serializable]\`；跨进程应传错误码或 Problem Details，而不是序列化 \`Exception\` 对象。
 
 ### 7. finally 与 using 的关系
 
@@ -105,13 +105,15 @@ C# 8+ 还支持 \`using var\` 声明，作用域结束时自动释放。
 
 - 异常沿调用栈向上传播，直到被 catch 或到达顶层导致程序终止。
 - async/await 中异常被封装进 Task，await 时重新抛出。
-- \`async void\` 中的异常无法被捕获，会直接进 \`AppDomain.UnhandledException\`，应尽量避免 \`async void\`。
+- \`async void\` 中的异常无法放进 Task。有 \`SynchronizationContext\` 时投递给该上下文；现代 ASP.NET Core **没有**同步上下文，未捕获时往往直接进进程级未处理异常。应尽量避免 \`async void\`。
 
-### 9. 全局未处理异常
+### 9. 全局未处理异常（现代 .NET）
 
-- \`AppDomain.CurrentDomain.UnhandledException\`：捕获所有未处理异常（包括非 CLR 异常）。
-- \`TaskScheduler.UnobservedTaskException\`：Task 异常未被观察时触发（默认 .NET 4.5+ 不再让进程崩溃）。
-- ASP.NET Core 中用 \`UseExceptionHandler\` 中间件统一处理。
+.NET Core / .NET 5+ **已经没有**可卸载的应用域隔离，\`AppDomain\` 只剩进程级外壳：
+
+- \`AppDomain.CurrentDomain.UnhandledException\`：进程即将终止前的最后通告，**不能恢复**，记完日志进程仍会退出。
+- \`TaskScheduler.UnobservedTaskException\`：Task 异常从未被 \`await\` / \`.Exception\` 观察时触发；.NET 4.5+ 与现代 .NET **默认不再因此崩溃**，但故障会被悄悄丢掉。
+- ASP.NET Core 用 \`UseExceptionHandler\` 或 \`IExceptionHandler\` 做**请求级**恢复，这才是 Web 的正确边界。
 
 ### 10. 异常处理原则
 
@@ -124,6 +126,46 @@ C# 8+ 还支持 \`using var\` 声明，作用域结束时自动释放。
 
 异常是设计契约的一部分，合理的异常策略让代码既能优雅降级，又能快速定位问题。
 
+### 11. 什么时候不该 catch
+
+捕获的唯一正当理由是你能**恢复、转换成更合适的类型，或在边界补上下文**。下面这些不该 catch：
+
+- 只为了打日志再 \`throw;\`——改用 \`when\` 过滤器记日志，根本不进入 catch。
+- 把 \`NullReferenceException\` / \`IndexOutOfRangeException\` 当常规控制流。
+- 捕获后返回默认值却不记录，等于把故障吞掉。
+- 在库内部深处 \`catch (Exception)\` 再“消化”，调用方无法区分失败。
+
+经验：**底层抛具体异常，应用边界（Controller、Minimal API、BackgroundService）再统一处理。**
+
+### 12. when 过滤器：记录但不拦截
+
+\`when\` 里的表达式在**进入 catch 之前**求值。返回 false 时，运行时当作“这个 catch 不匹配”，异常继续向上，**调用栈不会被 catch 截断**：
+
+\`\`\`csharp
+catch (Exception ex) when (LogAndContinue(ex))
+{
+    // 只有过滤器返回 true 才进来
+}
+
+static bool LogAndContinue(Exception ex)
+{
+    Console.WriteLine(ex);
+    return false; // 不处理，让上层 catch
+}
+\`\`\`
+
+\`when\` 里再抛异常会**替换**原异常，过滤器应保持几乎无副作用。需要重抛时在 catch 里写 \`throw;\`，不要 \`throw ex;\`。
+
+### 13. Task / async 里的异常
+
+- \`await task\` 重新抛出 Task 上的**第一个**异常；\`WhenAll\` 之后要看 \`task.Exception.InnerExceptions\` 才能看到全部。
+- 从未 \`await\` 的 Task 异常变成未观察异常：现代 .NET 默认不崩溃，但错误消失。
+- 异步方法里的异常被装进返回的 Task，**不是**立刻沿调用栈飞；调用方必须 await 或观察。
+
+### 14. checked 才抛 OverflowException
+
+默认 \`int.MaxValue + 1\` **环绕**成负数，不抛。只有 \`checked { }\`、\`checked(a + b)\` 或项目开启 \`<CheckForOverflowUnderflow>true\` 才抛 \`OverflowException\`。\`unchecked\` 显式恢复环绕。浮点溢出变成无穷，不走整数这套。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -134,6 +176,7 @@ C# 8+ 还支持 \`using var\` 声明，作用域结束时自动释放。
 
 using System;
 using System.IO;
+using System.Linq;
 
 // ===== 1. 最基本的 try/catch/finally =====
 try
@@ -358,9 +401,10 @@ public class ServerErrorException : Exception
 - 继承 \`Exception\`（或更具体的基类如 \`InvalidOperationException\`）。
 - 命名以 \`Exception\` 结尾，语义清晰。
 - 提供三个标准构造函数：无参、message、message + innerException。
-- 标记 \`[Serializable]\` 并实现反序列化构造函数（跨进程/跨域场景）。
+- 旧指南要求 \`[Serializable]\` + 反序列化构造函数。现代 .NET **不要**再序列化 \`Exception\` 本身（\`BinaryFormatter\` 已废弃）；跨进程传错误码、问题详情或自建 DTO。
 - 添加业务字段（如 \`ErrorCode\`）。
 - 不要在异常中放敏感数据（密码、Token），因为异常会被日志记录。
+- \`HResult\` 只在 COM / Win32 互操作时有意义，业务异常不必手动设。
 
 ### 2. DomainException 领域异常
 
@@ -465,10 +509,42 @@ checked
 
 合理的异常策略让代码既能优雅降级，又能快速定位问题。
 
-### 练习
+### 13. ExceptionDispatchInfo：跨 await 保留堆栈
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「自定义异常与异常策略」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+普通 \`throw ex;\` 会重置堆栈。若你必须**稍后**再抛同一个实例（缓存起来、从另一个线程抛），用 \`ExceptionDispatchInfo\`：
+
+\`\`\`csharp
+using System.Runtime.ExceptionServices;
+
+ExceptionDispatchInfo edi = ExceptionDispatchInfo.Capture(ex);
+// ... 换线程或过完一层边界
+edi.Throw(); // 保留 Capture 时的原始堆栈
+\`\`\`
+
+\`await\` 失败的 Task 时，运行时内部就是这么做的。自己写消息泵、重试队列时也应走这条路，而不是 \`throw saved;\`。
+
+### 14. Result vs throw：边界怎么选
+
+| 场景 | 用 Result / Try | 用 throw |
+| --- | --- | --- |
+| 用户输入非法、余额不足 | ✅ 预期失败 | 不要 |
+| 空引用、状态损坏、配置缺失 | 不要 | ✅ 不可恢复 |
+| 公共 HTTP API | 转 Problem Details | 内部仍可 throw，中间件映射 |
+| 库的热路径 | Try 模式避免分配 | 文档化的契约违反才抛 |
+
+ASP.NET Core 可把领域异常映射为 RFC 7807 Problem Details（\`IExceptionHandler\` / \`ProblemDetails\`），对外是稳定错误码，对内仍是带 \`InnerException\` 的异常链。
+
+### 15. 异常对象不要当 DTO 序列化
+
+\`Exception\` 含堆栈、类型名、可能的敏感 \`Data\`。把它 \`JsonSerializer.Serialize(ex)\` 既不安全也不稳定（循环引用、\`TargetSite\`）。应投影：
+
+\`\`\`csharp
+record ErrorDto(string Code, string Message, string? TraceId);
+\`\`\`
+
+COM 互操作才需要 \`HResult\`；普通 Web/业务异常保持默认即可。需要包装时永远带上 \`innerException\`，不要只抄 \`Message\` 丢掉根因。应用层捕获基础设施异常（如 \`SqlException\` / \`HttpRequestException\`）时应 \`throw new OrderFailedException("下单失败", ex);\`，让运维仍能顺着 InnerException 找到驱动或网络根因。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 - 自定义异常与异常策略演示
 // 演示：Result<T> 类型、BusinessException(ErrorCode)、Try 模式、checked、Result 链式调用
@@ -825,10 +901,37 @@ class Person { public string Name; public int Age; }
 
 调试是开发者最值得投入的技能，工具用得越熟，定位问题越快。
 
-### 练习
+### 12. Debug.Assert vs Trace：别混用
 
-1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
-2. 合上示例，用「调试技术」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
+| API | Debug 构建 | Release 构建 | 典型用途 |
+| --- | --- | --- | --- |
+| \`Debug.Assert\` / \`Debug.WriteLine\` | 生效 | **编译掉，零开销** | 开发期不变量 |
+| \`Trace.Assert\` / \`Trace.WriteLine\` | 生效 | **仍然生效** | 生产诊断开关 |
+| \`Debugger.Break()\` | 有调试器才停 | 无调试器可能弹附加框 | 无法 F5 的服务 |
+
+断言失败在控制台应用里可能直接终止进程，**不要**把 \`Debug.Assert\` 当成用户输入校验。
+
+### 13. launchSettings、Source Link 与符号
+
+- \`Properties/launchSettings.json\` 决定 \`dotnet run\` / IDE 的环境变量、端口、\`ASPNETCORE_ENVIRONMENT\`。调试“本地连错库”往往是 profile 选错，不是代码错。
+- **Source Link** 把 PDB 指到 Git 提交，dump / 生产调试能直接看到对应源码。库作者应在打包时启用。
+- 发布要用 \`DebugType=portable\` 的 PDB；没有符号时 \`dotnet-dump analyze\` 只能看到地址。
+
+### 14. Hot Reload 的边界
+
+.NET Hot Reload（\`dotnet watch\`）能改方法体、部分 lambda，但下列改动通常要重启：
+
+- 改签名、增删字段、改继承关系、改特性。
+- 改顶级语句的程序入口结构。
+- 部分 \`async\` 状态机 / 泛型约束变更。
+
+它加速迭代，**不能**替代“改完跑一遍完整场景”。编辑并继续（ENC）同样有限制，失败时老老实实停掉再 F5。
+
+### 15. dotnet-dump 最短路径
+
+生产挂死或内存涨时：\`dotnet-dump collect -p <pid>\` 抓转储，再用 \`dotnet-dump analyze\` 里的 \`clrstack\` / \`dumpheap -stat\` / \`gcroot\`。配合 Source Link 才能对上源码行。这比在服务器上装完整 IDE 现实得多。
+
+### 练习
 `,
     code: `// C# 12 顶级语句 - 调试技术演示
 // 演示：Conditional("DEBUG")、Debug.Assert、DebuggerDisplay、DebuggerStepThrough、自定义 TraceListener
@@ -1186,6 +1289,14 @@ logger.LogInformation(MyEvents.UserLogin, "用户 {UserId} 登录", userId);
 \`EventId\` 是结构体，包含 \`Id\` 和 \`Name\`。集中定义所有事件 ID 便于维护。
 
 合理的日志和诊断策略让生产环境问题"看得见、追得到、说得清"。
+
+### 16. ILogger 模板与「不要记请求体」
+
+\`LogInformation("用户 {UserId} 登录", userId)\` 里的 \`{UserId}\` 是**结构化模板**，不是插值字符串。写成 \`"用户 " + userId\` 或 \`$"用户 {userId}"\` 会丢掉字段，也让日志系统无法按 UserId 索引。级别选错同样有害：热路径 \`LogTrace\` 默认关，\`LogDebug\` 在生产也通常关。
+
+\`BeginScope\` 给同一请求补 \`RequestId\` / \`UserId\`，比每条消息手写前缀干净。\`Activity\` 负责跨进程 TraceId，和 ILogger 互补，不是替代。
+
+**不要**把整个请求体、密码、Cookie、Token 打进日志。体积会撑爆存储，更会泄密。需要排错时记哈希、长度、业务单号；必须采样正文时走专门的脱敏管道，而不是 \`LogInformation("{Body}", rawBody)\`。
 
 ### 练习
 

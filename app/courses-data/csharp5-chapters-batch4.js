@@ -113,6 +113,40 @@ var s = new Student { Name = "小明", Age = 18 };
 
 但要注意：持有非托管资源（文件、数据库连接）时，必须实现 \`IDisposable\` 主动释放，不能依赖 GC。
 
+### 十一、class vs record vs struct
+
+| | class | record（class） | struct / record struct |
+| --- | --- | --- | --- |
+| 语义 | 标识（同一引用） | 数据（值相等）+ 可选继承 | 值拷贝 |
+| 相等 | 默认引用相等 | 编译器生成值相等 | 值相等（字段） |
+| \`with\` | 无 | 有 | record struct 有 |
+| 继承 | 可 | 可（record 只能继承 record） | 不可 |
+| 适用 | 有身份的实体、服务 | DTO、消息、不可变快照 | 小而密的值（坐标、金额） |
+
+默认选 class；数据传输、with 更新选 record；小于 ~16 字节且不可变再考虑 struct。
+
+### 十二、\`with\`、对象/索引初始化器、required + init
+
+\`\`\`csharp
+var p2 = p1 with { Age = 20 };                 // record 拷贝并改部分属性
+var s = new Student { Name = "Ada", ["tag"] = "a" }; // 对象 + 索引初始化器
+public required string Name { get; init; }     // 初始化器必填；之后只读
+Student s2 = new();                            // 目标类型 new（C# 9）
+var (name, age) = s2;                          // 需要 Deconstruct
+\`\`\`
+
+\`init\` 只允许在构造 / 初始化器里赋值，之后像 get-only。\`required\` 强迫调用方写初始化器，和「构造函数参数」二选一即可，不要两个都强制到烦。
+
+### 十三、this、只读 class、何时拆类型
+
+\`this\`：消歧义、传出当前实例、构造函数链 \`: this(...)\`。C# **没有** \`readonly class\` 关键字（那是常见误记）：\`readonly\` 只能修饰字段、\`ref\` 和 **struct / record struct**。引用类型要「创建后不能改」，用 record + \`init\` / get-only 属性，或 class + 只读字段。不要手写一堆 \`private set\` 却仍从同类方法里乱改。
+
+选择顺序：已经有身份（Id）→ class；只是数据且要 with / 值相等 → record；热点上小值 → struct。不要为了「看起来高级」把实体做成 record 却到处 with 出幽灵副本。
+
+### 十四、对象初始化器的隐藏顺序
+
+\`new T { A = 1, [k] = v }\` 先跑构造函数（含主构造 / \`: this()\` 链），再按你写下的顺序设属性、索引器。\`required\` 没填会在**调用点**报错，不是运行时。\`init\` 属性此后再 \`obj.A = 2\` 编译失败。目标类型 \`new()\` 完全看左边：\`T x = new();\` 或 \`T[] xs = [new(), new()];\`。需要可变身份用 class；需要 with 出新版本用 record；需要栈上小值用 readonly struct。
+
 ### 小结
 
 类是"蓝图"，对象是"产品"；字段存数据、属性对外暴露、方法定义行为、构造函数初始化。访问修饰符控制可见性，\`partial\` 拆分文件，\`new\` 创建对象，\`this\` 引用自己。下一章深入讲字段与属性。
@@ -149,6 +183,23 @@ p.SayHi();
 
 // 6. 调用静态方法（属于类本身，不需要对象）
 Student.PrintTotal();
+
+
+Console.WriteLine("\\n===== 7. record / with / 目标类型 new / required+init =====");
+var rec = new PointRec(1, 2);
+var rec2 = rec with { Y = 9 };
+Console.WriteLine("record " + rec + " with Y=9 → " + rec2);
+NamedPerson named = new() { First = "Ada", Last = "Lovelace" };
+Console.WriteLine("required+init：" + named.First + " " + named.Last);
+var (dx, dy) = rec;
+Console.WriteLine("Deconstruct → " + dx + "," + dy);
+
+var tagged = new Tagged { Name = "book" };
+tagged["isbn"] = "978-1";
+Console.WriteLine("索引器 isbn=" + tagged["isbn"]);
+
+var frozen = new FrozenId(7);
+Console.WriteLine("get-only class FrozenId=" + frozen.Value);
 
 // ============ 类型声明区域（写在顶级语句之后） ============
 
@@ -225,7 +276,33 @@ public partial class Person
 public partial class Person
 {
     public void SayHi() => Console.WriteLine($"Hi, 我是 {Name}");
-}`,
+}
+
+public readonly record struct PointRec(int X, int Y);
+
+public class NamedPerson
+{
+    public required string First { get; init; }
+    public required string Last { get; init; }
+}
+
+public class Tagged
+{
+    private readonly Dictionary<string, string> _extra = new();
+    public string Name { get; set; } = "";
+    public string this[string key]
+    {
+        get => _extra[key];
+        set => _extra[key] = value;
+    }
+}
+
+public class FrozenId
+{
+    public FrozenId(int value) => Value = value;
+    public int Value { get; } // 不可变引用类型：没有 readonly class，靠 get-only
+}
+`,
     lang: 'cs',
   },
   {
@@ -413,6 +490,31 @@ public string Name             // 公开属性
 \`\`\`
 
 字段名常用下划线开头（\`_name\`）与属性区分。
+
+### 七、init vs set、required、计算属性
+
+- \`get; set;\`：任意时刻可改。
+- \`get; init;\`：仅构造/初始化器，之后对外只读。
+- \`required\`：初始化器必须出现该成员，否则 \`CS9035\`。
+- 计算属性：\`public string Full => $"{First} {Last}";\` 不要再配多余字段，除非计算很贵需要缓存。
+
+### 八、field 关键字与 \`[field:]\`（C# 14 标注）
+
+C# 14 允许在属性访问器里用 **\`field\`** 指编译器生成的后备字段，不必手写 \`_name\`：
+
+\`\`\`csharp
+public string Name
+{
+    get;
+    set => field = value.Trim();   // C# 14 field-backed；demo 基线 C# 12 请仍写 _name
+}
+\`\`\`
+
+特性打在后备字段上用 \`[field: MaybeNull]\` 这类目标（\`[field:]\`）。C# 12 项目保持显式 backing field，升级语言版本后再收。
+
+### 九、属性不要当远程调用
+
+属性 get 应便宜、无意外副作用（用户会写 \`obj.Count\` 当本地字段）。需要 IO、锁、懒加载失败，请用 \`GetXxxAsync()\` 方法。\`set\` 里做校验可以，但抛异常要文档化。\`[field: NonSerialized]\` / \`[field: MaybeNull]\` 这类目标在有自动后备字段时才有意义；手写 \`_x\` 就把特性打在字段上。
 
 ### 小结
 
@@ -764,6 +866,26 @@ Console.WriteLine("  ".IsBlank());  // True
 
 完整用法、对接口扩展、以及和 LINQ 的关系，见后面「密封类与扩展方法」一章。这里先混个脸熟：看到 \`this\` 参数就知道是扩展方法。
 
+### 十四、表达式体、局部函数 vs Lambda、in/ref/out
+
+\`int Add(int a, int b) => a + b;\` 是表达式体方法。局部函数能递归、能有迭代器/async、能看到封闭变量且不分配委托；Lambda 适合传入 \`Func<T>\` / LINQ。能写局部函数就别先 new 一个 \`Func\`。
+
+| 修饰 | 含义 |
+| --- | --- |
+| （无） | 值/引用按 C# 规则传递 |
+| \`ref\` | 别名，可读写 |
+| \`out\` | 必须写出 |
+| \`in\` | 只读别名 |
+| \`ref readonly\` | 只读别名，调用方可强调不拷贝 |
+
+可选参数必须在必选之后；命名参数可打乱顺序。两者常一起用：\`Draw(color: "red")\`。
+
+### 十五、params 集合（C# 13 标注）与 ModuleInitializer
+
+C# 12 及以前 \`params\` 只能是数组。**C# 13** 起 \`params ReadOnlySpan<T>\` / \`params IEnumerable<T>\` 等集合类型可直接接收。本教程 demo 仍用 \`params int[]\`，升级 LangVersion 后再换。
+
+\`[ModuleInitializer]\` 标记 \`internal static void Init()\`，在模块第一次被访问前运行，适合注册源生成器、编码提供器。不要在里面做重 IO 或碰未初始化的静态图——失败会让整个程序集加载炸掉。
+
 ### 小结
 
 方法签名看名字和参数；四种参数传递（值/ref/out/in）解决不同需求；params/默认参数/命名参数让调用更灵活；重载、ref 返回、局部函数、表达式方法、yield、async 是日常高频工具。
@@ -1078,6 +1200,20 @@ using var f = new FileWrapper("a.txt");  // 离开作用域自动 Dispose，异�
 
 继承场景的具体顺序在继承章节再展开。
 
+### 十四、主构造函数捕获、字段初始化顺序
+
+主构造函数参数若只在初始化器/字段里用一次，不一定成为字段；**在实例方法里再使用**才会被编译器捕获成隐藏字段。不想捕获就立刻赋给自己的属性/字段，避免意外多一块状态。
+
+顺序（简化）：静态字段 → 静态构造 → 基类实例字段 → 基类实例构造 → 派生字段 → 派生构造。对象初始化器在构造**返回后**再跑。依赖「别的字段已经赋值」时，写进构造函数体比写字段初始器更清晰。
+
+### 十五、静态构造线程安全、拷贝、几乎不要终结器
+
+静态构造由运行时保证**进程内只跑一次、线程安全**（在类型首次使用前）。不要自己再套一层 lock「以防万一」，除非你还在做别的惰性初始化。
+
+拷贝：class 赋值拷贝引用；要快照请写 \`Clone\` / \`with\` / 拷贝构造，默认没有。
+
+\`~T()\` / 终结器：只为**非托管**资源兜底，而且不保证及时、不保证顺序、会延长对象一代寿命。能 \`IDisposable\` + \`using\` 就够的类型，**不要**再写终结器。\`GC.SuppressFinalize(this)\` 是 Dispose 里取消终结的配套，不是日常 API。
+
 ### 小结
 
 构造函数分实例/私有/静态/主构造函数；\`: this(...)\` 链避免重复；C# 12 主构造函数是简化模板代码的利器，但 class 不自动生成属性；析构函数不推荐使用，非托管资源用 IDisposable。
@@ -1366,6 +1502,25 @@ var x = Sqrt(2);    // 不用 Math.Sqrt
 \`\`\`
 
 适合数学公式、单元测试断言等需要频繁调用静态方法的场景，但过度使用会降低可读性。
+
+### 十三、接口静态成员、const vs static readonly
+
+C# 11 起接口可以有 \`static abstract\` / \`static virtual\` 成员（泛型数学 \`INumber<T>\` 就是靠它）。实现类用 \`static T operator +(T, T)\` 等满足约束。这不是「静态类」，是编译期多态。
+
+| | 何时绑定 | 跨程序集 |
+| --- | --- | --- |
+| \`const\` | 编译期嵌入到调用方 | 改值必须重编译所有引用 |
+| \`static readonly\` | 类型初始化时 | 调用方读的是字段，可热更新版本 |
+
+配置、版本号、\`DateTime\`（不能 const）用 \`static readonly\`；真正的数字/字符串魔法用 \`const\`。
+
+### 十四、扩展方法 vs 静态帮助类
+
+扩展方法是**语法糖静态方法**，第一个参数加 \`this\`。需要发现性和链式 API 时用扩展；需要明确「这是工具、不是类型能力」时用 \`static class FooUtil\`。不要给 \`object\` 扩方法（会污染全局 IntelliSense）。解析规则与密封章一起记：实例方法永远优先于扩展。
+
+### 十五、静态状态是进程级的
+
+静态字段活到 AppDomain / 进程结束，多线程同时读写要当共享可变状态：不可变、或 \`lock\` / 并发集合。单例的 \`static readonly\` 实例在静态构造里创建是线程安全的；懒到第一次属性 get 再 \`new\`，你得自己保证只创建一次。测试里静态字段会串用例，能注入就别用静态可变。
 
 ### 小结
 

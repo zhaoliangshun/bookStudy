@@ -31,7 +31,7 @@ const chapters = [
 
 教程本身不能保证读者从此“开发没有问题”——真实生产能力还来自独立项目、代码评审、测试、发布演练和事故复盘。本书会明确教学模拟与真实框架的边界，并在最后给出可验证的毕业项目。
 
-全书正文 126 讲（加前言、结语共 128 篇），覆盖语言基础到生产交付：
+本书起草时按 92 讲（加前言、结语共 94 篇）规划目录；**当前线上成书为 138 篇**（前言 + 136 讲正文 + 结语），覆盖语言基础到生产交付：
 
 | 模块 | 章节 | 主题 |
 | --- | --- | --- |
@@ -49,7 +49,7 @@ const chapters = [
 | 内存管理与性能 | 65-69 | GC、IDisposable、Span、ref struct、性能技巧 |
 | 网络编程 | 70-73 | HttpClient、TCP、UDP/IPC、WebSocket/gRPC |
 | 工程化实战 | 74-78 | DI 与配置、单元测试、ASP.NET Core、EF Core、综合项目 |
-| 现代 C# 与生产工程 | 79-92 | SDK/NuGet、C# 13/14、架构、API、安全、数据一致性、韧性、消息、可观测性、测试、容器与 CI/CD |
+| 现代 C# 与生产工程 | 79-126 | SDK/NuGet、C# 13/14、架构、API、安全、数据一致性、韧性、消息、可观测性、测试、容器与 CI/CD；后续批次在起草目录上继续展开 |
 
 ### 二、目标读者
 
@@ -146,7 +146,18 @@ namespace MyApp
 
 ### 七、致读者
 
-学编程没有捷径，但有方法。**理解一行代码胜过抄十行代码，写一行自己的代码胜过看一百行别人的代码**。本书会陪你走完 C# 从入门到精通的全部旅程，准备好了吗？让我们开始吧。`,
+学编程没有捷径，但有方法。**理解一行代码胜过抄十行代码，写一行自己的代码胜过看一百行别人的代码**。本书会陪你走完 C# 从入门到精通的全部旅程，准备好了吗？让我们开始吧。
+
+### 八、成书规模说明
+
+站点目录以**线上 138 篇**为准（前言 + 136 讲 + 结语），不要把本前言草稿里的「94 篇 / 92 讲」当成现网篇数。交互 demo 仍按 \`net8.0\` / C# 12 可运行；C# 13/14 与 .NET 10 API 会在正文里单独标注。
+
+### 九、和站点目录对齐
+
+前言文件在运行时会被过滤，不进入正式目录，但它仍是仓库里的版本说明。若你从 git 历史看到「94 篇」，以站点侧栏 **138 篇** 为准：前言 1 篇 + 正文 136 讲 + 结语 1 篇。练习仍建议每讲做完再往下；跳读时先看该讲小结表。
+
+学的时候把本前言当「版本与节奏说明」，把侧栏 138 篇当「现在该读哪一讲」。两者不一致时，信侧栏。正文从第一章的运行时总览开始，按顺序读即可。
+`,
     code: `// ===========================================================
 // 第〇章 前言 —— 入门示例
 // 演示：顶级语句、变量声明、Console 输出、注释风格
@@ -336,6 +347,46 @@ CLR 内部的翻译官。它把 IL 在"运行的那一刻"翻译成本机机器�
 本书代码默认使用 JIT 模式（沙箱环境）。Native AOT 的取舍在「性能优化技巧」一章说明，发布部署可参考结语里的工程化方向。
 
 下面 demo 演示如何在代码中获取 .NET 运行时、操作系统等环境信息。
+
+### 八、程序集 vs 命名空间
+
+**程序集（assembly）**是部署与版本单元：编译后的 \`.dll\` / \`.exe\`，带强名称、版本和依赖。运行时按程序集加载类型。
+
+**命名空间（namespace）**只是逻辑分组，用来避免类型重名。一个程序集可以包含多个命名空间；同一个命名空间也可以拆到多个程序集（少见，但 BCL 里有）。
+
+\`\`\`csharp
+// 命名空间：逻辑名
+namespace MyApp.Services;
+
+// 程序集：物理文件 MyApp.dll —— 两者不是一回事
+Console.WriteLine(typeof(object).Assembly.GetName().Name); // System.Private.CoreLib
+\`\`\`
+
+查类型在哪个程序集：\`typeof(T).Assembly\`；查命名空间：\`typeof(T).Namespace\`。
+
+### 九、常见工作负载
+
+同一套 C# / .NET 运行时，可以铺到完全不同的宿主：
+
+| 工作负载 | 典型 SDK / 模板 | 用途 |
+| --- | --- | --- |
+| 控制台 / Worker | \`console\` / \`worker\` | CLI、后台任务、Windows Service / systemd |
+| ASP.NET Core | \`web\` / \`webapi\` | HTTP API、MVC、最小 API |
+| Blazor | \`blazor\` / WASM | 用 C# 写浏览器或服务器渲染 UI |
+| MAUI | \`maui\` | 桌面 / 移动跨平台 UI |
+| 类库 | \`classlib\` | 被上面所有宿主引用 |
+
+\`dotnet workload list\` 查看本机工作负载（MAUI、Aspire 等需要额外 workload，不是 SDK 默认就有）。
+
+### 十、C# 语言 vs .NET 运行时
+
+请把三层分开记：
+
+1. **C# 语言**：语法与类型规则（\`record\`、模式匹配、可空注解）。由 **Roslyn** 编译成 IL。
+2. **.NET 运行时（CLR）**：加载 IL、JIT/AOT、GC、线程、安全边界。
+3. **BCL / 共享框架**：\`List<T>\`、\`HttpClient\`、\`System.Text.Json\` 这些 API。
+
+所以「这段代码要 C# 12」和「这段 API 要 .NET 8」是两件事：语言特性看编译器/\`<LangVersion>\`，API 看 \`TargetFramework\`。C# 可以编译到 .NET，也可以（少见地）被其他 IL 宿主加载；.NET 上也能跑 F# / VB。选版本时两者都要对齐。
 
 ### 练习
 
@@ -589,6 +640,29 @@ dotnet run
 - 想本地完整调试，按上面步骤装 SDK 即可。
 
 下面 demo 用反射和 Environment 获取运行环境的详细信息。
+
+### 七、watch、global.json、SDK 列表与第一个 sln
+
+本地开发除了 \`dotnet new / run\`，这几条几乎每天用：
+
+\`\`\`bash
+dotnet --list-sdks              # 本机所有 SDK
+dotnet --list-runtimes
+dotnet new sln -n HelloAll      # 第一个解决方案
+dotnet sln add HelloCSharp/HelloCSharp.csproj
+dotnet watch run                # 保存即重新编译运行（热重载子集）
+dotnet workload list            # MAUI / Aspire 等可选工作负载
+\`\`\`
+
+**\`global.json\`** 把仓库钉在某一 SDK，避免「我机器是 10、CI 是 8」：
+
+\`\`\`json
+{ "sdk": { "version": "8.0.404", "rollForward": "latestFeature" } }
+\`\`\`
+
+放在解决方案根目录。\`rollForward\` 控制找不到精确版本时能否用更新补丁。团队项目应提交 \`global.json\`，个人玩具可以不写。
+
+**第一个 sln 的推荐形状**：\`src/App\`、\`src/Lib\`、\`tests/App.Tests\`，用 sln 把 csproj 聚在一起。IDE（Visual Studio / Rider / VS Code + C# Dev Kit）打开的是 sln 而不是单个 csproj，调试多项目时才不会乱。
 
 ### 练习
 
@@ -846,6 +920,46 @@ C# 预定义的保留字，有特殊含义。比如：\`class\`、\`int\`、\`if
 把这些元素组合起来就是 C# 程序。比如 \`int age = 18;\` 由 \`int\`（关键字）+ \`age\`（标识符）+ \`=\`（运算符）+ \`18\`（字面量）+ \`;\`（分隔符）组成。
 
 下一章我们会详细讲顶级语句的程序结构，让你彻底理解"为什么只写一行就能跑"。
+
+### 七、编译错误 vs 警告
+
+编译器输出分两级：
+
+- **error CSxxxx**：必须修，否则没有可运行程序集。例如 \`CS0029\` 类型不能转换、\`CS0103\` 名字不存在。
+- **warning CSxxxx**：能生成程序集，但通常是真问题。例如可空引用 \`CS8600\`、把 \`async void\` 用在事件以外。
+
+\`\`\`bash
+dotnet build -warnaserror        # 把警告当错误，CI 常用
+\`\`\`
+
+先读**第一条错误**：后面几十条常常是多米诺。警告不要用 \`#pragma warning disable\` 糊弄，除非你能写出为什么安全。
+
+### 八、注释与文件编码
+
+\`\`\`csharp
+// 单行注释
+/* 多行
+   注释 */
+/// <summary>XML 文档注释，给 IDE / DocFX 用</summary>
+\`\`\`
+
+源文件请保存为 **UTF-8**（现代 SDK 默认）。如果文件是 GBK / UTF-16 且未带 BOM，中文字面量和标识符可能编译失败或运行时 mojibake。团队统一 \`editorconfig\` 的 \`charset = utf-8\`。
+
+### 九、顶级语句 vs 传统 Main
+
+两种入口等价：编译器会把顶级语句塞进合成的 \`Program\` 类。传统 \`static void Main(string[] args)\` 仍完全合法，类库、多入口、需要显式访问修饰符时更合适。一个程序集只能有**一份**入口（一个顶级语句文件，或一个 Main）。
+
+### 十、怎么读堆栈跟踪
+
+运行时异常会打印类似：
+
+\`\`\`
+System.NullReferenceException: Object reference not set...
+   at Demo.Foo() in /app/Program.cs:line 12
+   at Demo.Main()
+\`\`\`
+
+读法：最上面是**抛出点**，往下是调用链。先打开 \`Program.cs:12\` 看谁为 null，再沿栈往上找谁没传对。\`at\` 后面的 \`in file:line\` 在 Release（无 PDB）里可能消失，本地调试请用 Debug 构建。
 
 ### 练习
 
@@ -1137,6 +1251,30 @@ Environment.Exit(1);   // 立即终止进程，退出码 1
 通常 \`return\` 更优雅，\`Environment.Exit\` 用于需要立即终止的场景（比如启动时检测到致命错误）。
 
 下一章我们会用这些知识写一个真正交互的控制台程序。
+
+### 十、一个文件才能写顶级语句
+
+一个编译单元里，**只有一个文件**可以包含顶级语句。第二个文件再写 \`Console.WriteLine\` 会报 \`CS8802\`。其他文件只能声明类型、命名空间。这也是「隐式 Program 类」只有一份的原因。
+
+### 十一、局部函数必须写在语句之后？
+
+顶级语句里，**可执行语句必须出现在成员声明之前**这一条只适用于类型/命名空间；**局部函数**可以夹在语句中间或写在用到它的语句之后：
+
+\`\`\`csharp
+int doubled = Twice(21);
+Console.WriteLine(doubled);
+int Twice(int x) => x * 2;   // 局部函数：允许写在调用点后面
+\`\`\`
+
+但不能把 \`class\` / \`enum\` 插在两段顶级语句中间——类型声明必须全部位于语句区之后。
+
+### 十二、隐式 Program 类
+
+编译器生成的类型名是 \`Program\`，方法是 \`<Main>$\`（或异步时的 \`<Main>$\` + 状态机）。这意味着：
+
+- 你自己再声明 \`class Program\` 可以，但是**不要再写第二个 Main**，会冲突。
+- 单测或反射里 \`typeof(Program)\` 能拿到这个合成类（有时是 \`internal\`）。
+- \`args\` 是顶级语句的隐式参数，等价 \`Main(string[] args)\`；空数组不是 null。
 
 ### 练习
 
@@ -1434,6 +1572,30 @@ foreach (string arg in args)
 复杂参数（带 \`--name value\` 形式）建议用 \`System.CommandLine\` 库，本书后续章节会讲。
 
 下面是一个综合 demo——猜数字游戏，把本章所有知识点都用上。
+
+### 十二、Out 与 Error：两条流不要混
+
+\`Console.Out\` 是标准输出（stdout），\`Console.Error\` 是标准错误（stderr）。正常结果写 Out，诊断/失败写 Error，这样重定向时用户还能 \`app > data.txt 2> log.txt\` 分开。
+
+\`Console.WriteLine\` 默认走 Out；\`Console.Error.WriteLine\` 走 Error。\`Console.SetOut\` / \`SetError\` 可替换成 \`StringWriter\` 做测试。
+
+### 十三、编码、ReadKey 与 Ctrl+C
+
+- **编码**：Windows 控制台默认代码页不一定是 UTF-8。输出中文乱码时设 \`Console.OutputEncoding = Encoding.UTF8\`（并确认终端本身是 UTF-8）。
+- **\`ReadKey\`**：读一个键，可 \`intercept: true\` 不回显，适合「按任意键继续」或密码的单字符。沙箱/重定向 stdin 时可能立刻结束或抛异常。
+- **Ctrl+C**：默认会终止进程。要优雅退出：
+
+\`\`\`csharp
+Console.CancelKeyPress += (_, e) =>
+{
+    e.Cancel = true;          // 阻止立刻杀进程
+    // 设置 CTS.Cancel()，让主循环收尾
+};
+\`\`\`
+
+### 十四、何时才用 Spectre.Console
+
+\`Console\` 够用：日志行、简单问答、退出码。需要颜色主题、表格、进度条、提示向导时，再引入 **Spectre.Console**（第三方库，本教程 demo 不依赖）。先把 Out/Error/编码/取消做对，再谈漂亮 TUI。
 
 ### 练习
 

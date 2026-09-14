@@ -133,6 +133,60 @@ var response = await client.SendAsync(request);
 - ✅ 用 \`ReadFromJsonAsync<T>\` 代替手动 \`JsonSerializer.Deserialize\`
 - ❌ 不要为每次业务请求创建并立即释放一个客户端
 
+### 十一、套接字耗尽：为什么“每次 new HttpClient”会炸
+
+底层真正贵的是 \`HttpMessageHandler\`（连接池、DNS 缓存、套接字）。\`HttpClient.Dispose()\` 会连带释放 handler，使 TCP 连接进入 \`TIME_WAIT\`。高并发下端口被占满，表现为偶发 \`SocketException\`。
+
+| 写法 | 连接池 | DNS 刷新 | 适用 |
+| --- | --- | --- | --- |
+| 每次 \`new HttpClient()\` + \`using\` | 丢失，易耗尽端口 | 每次都解析 | 禁止用于热路径 |
+| 进程级 \`static HttpClient\` | 复用 | 默认可能过期 | 控制台/短脚本尚可，须设 \`PooledConnectionLifetime\` |
+| \`IHttpClientFactory\` | 由工厂轮换 handler | 约 2 分钟换池 | ASP.NET / Worker 首选 |
+| 类型化客户端 | 同上 | 同上 | 按下游系统拆分配置 |
+
+\`IHttpClientFactory\` 每次 \`CreateClient()\` 给出**短寿命的 \`HttpClient\` 包装**，共享长寿命 handler。不要把工厂给出的客户端再做成自己的静态单例去 \`Dispose\`。
+
+\`\`\`csharp
+// 命名客户端
+services.AddHttpClient("payments", c =>
+{
+    c.BaseAddress = new Uri("https://pay.example.com/v1/"); // 尾斜杠见下节
+    c.Timeout = TimeSpan.FromSeconds(10);
+    c.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+});
+
+// 类型化客户端：业务类构造函数注入 HttpClient
+services.AddHttpClient<PaymentClient>(c =>
+    c.BaseAddress = new Uri("https://pay.example.com/v1/"));
+\`\`\`
+
+类型化客户端把 BaseAddress、默认头、超时收进一个类，调用方只依赖 \`PaymentClient\`，测试时替换整个类型即可。
+
+### 十二、BaseAddress 尾斜杠与相对路径（必踩坑）
+
+\`new Uri(baseUri, relative)\` 按 RFC 3986 拼接：**基址最后一段若无 \`/\` 会被丢掉**。
+
+| BaseAddress | 相对路径 | 实际 URL |
+| --- | --- | --- |
+| \`https://api.example.com/v1/\` | \`users\` | \`https://api.example.com/v1/users\` ✅ |
+| \`https://api.example.com/v1\` | \`users\` | \`https://api.example.com/users\` ❌ 丢了 v1 |
+| \`https://api.example.com/v1/\` | \`/users\` | \`https://api.example.com/users\` ❌ 绝对路径覆盖 |
+
+约定：BaseAddress **必须以 \`/\` 结尾**；业务路径写成 \`users/42\` 而不是 \`/users/42\`。
+
+### 十三、请求头、HTTP/2–3、认证、解压与 Cookie
+
+- **头**：默认头放 \`DefaultRequestHeaders\`；单次头放 \`HttpRequestMessage.Headers\`。\`Authorization\`、\`X-Request-Id\`、\`User-Agent\` 是生产标配。内容类型属于 \`HttpContent.Headers\`，不要加到请求头上。
+- **HTTP/2**：\`HttpClient\` 在 HTTPS 上默认协商 HTTP/2（多路复用、头部压缩）。需要强制版本时设 \`request.Version = HttpVersion.Version20\`。
+- **HTTP/3 / QUIC**：要额外打开（如 \`HttpVersion.Version30\` + 平台支持），不能假设“设了就能通”；回退到 HTTP/2 是正常现象。
+- **认证处理器**：用 \`DelegatingHandler\` 在发送前注入 Token（读 Token 缓存、处理 401 刷新），比每个调用手写 \`Headers.Authorization\` 稳。多个 handler 按注册顺序组成管道。
+- **解压**：\`HttpClientHandler.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Brotli\`，同时带上 \`Accept-Encoding\`。自己解压容易和自动解压重复。
+- **Cookie**：默认 \`HttpClientHandler\` 可挂 \`CookieContainer\`。跨站点调用不要盲目开启；服务端 API 更常用 Bearer，而不是浏览器 Cookie。
+
+### 十四、韧性：本章只指路
+
+重试、超时预算、熔断、限流与缓存属于**另一层策略**，完整写法见本书**第八十五章**（HTTP 韧性、限流与缓存）。这里只记三条：只重试暂时故障；非幂等 POST 先有幂等键；总时间预算要封顶，避免“每层各重试三次”的重试风暴。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -418,6 +472,67 @@ finally
 - 先用 TcpClient/NetworkStream；只有性能分析证明需要时再评估 \`SocketAsyncEventArgs\` 或 \`System.IO.Pipelines\`
 - TCP 是无消息边界的字节流，生产协议必须定义长度前缀、分隔或固定帧，并处理半包/粘包、超时和最大帧大小
 
+### 十一、帧边界：长度前缀（半包 / 粘包）
+
+一次 \`ReadAsync\` 可能读到半条消息，也可能读到两条粘在一起的消息。生产协议必须自己组帧，最稳妥的是 **4 字节大端长度 + 载荷**：
+
+\`\`\`csharp
+// 写：先写长度，再写正文
+Span<byte> len = stackalloc byte[4];
+BinaryPrimitives.WriteInt32BigEndian(len, payload.Length);
+await stream.WriteAsync(len.ToArray());
+await stream.WriteAsync(payload);
+
+// 读：循环直到凑齐 N 字节，并校验 N <= maxFrame
+async Task<byte[]> ReadExactAsync(Stream s, int n, CancellationToken ct)
+{
+    var buf = new byte[n];
+    int off = 0;
+    while (off < n)
+    {
+        int r = await s.ReadAsync(buf.AsMemory(off, n - off), ct);
+        if (r == 0) throw new EndOfStreamException();
+        off += r;
+    }
+    return buf;
+}
+\`\`\`
+
+还要设**单帧上限**（例如 1 MiB）和**读超时**。换行分隔只适合文本且载荷内不能出现裸换行。
+
+### 十二、Nagle、Linger、Backlog
+
+| 选项 | API | 何时改 |
+| --- | --- | --- |
+| Nagle | \`client.NoDelay = true\`（\`SocketOptionName.NoDelay\`） | 小包低延迟（RPC、游戏）；大块吞吐可保持默认 |
+| Linger | \`LingerOption(true, seconds)\` 或关闭 linger | \`Close()\` 时未发完的数据：等一会再 RST，或立即丢弃 |
+| Backlog | \`listener.Start(backlog)\` | 突发连接排队长度；默认过小会在握手阶段被拒 |
+
+Nagle 会把小写入攒成更大的段。\`WriteAsync\` 已经很小且下一包马上要发时，关掉 Nagle，否则会多等一个 ACK。Linger 设错会导致进程退出后对端看到“连接重置”而不是优雅 FIN。
+
+### 十三、TLS：\`SslStream\` 包在 \`NetworkStream\` 外
+
+明文 TCP 只适合本机实验。生产在 \`GetStream()\` 之后立刻升级：
+
+\`\`\`csharp
+using var ssl = new SslStream(tcp.GetStream(), leaveInnerStreamOpen: false);
+await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+{
+    TargetHost = "api.example.com",
+    EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+});
+// 此后只对 ssl 读写，不要再碰内层 NetworkStream
+\`\`\`
+
+服务端用 \`AuthenticateAsServerAsync\` 并提供证书。证书校验失败必须中止，不要“为了方便”关掉 \`RemoteCertificateValidationCallback\`。自定义协议的加密应走 TLS，不要自造握手。
+
+### 十四、IPv6 与 DualMode
+
+- \`IPAddress.IPv6Any\`（\`::\`）+ \`socket.DualMode = true\`：同一端口同时接 IPv4 映射与 IPv6。
+- 只绑 \`IPAddress.Any\`（\`0.0.0.0\`）的监听器在纯 IPv6 网络上不可达。
+- 客户端优先 \`Dns.GetHostAddressesAsync\` 再按地址族尝试；\`ConnectAsync(host, port)\` 已做双栈尝试时不要再自己写一套更差的重试。
+- 环回测试：IPv4 用 \`127.0.0.1\`，IPv6 用 \`::1\`，二者不是同一个套接字。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -617,6 +732,48 @@ int value = accessor2.ReadInt32(0);
 | NamedPipe | ✅ | ✅ | 快 | 低 |
 | MemoryMappedFile | ✅ | ❌（需配合信号量） | 极快 | 中 |
 | AnonymousPipe | ✅ | ❌（单向） | 快 | 低 |
+
+### 七、UDP 不可靠性、MTU 与组播
+
+UDP **不保证**到达、顺序、不重复。应用必须自己处理：超时重发、序号去重、或者干脆允许丢（心跳、遥测）。把 UDP 当“更快的 TCP”是协议级错误。
+
+| 现象 | 含义 | 对策 |
+| --- | --- | --- |
+| 丢包 | 路由器/主机队列满就扔 | 超时重发或接受损失 |
+| 乱序 | 后发的数据报先到 | 序号 + 重组窗口 |
+| 重复 | 重传或路由复制 | 幂等处理 |
+| 截断 | 接收缓冲小于数据报 | 按协议最大帧租缓冲 |
+
+**MTU**：以太网常见 1500 字节。IP + UDP 头大约 28 字节，UDP 载荷超过约 **1472** 就可能分片；分片后再丢一片，整报作废。局域网实验可以发大包，广域网/互联网应把业务帧控制在安全 MTU 内，或自己做应用层分片。
+
+**组播**：\`udp.JoinMulticastGroup(IPAddress.Parse("239.1.2.3"))\` 让一发多收（局域网发现、行情扇出）。跨网段需要 IGMP/路由器支持；公网几乎不可用。广播（\`255.255.255.255\`）更粗，仅限同网段。
+
+### 八、信号 vs 消息、DNS
+
+- **信号**：只通知“发生了某事”（命名事件、信号量、空数据报）。接收方再去共享内存/文件读详情。
+- **消息**：载荷本身就是完整事件（UDP 包、管道里的一帧）。跨进程优先消息，少发明“信号 + 共享内存”除非剖析证明需要。
+- **DNS**：默认走 **UDP/53**，响应过大或截断时回退 **TCP/53**。\`Dns.GetHostEntryAsync\` / \`GetHostAddressesAsync\` 受系统缓存影响；HttpClient 的 DNS 过期问题见第七十章的 \`PooledConnectionLifetime\`。不要把 DNS 查询结果在进程里缓存数小时还不刷新。
+
+### 九、Unix 域套接字与命名管道对照
+
+| 点 | Unix Domain Socket | Named Pipe |
+| --- | --- | --- |
+| 地址 | 文件系统路径（\`/tmp/app.sock\`） | 名字（Windows \`\\\\.\\pipe\\name\`；Unix 上 .NET 也落成套接字文件） |
+| 安全 | 靠文件权限 | 靠 ACL / 当前用户 |
+| 长度坑 | macOS 路径有约 100 字节上限 | 名字过长同样失败 |
+| 清理 | 重启前 \`File.Delete(path)\`，否则 Bind 失败 | 服务端进程退出即释放 |
+
+二者都**不经网卡**，延迟低于本机 TCP。跨机器请回到 TCP/UDP。父子进程一次性单向流用 \`AnonymousPipe\`，不必上命名管道。
+
+### 十、UDP 接收、连接型 UDP 与 IPC 同步
+
+\`ReceiveAsync\` 一次给出**一整份数据报**（这是与 TCP 字节流的根本差别）。接收缓冲必须 ≥ 对端可能发送的最大包，否则数据被截断且 \`SocketException\`。\`UdpClient.Client.ReceiveBufferSize\` 只影响套接字队列，不能替代“按协议最大帧租数组”。
+
+**连接型 UDP**：\`udp.Connect(ep)\` 之后 \`SendAsync\` 可省略终点，内核会丢掉不是该对端的包。这不是握手，只是过滤器；对端消失你不会收到 RST（多数 NAT 上尤其如此）。
+
+共享内存必须另配同步：内存映射只是字节，**没有**消息边界。用命名 \`Mutex\` / \`EventWaitHandle\` / 管道当信号，用偏移表当消息。只写 \`Write(0, 42)\` 而不通知读者，读者会读到半更新。跨平台命名同步对象能力不同，macOS 上优先匿名管道 + 文件后备 MMF（本章 demo 已如此）。
+
+DNS 再补一句：不要用 \`Dns.GetHostEntry\` 的阻塞同步重载堵线程池；超时要自己用 \`CancellationToken\`。单元测试把名字解析做成缝，避免 CI 依赖公网 DNS。
 
 ### 练习
 
@@ -853,6 +1010,59 @@ Protobuf 比 JSON 更快、更小，但不可读。可读场景用 protobuf-net�
 | 内部服务间通信 | gRPC |
 | 实时双向通信 | WebSocket / SignalR |
 | 移动端推送 | SignalR / FCM |
+
+### 十一、握手：HTTP Upgrade 与 Accept
+
+WebSocket **先走普通 HTTP**。客户端发：
+
+\`\`\`
+GET /ws HTTP/1.1
+Host: example.com
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: <16 字节随机的 Base64>
+Sec-WebSocket-Version: 13
+\`\`\`
+
+服务端若同意，回 \`101 Switching Protocols\` 和 \`Sec-WebSocket-Accept\`（对 Key 做固定哈希）。ASP.NET Core 里 \`UseWebSockets()\` + \`AcceptWebSocketAsync()\` 完成这次升级；**先检查 \`IsWebSocketRequest\`**，否则按普通 HTTP 404/400。握手阶段仍可走鉴权中间件（Cookie / JWT），握手成功后再进入帧循环。
+
+### 十二、Ping / Pong 与 ClientWebSocket 状态机
+
+协议内置控制帧：一端发 Ping，对端必须回 Pong。\`ClientWebSocket\` 在部分平台会自动应答 Ping；应用层仍应自己做**空闲超时**（例如 30s 无任何帧就关）。
+
+| \`WebSocketState\` | 含义 |
+| --- | --- |
+| \`Connecting\` | \`ConnectAsync\` 进行中 |
+| \`Open\` | 可收发 |
+| \`CloseSent\` / \`CloseReceived\` | 半关闭，还需把关闭握手走完 |
+| \`Closed\` / \`Aborted\` | 结束；对象不能重连，必须 \`new ClientWebSocket()\` |
+
+\`ReceiveAsync\` 的 \`EndOfMessage\` 为 false 时要把分片拼满。关闭时用 \`CloseAsync(NormalClosure, ...)\`，不要直接 \`Dispose\` 让对端看成异常断开。
+
+### 十三、Protobuf 与 grpc-dotnet
+
+gRPC 的契约是 \`.proto\`，用 \`Grpc.Tools\` / \`protobuf-net.Grpc\` 生成 C#。运行时栈是 **grpc-dotnet**（\`Grpc.AspNetCore\` 服务端 + \`Grpc.Net.Client\` 客户端），架在 HTTP/2 上，不是已退役的 \`grpc.core\` 原生 C 库。
+
+\`\`\`protobuf
+service Greeter {
+  rpc SayHello (HelloRequest) returns (HelloReply);           // Unary
+  rpc Clock (ClockRequest) returns (stream Tick);             // Server stream
+  rpc Upload (stream Chunk) returns (UploadAck);              // Client stream
+  rpc Chat (stream ChatMsg) returns (stream ChatMsg);         // Bidi
+}
+\`\`\`
+
+四种流已在第七节表中。选型补充：内部同步查询用 Unary；日志/行情推送用 Server stream；大文件分块用 Client stream；双向协商才上 Bidi。不要把 Bidi 当默认，状态机会复杂得多。
+
+### 十四、何时改用 SignalR（后文）
+
+WebSocket 适合你自己控帧、只有一种传输。出现这些需求就换 **SignalR**（完整管道见本书**第一百零一章**）：
+
+- 浏览器要自动降级到 SSE / 长轮询
+- 按用户 / 组推送、自动重连、RPC 风格 \`Clients.User(id).SendAsync\`
+- 不想手写心跳、分包与代理缓冲
+
+SignalR 默认仍优先 WebSocket；它是更高层的应用模型，不是另一种导线协议。gRPC 也可以做流式，但浏览器原生支持弱，浏览器实时推送优先 SignalR。
 
 ### 练习
 
@@ -1210,6 +1420,39 @@ app.MapGet("/cache", ([FromKeyedServices("local")] ICache cache) => cache.Get("k
 \`\`\`
 
 键应集中定义，避免在业务代码散落字符串。实现数量多、选择规则复杂时，显式工厂或策略对象通常更清楚。
+
+### 十二、俘虏依赖（Captive Dependency）
+
+**Singleton 不能直接依赖 Scoped / Transient。** 根容器会把 Scoped 实例“俘虏”成事实上的单例：第一个请求的 \`DbContext\` 被后续所有请求共用，轻则数据串了，重则并发异常。
+
+| 消费方 | 依赖 Transient | 依赖 Scoped | 依赖 Singleton |
+| --- | --- | --- | --- |
+| Transient | ✅ | ✅（在同一 scope 内） | ✅ |
+| Scoped | ✅ | ✅ | ✅ |
+| Singleton | ❌ 俘虏 | ❌ 俘虏 | ✅ |
+
+开发环境打开 \`ValidateScopes = true\`（\`WebApplication.CreateBuilder\` 默认已开）会在解析时抛错。必须在单例里用 Scoped 时，注入 \`IServiceScopeFactory\`，**每次操作 \`CreateScope()\`**，用完释放。不要把 \`IServiceProvider\` 存进字段到处 \`GetRequiredService\`（服务定位器反模式）。
+
+### 十三、IOptions 三件套怎么选
+
+| 抽象 | 生命周期 | 热更新 | 典型用法 |
+| --- | --- | --- | --- |
+| \`IOptions<T>\` | 单例，启动时绑定一次 | 否 | 几乎不变的开关、特性名 |
+| \`IOptionsSnapshot<T>\` | Scoped，每个请求重读 | 是（新 scope） | Web 请求内读最新配置 |
+| \`IOptionsMonitor<T>\` | 单例，\`CurrentValue\` + \`OnChange\` | 是 | 后台服务、缓存策略即时生效 |
+
+\`ValidateOnStart()\` 把错误从“第一次用到才炸”提前到进程启动失败，配合 \`DataAnnotations\` 或委托校验。环境变量 provider 通常**不会**在进程内热更新；\`reloadOnChange: true\` 的 JSON 文件才会。
+
+### 十四、IHostedService / BackgroundService
+
+长寿命后台工作（队列消费、定时对账）注册为 \`IHostedService\`，由宿主在启动后 \`StartAsync\`、关机时 \`StopAsync\`。\`BackgroundService\` 提供 \`ExecuteAsync(stoppingToken)\` 循环模板：
+
+\`\`\`csharp
+services.AddHostedService<OutboxDispatcher>();
+// ExecuteAsync 里必须尊重 stoppingToken，禁止吞掉取消后空转
+\`\`\`
+
+Hosted service 默认是 **Singleton**。里面需要 \`DbContext\` 时用 \`IServiceScopeFactory\`，否则又是俘虏依赖。优雅停机与取消令牌的完整套路见后文容器/停机章。
 
 ### 练习
 
@@ -1836,6 +2079,43 @@ public class UserRepoTests : IClassFixture<DatabaseFixture>
 }
 \`\`\`
 
+### 十三、测试替身：Dummy / Stub / Fake / Mock / Spy
+
+| 种类 | 行为 | 何时用 |
+| --- | --- | --- |
+| Dummy | 只为填参数，从不被调用 | 构造函数有用不到的依赖 |
+| Stub | 固定返回值 | 隔离 IO，断言被测对象的输出 |
+| Fake | 能工作的简化实现（内存仓储） | 状态在多次调用间保留 |
+| Mock | 预设交互 + 验证调用 | 要证明“发过一封邮件” |
+| Spy | 包一层真对象并记账 | 部分真实、部分断言 |
+
+能写 Fake 就少用动态 Mock：Fake 可读、可复用。Moq 适合验证“副作用发生过”；不要对没有交互需求的查询仓储堆 \`Verify\`。
+
+### 十四、时间与随机：缝（Seam）
+
+\`DateTime.Now\` / \`Random\` 写进业务类会让测试偶发失败。抽接口：
+
+\`\`\`csharp
+public interface IClock { DateTimeOffset UtcNow { get; } }
+public interface IIdGenerator { Guid NewId(); }
+
+// 测试里注入 FixedClock(2026-09-12) 和 StubId(...)
+\`\`\`
+
+过期券、计费日切、抽奖权重都必须走缝。生产实现用 \`TimeProvider\`（.NET 8+）或薄包装。
+
+### 十五、覆盖率 ≠ 质量，以及并行
+
+\`coverlet\` 给出的百分比只说明“哪些行执行过”，不说明断言有没有抓住行为。100% 覆盖仍可能漏并发、时序、权限。优先测：**分支边界、异常路径、跨层契约**，而不是为 getter 补测试。
+
+xUnit **默认并行**跑不同测试类。共享静态字段、临时文件名、本机端口会互相踩。对策：
+
+- 每个测试用 \`Guid\` 隔离文件/键
+- 必须串行的类加 \`[Collection("db")]\`（同集合不并行）
+- 不要在测试里改 \`CultureInfo.CurrentCulture\` 而不还原
+
+集成测试、WebApplicationFactory 的策略见第八十八章。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -2340,6 +2620,40 @@ app.MapGet("/hello", (ILogger<Program> logger) =>
     return "Hello";
 });
 \`\`\`
+
+### 十二、中间件顺序（写错就全错）
+
+管道是双向洋葱：请求从上到下，响应从下到上。**顺序就是安全与正确性。**
+
+| 推荐顺序 | 职责 | 放错的后果 |
+| --- | --- | --- |
+| 异常 / ProblemDetails | 把后面的异常变成 RFC 7807 | 放后面则未处理异常直接 500 HTML |
+| HTTPS 重定向 | 明文转 HTTPS | 认证 cookie 先在 HTTP 上发出 |
+| 静态文件 | 短路 css/js | 放到授权后，静态资源也被拦 |
+| 路由 | 匹配端点 | 认证读不到端点元数据 |
+| 认证 | 填 \`HttpContext.User\` | 授权时 User 仍是空 |
+| 授权 | 看策略 | 放认证前等于没鉴权 |
+| 端点 | Minimal / Controller | — |
+
+\`Map*\` 是端点，不是 \`Use\` 中间件；\`UseAuthentication\` 必须在 \`UseAuthorization\` 之前。开发环境的异常页不要开到生产。
+
+### 十三、Minimal API vs Controller
+
+| | Minimal API | Controller |
+| --- | --- | --- |
+| 样板 | 少，适合垂直切片 | 过滤器、模型绑定生态成熟 |
+| 组织 | 可用端点组 \`MapGroup\` | 按控制器/特性分 |
+| OpenAPI | 要主动标 metadata | 约定更全 |
+| 选择 | 新服务、BFF、小 API | 大团队已有 MVC 习惯、复杂协商 |
+
+两者共享同一管道和 DI，可以并存。不要用“Minimal 不能写大项目”当教条。
+
+### 十四、ProblemDetails、健康检查、配置、Kestrel
+
+- **ProblemDetails**：\`AddProblemDetails()\` + 异常处理中间件，4xx/5xx 回 \`application/problem+json\`（\`type/title/status/detail/instance\`），比随手 \`{ error: "..." }\` 好对接。
+- **健康检查**：\`AddHealthChecks()\`，\`/health/live\` 只看进程，\`/health/ready\` 探依赖（DB、缓存）。编排器按 ready 摘流，不要把活探和就绪探混成一个。
+- **配置**：\`appsettings.json\` → \`appsettings.{Environment}.json\` → 环境变量 → 命令行。连接串与密钥不进仓库，开发用 User Secrets。
+- **Kestrel vs 反向代理**：Kestrel 是应用服务器。生产常把 **Nginx / IIS / YARP / 云 LB** 放前面做 TLS 终结、限流、静态资源。此时开启 \`UseForwardedHeaders\`，否则 \`Request.Scheme\` 和客户端 IP 是错的。不要把 Kestrel 裸绑 80/443 当唯一防线，除非你清楚证书与防火墙怎么管。
 
 ### 练习
 
@@ -2981,6 +3295,33 @@ public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 - 高频固定查询可评估 \`EF.CompileQuery\`，先用分析数据证明收益
 - 大批量更新/删除优先评估 \`ExecuteUpdateAsync\` / \`ExecuteDeleteAsync\`，并理解它们绕过 ChangeTracker
 
+### 十三、跟踪、迁移与并发令牌
+
+**跟踪**：\`SaveChanges\` 只提交 ChangeTracker 里 Added/Modified/Deleted 的实体。\`AsNoTracking()\` 的实例改属性再 \`SaveChanges\` **不会**写库，除非 \`Attach\` + 标 Modified，或改用跟踪查询。同一上下文不要用跟踪查询把整表装进内存。
+
+**迁移**：\`dotnet ef migrations add\` 生成 C# 差异，\`database update\` 应用。生产用 \`migrate\` 程序或 CI 跑更新，**不要** \`EnsureCreated()\`（它不走迁移历史）。多人改模型要合并迁移，避免两份 \`Inital\` 抢同一表。回滚靠 \`migrations script\` 与备份，不是靠删文件夹。
+
+**并发令牌**：\`[Timestamp]\` / \`IsRowVersion()\` 或 \`IsConcurrencyToken()\` 在 UPDATE 的 WHERE 里带旧值。冲突抛 \`DbUpdateConcurrencyException\`：重读、合并或返回 409。不要捕获后盲目再 \`SaveChanges\`。
+
+### 十四、原始 SQL 与提供程序差异
+
+\`FromSql\` / \`FromSqlInterpolated\`（优先插值防注入）用于 LINQ 表达不了的 SQL；\`ExecuteSql\` 做批量。结果实体必须与列映射对齐，且尽量 \`AsNoTracking\`。**禁止**把用户字符串拼进 \`FromSqlRaw\`。
+
+| 点 | SQL Server | PostgreSQL | SQLite | InMemory |
+| --- | --- | --- | --- | --- |
+| 大小写 / 排序 | 实例 collation | 按 DB collation | 常不敏感 | 内存相等 |
+| JSON / 数组 | 近年才补 | 原生强 | 弱 | 无 |
+| 迁移 DDL | 完整 | 完整 | 改列受限 | **无真 SQL** |
+| 行版本 | \`rowversion\` | \`xmin\` / 自管 | 需自己列 | 不可信 |
+
+同一套 LINQ 在不同提供程序上翻译不同，甚至客户端评估。集成测试必须打**真实提供程序**。
+
+### 十五、AsSplitQuery 与测试警告
+
+多个 \`Include\` 一次 JOIN 会**笛卡尔放大**（1 用户 × 10 订单 × 20 明细 = 200 行再在内存分组）。\`AsSplitQuery()\` 拆成多条 SQL，行数正常、往返变多。全局可 \`UseQuerySplittingBehavior\`。
+
+\`UseInMemoryDatabase()\` **不是**关系数据库：没有约束、事务隔离、SQL 翻译。用它“测仓储”会放过生产才炸的 bug。单元测试 Fake 仓储即可；要测查询翻译用 SQLite 文件/容器或 Testcontainers（后文测试章）。本章 demo 的 List 模拟同样**没有** ChangeTracker 语义。
+
 ### 练习
 
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
@@ -3516,6 +3857,74 @@ taskmanager delete 2                # 删除任务 2
 - **依赖倒置**：Service 依赖接口而非具体实现
 - **开闭原则**：增加功能不改老代码
 - **异常分层**：底层抛异常，上层捕获并友好提示
+
+### 十二、更完整的任务领域（本部分压轴）
+
+第七十～七十七章分别练了 HTTP、TCP、IPC、实时协议、DI、测试、ASP.NET、EF。本章把它们收成**一个可演示的产品切片**：控制台 TaskManager。领域不要停在“标题 + 状态”，至少能表达真实协作：
+
+| 概念 | 字段（建议） | 不变量 |
+| --- | --- | --- |
+| \`TaskItem\` | Id, Title, Description, Status, Priority, AssigneeId, ProjectId, DueAt, CreatedAt, CompletedAt, RowVersion | Title 非空；Done 必须带 CompletedAt；Cancelled 不可再 Done |
+| \`Project\` | Id, Name, OwnerId | 名称唯一（同一用户下） |
+| \`User\` | Id, Name, Email | Email 规范化后唯一 |
+| \`TaskComment\` | Id, TaskId, AuthorId, Body, At | 删除任务时级联或禁止 |
+
+状态机：\`Todo → InProgress → Done\`，任意未完成可 \`Cancelled\`；**禁止** \`Done → Todo\` 静默回头（要重开就走显式 \`Reopen\` 并记审计）。截止日期用 \`DateTimeOffset\`，比较用 \`IClock\`（第七十五章的时间缝）。
+
+### 十三、分层职责与依赖方向
+
+\`\`\`
+CLI / 未来 Minimal API    →  只做适配（参数、HTTP、ProblemDetails）
+        ↓
+TaskService               →  不变量、状态机、权限（“谁能改这条”）
+        ↓
+ITaskRepository           →  持久化细节（JSON / EF / 内存）
+\`\`\`
+
+规则：
+
+- Service **不** \`Console.Write\`、不读 \`args\`、不引用 ASP.NET 类型。
+- Repository **不** 做“标题不能为空”这种业务校验，只保证存取。
+- 新端口（HTTP、gRPC）只加适配层，不复制 Service。
+- 需要事务时由 Service 开 Unit of Work / \`DbContext\` 范围，而不是让 CLI 直接 \`SaveChanges\`。
+
+演示里的手工 DI 对应第七十四章的容器；换成 \`ServiceCollection\` 时生命周期是：\`JsonTaskRepository\` Singleton（文件锁）或 Scoped（若改 EF），\`TaskService\` Transient/Scoped，\`IClock\` Singleton。
+
+### 十四、验收测试清单（先写红，再扩功能）
+
+| # | 用例 | 期望 |
+| --- | --- | --- |
+| T1 | \`add\` 空标题 | 失败，不写文件 |
+| T2 | \`add\` 合法标题 | Id 递增，Status=Todo，CreatedAt=时钟 |
+| T3 | \`list\` 空库 | 空表，退出码 0 |
+| T4 | \`done\` 已存在 Todo | Status=Done，CompletedAt 有值 |
+| T5 | \`done\` 不存在 Id | 友好错误，非空引用崩溃 |
+| T6 | \`delete\` 后再 \`list\` | 不再出现 |
+| T7 | 非法命令 | 用法说明，退出码 ≠ 0 |
+| T8 | 并发两个进程写同一文件 | 不损坏 JSON（锁或原子替换） |
+
+用第七十五章的 Fake 仓储测 Service；用临时目录测 JSON 仓储。覆盖率数字不重要，**这 8 条全绿**才算本章 demo 可合并。
+
+### 十五、下一步（有意没做）与完成定义
+
+本章**故意不写**这些，留给你按需加，也作为第十三部分的出口作业：
+
+1. **认证**：谁在操作？CLI 先读环境变量 \`TASK_USER\`，以后接到 ASP.NET 就是 JWT（第八十三章）。
+2. **持久化升级**：\`ITaskRepository\` 加 EF Core + SQLite，JSON 实现留下当测试 Fake。迁移与并发令牌用第七十七章。
+3. **只读查询分离**：\`list --status done --overdue\` 走 \`AsNoTracking\`。
+4. **宿主**：\`BackgroundService\` 扫描逾期任务打印提醒（第七十四章 \`IHostedService\`）。
+5. **HTTP 端口**：Minimal API + ProblemDetails + 健康检查（第七十六章），出站通知走 \`IHttpClientFactory\`（第七十章，韧性见第八十五章）。
+
+**完成定义（Definition of Done）**——本部分毕业，不是“demo 能跑”：
+
+- [ ] 领域不变量有测试（T1–T8）
+- [ ] 依赖只指向接口，JSON 可被内存实现替换
+- [ ] 时钟与文件路径可注入，测试不碰真实时钟/仓库目录
+- [ ] 错误分：用法错误 / 未找到 / 状态非法 / IO 失败，用户看到的是一句话而不是堆栈
+- [ ] README 写清命令、数据文件位置、如何跑测试
+- [ ] 你能向同事讲清：哪一层可换成 Web，哪一层必须保持稳定
+
+做到以上清单，第十三部分才算合拢；后面第十四部分起进入 SDK、架构与生产工程。
 
 ### 练习
 

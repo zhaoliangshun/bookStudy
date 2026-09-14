@@ -172,6 +172,30 @@ string s = default;     // null
 DateTime dt = default;  // 0001-01-01 00:00:00
 \`\`\`
 
+### 十、弃元 \`_\`、ref 局部变量与 required
+
+\`\`\`csharp
+_ = int.TryParse("12", out var n);   // 只要 n，不要 bool
+ref int head = ref nums[0];          // ref 局部：head 是别名，不是拷贝
+head = 7;                            // 等于改 nums[0]
+\`\`\`
+
+\`_\` 表示「有这个值但我不用」。\`ref\` 局部变量让你给数组元素或字段起别名，避免大 struct 拷贝；它必须指向已存在的存储，不能指向计算临时值。
+
+\`const\` / \`readonly\` / \`required\` 别混：
+
+| | 何时定值 | 典型用途 |
+| --- | --- | --- |
+| \`const\` | 编译期 | 魔法数字、跨程序集要小心（会内联） |
+| \`readonly\` | 构造期（实例）或类型初始化（static） | 运行期才知道的不变值 |
+| \`required\` | 对象初始化器必须赋值 | 防止 \`new Person()\` 漏填 Name |
+
+### 十一、default、作用域与生命周期
+
+\`default\` / \`default(T)\`：值类型给全 0，引用类型给 \`null\`，可空值类型给 \`HasValue=false\`。
+
+作用域：从声明到最近的 \`}\`。生命周期：局部变量活到作用域结束（栈帧弹出）；字段活到对象不可达。不要把 \`ref\` 或 \`span\` 指向即将销毁的局部（编译器会拦大部分）。循环里反复 \`new\` 大对象会抬高 GC，能复用就复用。
+
 ### 小结
 
 - 显式类型清晰，\`var\` 简洁，看场景选择。
@@ -442,6 +466,47 @@ byte[] bytes = BitConverter.GetBytes(12345);
 int value = BitConverter.ToInt32(bytes, 0);
 \`\`\`
 
+### 十一、nint、Half、Int128 与日期新类型
+
+| 类型 | 说明 | 何时用 |
+| --- | --- | --- |
+| \`nint\` / \`nuint\` | 指针宽度整数（32 位进程 4 字节，64 位 8 字节） | 互操作、Span 下标、底层库 |
+| \`Half\` | 16 位浮点（.NET 5+） | 机器学习、图形、存盘体积敏感 |
+| \`Int128\` / \`UInt128\` | 128 位整数（.NET 7+） | 超大整数、部分加密/账本 |
+| \`DateOnly\` / \`TimeOnly\` | 只有日期 / 只有时刻（.NET 6+） | 生日、营业时间，避免 DateTime 时区坑 |
+| \`Guid\` | 128 位唯一标识 | 主键、分布式 ID（不是随机安全源的替代品时请用对 API） |
+| \`TimeSpan\` | 时间间隔 | 超时、耗时、调度偏移 |
+
+\`\`\`csharp
+nint native = 64;
+DateOnly birthday = new(1999, 12, 31);
+TimeSpan timeout = TimeSpan.FromSeconds(3);
+Guid id = Guid.NewGuid();
+\`\`\`
+
+\`Half\` / \`Int128\` 运算少、BCL 支持也少，日常业务仍以 \`int\` / \`long\` / \`decimal\` / \`DateTimeOffset\` 为主。
+
+### 十二、整数溢出与 checked / unchecked
+
+默认 unchecked：\`int.MaxValue + 1\` 变成 \`int.MinValue\`，**静默绕回**。财务、下标、安全计数必须 \`checked\`（或项目级 \`<CheckForOverflowUnderflow>\`）。\`unchecked\` 用于哈希等「就是要绕回」的场景。\`++\` / \`+= \` 同样受 checked 上下文约束。
+
+### 十三、decimal vs double（钱）、char vs Rune
+
+- **钱**：只用 \`decimal\`（或整数分）。\`double\` 的 0.1 不能精确表示，累加必漂。
+- **\`char\`** 是 UTF-16 **码元**，不是「一个可见字符」。表情和部分汉字是代理对，两个 \`char\` 才是一个 Unicode 标量。处理用户可见字符请用 \`System.Text.Rune\` 或 \`StringInfo\`。
+- **enum 底层就是整数**：可 \` (int)Color.Red \`，也可把非法数字硬转进去——这不是类型安全的终点，详见枚举章。
+
+### 十四、nameof、sizeof 与装箱对照
+
+\`nameof(value)\` 得到编译期字符串，重构改名不会漏。\`sizeof\` 对内置非托管类型可在安全代码里用。
+
+| 操作 | 堆分配？ |
+| --- | --- |
+| \`int x = 1;\` | 否 |
+| \`object o = 1;\` | 是（装箱） |
+| \`int y = (int)o;\` | 否（拆箱拷贝） |
+| \`1.ToString()\` | 是（新 string） |
+
 ### 小结
 
 - 整型默认用 \`int\`，超过 21 亿用 \`long\`。
@@ -634,7 +699,7 @@ C# 的类型系统分两大阵营：**值类型**和**引用类型**。理解它
 - 结构体 \`struct\`：int、double、bool、DateTime、自定义 struct
 - 枚举 \`enum\`
 - 可空类型 \`int?\`、\`bool?\`
-- 元组 \`Tuple\` / \`ValueTuple\`
+- 元组 \`ValueTuple\`（struct，值类型）；旧 \`Tuple<T>\` 是 class（引用类型）
 
 **引用类型**（存放在堆上，变量保存的是引用地址）：
 
@@ -747,6 +812,35 @@ Console.WriteLine(t.Name); // Int32
 - **class**：可变、有继承关系、体积大。赋值时共享引用。
 
 > 经验：默认用 \`class\`，除非有明确性能需求或语义上是「值」才用 \`struct\`。struct 用错容易踩「拷贝导致状态丢失」的坑。
+
+### 十、ref / out / in 对照
+
+| | 调用方 | 方法内 | 典型用途 |
+| --- | --- | --- | --- |
+| 默认 | 值类型拷贝 / 引用拷贝 | 改形参不改实参（引用类型改对象字段会看见） | 普通参数 |
+| \`ref\` | 必须先赋值，传入别名 | 读写同一存储 | 交换、大 struct 就地改 |
+| \`out\` | 可以未赋值 | 必须赋值后返回 | TryParse |
+| \`in\` | 只读别名 | 不能赋新值给形参 | 大只读 struct，少拷贝 |
+
+\`\`\`csharp
+void Swap(ref int a, ref int b) => (a, b) = (b, a);
+bool ok = int.TryParse("9", out int n);
+void Use(in DateTimeOffset dto) { /* 只读 */ }
+\`\`\`
+
+### 十一、装箱分配、字符串驻留、ref struct 不能装箱
+
+每次 \`object o = 42\` 都在堆上 extra 一个盒子。循环里装箱会立刻被 profiler 看见。\`List<int>\` 不装箱，\`ArrayList\` / \`List<object>\` 会。
+
+字符串字面量进入 **intern 池**（\`string.Intern\`）：相同字面量可能共享同一实例，\`ReferenceEquals("a", "a")\` 常为 true；但 \`new string\` 或拼接结果默认不保证驻留。不要用引用相等比较内容。
+
+**\`ref struct\`（如 \`Span<T>\`）不能装箱、不能当字段塞进 class、不能当异步状态机捕获**——这是为了保证它只活在栈上。\`object o = span;\` 无法编译。
+
+> 勘误：旧的 \`System.Tuple<T...>\` 是 **class（引用类型）**；C# 7 的元组语法对应 \`ValueTuple\`（**struct，值类型**）。不要把 \`Tuple\` 写进「值类型」名单。
+
+### 十二、一张图记住分配
+
+\`int x = 1\` 只有栈上 4 字节（或嵌入对象）。\`new Person()\` 在堆上分配对象头 + 字段，栈上只留引用。\`object o = x\` 再在堆上多一个盒子。\`Span<int> s = stackalloc int[4]\` 整段都在栈上，所以它是 ref struct，不能装进 \`List<Span<int>>\`，也不能 \`await\` 跨过它。写热路径时先问：这次是拷贝、是共享引用，还是禁止离开栈？
 
 ### 小结
 
@@ -1137,6 +1231,33 @@ public static Vector operator +(Vector a, Vector b) => new(a.X + b.X, a.Y + b.Y)
 \`\`\`
 
 可重载：\`+\` \`-\` \`*\` \`/\` \`%\` \`==\` \`!=\` \`<\` \`>\` 等。不可重载：\`&&\` \`||\` \`?:\`。
+
+### 十四、\`??\` / \`??=\`、switch 表达式、\`is\` 与 \`with\`
+
+\`\`\`csharp
+string? name = null;
+name ??= "匿名";                    // 仅当 null 才赋值
+int size = name?.Length ?? 0;
+
+string grade = score switch { >= 90 => "A", >= 60 => "C", _ => "F" };
+if (obj is string { Length: > 0 } s) { /* s 已收窄 */ }
+
+var moved = pt with { X = pt.X + 1 }; // record / struct with（C# 10+ 匿名 with 限 record）
+\`\`\`
+
+\`??\` 只认 \`null\`，不认 0 / ""。\`switch\` 表达式必须穷尽（或 \`_\`）。
+
+### 十五、\`^\` \`..\`、复合赋值、短路与 \`++\` 溢出
+
+- \`^\` 在**索引**里是从后数（\`arr[^1]\`）；在**位运算**里是异或。看到 \`^\` 先看上下文。
+- \`..\` 是范围，\`arr[1..^1]\` 去掉头尾。
+- \`+=\` \`-=\` \`*=\` \`/=\` \`&= \` \`|= \` \`^= \` \`??= \` 都是复合赋值；\`x += y\` 只求值 \`x\` 一次。
+- \`&&\` / \`||\` **短路**：左边已能定结果就不跑右边。\`&\` / \`|\` 对 \`bool\` 不短路，两边都算。
+- \`++\` / \`--\` 在 unchecked 下会绕回：\`int.MaxValue++\` 变成 \`MinValue\`。计数靠近边界请 \`checked\`。
+
+### 十六、true / false 运算符与优先级备忘
+
+自定义类型可重载 \`true\` / \`false\`（以及 \`&\` \`|\`）以便写 \`if (myFlag)\`——少见，留给 DSL。日常优先级：单目 → 乘除 → 加减 → 移位 → 关系 → 相等 → 位运算 → \`&&\` → \`||\` → \`??\` → \`?:\` → 赋值。**记不清就加括号**，尤其 \`??\` 和 \`?:\` 混写时。
 
 ### 小结
 
@@ -1581,6 +1702,23 @@ string.IsNullOrWhiteSpace(s); // null 或 "" 或只有空白字符
 
 实战中优先用 \`IsNullOrWhiteSpace\`，更严格。
 
+### 十七、StringComparison 怎么选
+
+| 场景 | 推荐 |
+| --- | --- |
+| 协议 / 路径 / 配置键 | \`Ordinal\` / \`OrdinalIgnoreCase\` |
+| 给用户看的排序、搜索 | \`CurrentCulture\` / \`CurrentCultureIgnoreCase\` |
+| 跨机一致的语言规则 | \`InvariantCulture*\`（仍不是序数比较） |
+
+永远不要文化敏感地比较文件名、HTTP 头、枚举名。\`==\` 对 string 是序数、区分大小写。
+
+### 十八、Intern、StringBuilder 容量、Rune、CompositeFormat
+
+- **Intern 池**：字面量常驻；\`string.Intern(s)\` 会把字符串钉在池里，滥用会漏内存。比较内容用 \`Equals\`，不要赌引用相等。
+- **StringBuilder**：构造时给够 \`capacity\`，避免反复扩容拷贝。\`Length\` 是已用字符，\`Capacity\` 是缓冲。\`EnsureCapacity\` 可一次性抬高。
+- **\`Rune\`**：一个 Unicode 标量值。遍历用户字符：\`foreach (Rune r in s.EnumerateRunes())\`。
+- **\`CompositeFormat\`（.NET 8）**：把 \`string.Format\` 的格式串解析一次、反复用，热路径比每次解析 \`"{0:N2}"\` 便宜。新代码优先 \`$""\`；循环里同一格式再考虑它。
+
 ### 小结
 
 - string 不可变，所有修改都返回新对象。
@@ -1994,6 +2132,29 @@ public string Format(string format, object arg, IFormatProvider provider)
 
 配合 \`string.Format(IFormatProvider, ...)\` 使用。日常开发用得不多，但能解决「特殊格式需求」。
 
+### 十一、文化 vs 不变文化
+
+\`1234.5.ToString("N2")\` 在「zh-CN」可能是 \`1,234.50\`，在部分文化小数点是逗号。**持久化、协议、日志键**用 \`CultureInfo.InvariantCulture\` 或 \`CultureInfo.InvariantCulture\` 的插值（见下）；**给当前用户看**才用 \`CurrentCulture\`。
+
+\`\`\`csharp
+double x = 1234.5;
+x.ToString("F2", CultureInfo.InvariantCulture); // 永远 1234.50
+\`\`\`
+
+### 十二、FormattableString、ISpanFormattable 与插值空洞
+
+\`$"{x}"\` 的编译结果通常是 \`string.Format\` 或插值处理机。若形参类型是 \`FormattableString\`，可以拿到**未格式化的参数**，再按指定文化 \`ToString(CultureInfo.InvariantCulture)\`——这是写 SQL/日志时避免文化坑的标准手法。
+
+\`.NET\` 热路径类型常实现 \`ISpanFormattable\`：格式化进 \`Span<char>\`，少分配。你自己的金额/ID 类型也可以实现它。
+
+插值「空洞」是 \`{expression[,alignment][:format]}\`：
+
+- \`{name,10}\` 右对齐到 10；\`{name,-10}\` 左对齐。
+- \`{dt:yyyy-MM-dd}\` 是格式，不是对齐。
+- 对齐会**填充空格**，不会截断；超长按原样输出。
+
+表格输出先算列宽，再用对齐，比手写空格稳。
+
 ### 小结
 
 - 日常用插值 \`$""\`，简洁直观。
@@ -2349,6 +2510,38 @@ int[][] jagged = [ [1, 2], [3, 4, 5] ];        // 两行，长度 2 和 3
 
 日常业务代码默认 \`List<T>\`；和 native / 高性能 API 打交道、或尺寸编译期就确定时，再用数组。
 
+### 八、ArrayPool<T>：租用而不是反复 new
+
+短寿命、热路径上的大数组不要每次 \`new int[1_000_000]\`。用 \`ArrayPool<T>.Shared.Rent(minLength)\`，用完 \`Return\`：
+
+\`\`\`csharp
+var pool = ArrayPool<byte>.Shared;
+byte[] buf = pool.Rent(1024);
+try { /* 只用 buf.AsSpan(0, 1024)，Rent 可能更长 */ }
+finally { pool.Return(buf); }   // 不 Return 就等于泄漏到池外
+\`\`\`
+
+> 池里的数组**不保证清零**。敏感数据 Return 前 \`Clear\`，或 \`Return(buf, clearArray: true)\`。
+
+### 九、数组协变：编译通过，运行炸掉
+
+\`string[]\` 可以赋给 \`object[]\`（数组协变）。随后 \`objects[0] = 123\` 编译通过，运行抛 \`ArrayTypeMismatchException\`。泛型 \`IEnumerable<out T>\` 只读协变是安全的；**可变数组协变不是**。API 边界用 \`IReadOnlyList<T>\` 或泛型，不要用 \`object[]\` 接 \`string[]\`。
+
+### 十、BinarySearch、Clear、Rank、GetLowerBound
+
+- \`Array.BinarySearch\`：**必须已排序**，否则结果无意义。找到返回下标；找不到返回按位取反的插入点 \`~idx\`。
+- \`Array.Clear(arr)\` 把元素重置为默认值（引用 → null，int → 0）。
+- \`Rank\` 是维度数：\`int[]\` 是 1，\`int[,]\` 是 2。
+- CLR 数组允许非零下界（\`Array.CreateInstance\`），\`GetLowerBound(0)\` 一般是 0；C# \`int[]\` 语法永远从 0 起。和 COM / 旧代码互操作时先查下界。
+
+### 十一、stackalloc、Span 与「foreach 变量是拷贝」
+
+C# 12 起可以 \`stackalloc int[] { 1, 2, 3 }\` 得到 \`Span<int>\`（标一下：**C# 12**）。栈上分配，方法返回就不能再用。
+
+\`arr[1..3]\` **复制**成新数组；\`arr.AsSpan(1, 2)\` 是同一块内存的视图，改 Span 就是改原数组。需要独立快照才 Copy。
+
+\`foreach (var x in arr)\` 的 \`x\` 是**当前元素的拷贝**。\`x = 1\` 改不了数组；元素是 struct 时，连 \`x.Field = 1\` 都会 CS1654（禁止改 foreach 变量）。把 struct 传入按值方法同样只改副本。要改请用 \`for\` + 下标，或 \`span[i]\`。
+
 ### 小结
 
 - 数组长度固定，下标从 0 开始，越界必崩。
@@ -2444,6 +2637,57 @@ Array.Sort(names, StringComparer.Ordinal);
 Console.WriteLine($"按序排序：{string.Join(",", names)}");
 
 Console.WriteLine("\\n本程序演示完毕！");
+
+
+Console.WriteLine("\\n===== 8. BinarySearch / Clear / Rank / 下界 =====");
+int[] ordered = [1, 3, 5, 7, 9];
+int found = Array.BinarySearch(ordered, 7);
+int missing = Array.BinarySearch(ordered, 4);
+Console.WriteLine("BinarySearch 7 = " + found + "，找不到 4 时 ~idx = " + (~missing) + "（插入点）");
+int[] wipe = [1, 2, 3];
+Array.Clear(wipe);
+Console.WriteLine("Clear 后：[" + string.Join(",", wipe) + "]，Rank=" + wipe.Rank + "，LowerBound=" + wipe.GetLowerBound(0));
+
+Console.WriteLine("\\n===== 9. 数组协变危险 =====");
+string[] words = ["hi"];
+object[] asObjects = words;
+try
+{
+    asObjects[0] = 123;
+}
+catch (ArrayTypeMismatchException)
+{
+    Console.WriteLine("string[] 当 object[] 写入 int → ArrayTypeMismatchException");
+}
+
+Console.WriteLine("\\n===== 10. ArrayPool / Span / stackalloc（C# 12） =====");
+var pool = System.Buffers.ArrayPool<int>.Shared;
+int[] rented = pool.Rent(8);
+try
+{
+    rented[0] = 42;
+    Console.WriteLine("Rent 实际 Length=" + rented.Length + "（≥ 8，不要假设刚好）");
+}
+finally
+{
+    pool.Return(rented);
+}
+Span<int> view = ordered.AsSpan(1, 2); // 不拷贝
+Console.WriteLine("AsSpan(1,2)[0]=" + view[0] + "（与 ordered[1] 同一块内存）");
+Span<int> stacked = stackalloc int[] { 9, 8, 7 }; // C# 12
+Console.WriteLine("stackalloc 首元=" + stacked[0]);
+
+Console.WriteLine("\\n===== 11. foreach 变量是拷贝 =====");
+var boxes = new Box[] { new Box { N = 1 } };
+void Touch(Box copy) { copy.N = 99; } // 按值，改不了数组里那份
+foreach (var box in boxes)
+    Touch(box); // 若写 box.N = 99 会 CS1654，编译器直接禁止
+Console.WriteLine("foreach+按值方法后仍是：" + boxes[0].N);
+for (int i = 0; i < boxes.Length; i++)
+    boxes[i].N = 99;
+Console.WriteLine("for 下标可改：boxes[0].N=" + boxes[0].N);
+
+struct Box { public int N; }
 `,
     lang: 'cs',
   },
