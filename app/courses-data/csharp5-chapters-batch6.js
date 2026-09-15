@@ -187,8 +187,13 @@ class Factory<T> where T : class, IComparable<T>, new()
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「泛型基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 泛型基础演示
-// 实现：泛型 Stack<T>、泛型方法 Max<T>、协变 out / 逆变 in
+    code: `// ===========================================================
+// 第二十九章 泛型基础
+// 演示：自写 Stack<T>、泛型方法约束、协变 out、逆变 in
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：泛型（C# 2）、协变/逆变（C# 4）、default! 可空压制
+// 陷阱：约束决定 T 能做什么；IList<T> 既读又写所以既不能 out 也不能 in。自定义 Stack 不是线程安全的
+// ===========================================================
 
 using System;
 
@@ -196,6 +201,7 @@ using System.Collections;
 
 using System.Collections.Generic;
 
+// ---------- 1. Stack<T>：一份算法，int/string 各一份 IL，没有装箱 ----------
 Console.WriteLine("=== 1. 泛型 Stack<T> 演示 ===");
 
 var intStack = new Stack<int>();
@@ -220,9 +226,10 @@ strStack.Push("hello");
 
 strStack.Push("world");
 
-foreach (var s in strStack)  // 用 IEnumerable<T> 遍历
+foreach (var s in strStack)  // IEnumerable<T>：从栈顶往下；foreach 不 Pop
     Console.WriteLine($"  遍历：{s}");
 
+// ---------- 2. 泛型方法 Max<T> 演示 ----------
 Console.WriteLine("\\n=== 2. 泛型方法 Max<T> 演示 ===");
 
 Console.WriteLine($"Max(3, 5) = {MathHelper.Max(3, 5)}");
@@ -235,24 +242,27 @@ var d2 = new DateTime(2023, 6, 15);
 
 Console.WriteLine($"Max(日期) = {MathHelper.Max(d1, d2):yyyy-MM-dd}");
 
+// ---------- 3. 协变 out 演示 ----------
 Console.WriteLine("\\n=== 3. 协变 out 演示 ===");
 
 IProducer<Cat> catProducer = new CatProducer();
 
-IProducer<Animal> animalProducer = catProducer;
+IProducer<Animal> animalProducer = catProducer;  // out T：生产者只能「往外给」，Cat 当 Animal 安全
 
 Animal produced = animalProducer.Produce();
 
 Console.WriteLine($"  协变产出的对象：{produced.Name}");
 
+// ---------- 4. 逆变 in 演示 ----------
 Console.WriteLine("\\n=== 4. 逆变 in 演示 ===");
 
 IConsumer<Animal> animalConsumer = new AnimalConsumer();
 
-IConsumer<Cat> catConsumer = animalConsumer;
+IConsumer<Cat> catConsumer = animalConsumer;  // in T：消费者只「往里收」，能收 Animal 就能收 Cat
 
 catConsumer.Consume(new Cat("小橘"));
 
+// ---------- 5. 反例：IList<T> 不支持协变 ----------
 Console.WriteLine("\\n=== 5. 反例：IList<T> 不支持协变 ===");
 
 Console.WriteLine("  IList<T> 不支持协变/逆变（T 同时用于读写）");
@@ -261,72 +271,66 @@ Console.WriteLine("  IList<T> 不支持协变/逆变（T 同时用于读写）")
 
 public class Stack<T> : IEnumerable<T>
 {
-    // 泛型字段：用 T 作为元素类型
-    private T[] _items;   // 内部数组存储元素
-    private int _count;   // 当前元素数量
+    // T[] 在 T 是引用类型时存引用；是值类型时存内联值，避免 object 装箱
+    private T[] _items;   // 可变数组：本类型非线程安全，并发 Push/Pop 会损坏 _count
+    private int _count;   // Count 与数组长度不是一回事，Length 是容量
 
-    // 构造函数：初始化容量
     public Stack(int capacity = 4)
     {
         _items = new T[capacity];
         _count = 0;
     }
 
-    // 泛型属性：返回当前元素数
     public int Count => _count;
 
-    // Push 方法：参数类型为 T
     public void Push(T item)
     {
-        // 容量不够时扩容（×2）
+        // 扩容按引用替换数组：旧数组等 GC；并发下 Resize 会丢元素
         if (_count >= _items.Length)
         {
             Array.Resize(ref _items, _items.Length * 2);
         }
-        _items[_count++] = item;  // 存入并自增
+        _items[_count++] = item;  // 先写入再自增；两步不是原子的
     }
 
-    // Pop 方法：返回类型为 T
     public T Pop()
     {
         if (_count == 0)
             throw new InvalidOperationException("栈为空");
-        // --_count 先减再用作索引
         T item = _items[--_count];
-        _items[_count] = default!;  // 清空引用，让 GC 回收
+        _items[_count] = default!;  // 引用类型不清空会钉住对象，值类型则写回 0
         return item;
     }
 
-    // Peek：查看栈顶但不弹出
     public T Peek() => _count == 0
         ? throw new InvalidOperationException("栈为空")
         : _items[_count - 1];
 
-    // 实现 IEnumerable<T> 让 Stack 可被 foreach
     public IEnumerator<T> GetEnumerator()
     {
-        // 从栈顶到栈底枚举
+        // 枚举期间若 Push/Pop，会读到半新半旧状态——生产代码应做版本戳
         for (int i = _count - 1; i >= 0; i--)
             yield return _items[i];
     }
 
-    // 显式实现非泛型版本（兼容老代码）
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
 public static class MathHelper
 {
+    // where T : IComparable<T> —— 没有这个约束就不能调 CompareTo，会退回 object 比较
     public static T Max<T>(T a, T b) where T : IComparable<T>
     {
-        // CompareTo: 返回 <0 表示 a<b，==0 表示相等，>0 表示 a>b
+        // 泛型比较走 IComparable<T>，避免装箱；null 引用类型调用 CompareTo 仍可能 NRE
         return a.CompareTo(b) >= 0 ? a : b;
     }
 
-    // 多个类型参数 + 约束组合：T 必须是引用类型 + 可比较 + 有无参构造
+    // 约束组合从左到右：class（引用）+ IComparable<T> + new()（必须有无参构造）
+    // struct 与 class 互斥；new() 与抽象类不兼容
     public static T CreateAndCompare<T>(T a, T b)
         where T : class, IComparable<T>, new()
     {
-        var instance = new T();  // new() 约束允许直接 new T()
+        var instance = new T();  // 没有 new() 约束时 new T() 是编译错误
         Console.WriteLine($"  新建实例类型：{instance.GetType().Name}");
         return Max(a, b);
     }
@@ -334,7 +338,7 @@ public static class MathHelper
 
 public interface IProducer<out T>
 {
-    T Produce();
+    T Produce();  // out：T 只能出现在输出位置；写 Consume(T) 会编译失败
 }
 
 public class CatProducer : IProducer<Cat>
@@ -344,7 +348,7 @@ public class CatProducer : IProducer<Cat>
 
 public interface IConsumer<in T>
 {
-    void Consume(T item);
+    void Consume(T item);  // in：T 只能出现在输入位置；不能有 T 返回值
 }
 
 public class AnimalConsumer : IConsumer<Animal>
@@ -541,8 +545,13 @@ int[] b = [.. a, 3, 4];  // [1, 2, 3, 4]
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「集合与 IEnumerable」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 集合与 IEnumerable 演示
-// 实现：MyLinkedList<T> : IEnumerable<T>、yield return、集合初始化器、Collection 表达式
+    code: `// ===========================================================
+// 第三十章 集合与 IEnumerable
+// 演示：自定义链表、yield 状态机、集合初始化器、C# 12 集合表达式、惰性求值
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：集合表达式 [1,2,3] 与展开 ..（C# 12）；yield（C# 2）；索引初始化器 ["k"]=v（C# 6）
+// 陷阱：foreach 会改写为 using enumerator；yield 在 MoveNext 才跑。枚举中途 Add 链表，行为未定义
+// ===========================================================
 
 using System;
 
@@ -550,6 +559,7 @@ using System.Collections;
 
 using System.Collections.Generic;
 
+// ---------- 1. 集合初始化器：编译器逐个调 Add，不是原子操作 ----------
 Console.WriteLine("=== 1. 自定义 MyLinkedList + yield return ===");
 
 var list = new MyLinkedList<string> { "苹果", "香蕉", "橙子" };
@@ -568,6 +578,7 @@ foreach (var item in list.GetReverse())
 
 Console.WriteLine($"\\n链表大小：{list.Count}");
 
+// ---------- 2. IEnumerable 手动迭代（foreach 的真相） ----------
 Console.WriteLine("\\n=== 2. IEnumerable 手动迭代（foreach 的真相）===");
 
 var numbers = new MyLinkedList<int> { 10, 20, 30 };
@@ -578,6 +589,7 @@ while (enumerator.MoveNext())
     Console.WriteLine($"  Current = {enumerator.Current}");
 }
 
+// ---------- 3. 集合初始化器 ----------
 Console.WriteLine("\\n=== 3. 集合初始化器 ===");
 
 var classic = new List<int> { 1, 2, 3, 4, 5 };
@@ -594,6 +606,7 @@ var ages = new Dictionary<string, int>
 foreach (var kv in ages)
     Console.WriteLine($"  {kv.Key}：{kv.Value} 岁");
 
+// ---------- 4. C# 12 集合表达式 ----------
 Console.WriteLine("\\n=== 4. C# 12 集合表达式 ===");
 
 int[] arr = [1, 2, 3, 4, 5];
@@ -618,6 +631,7 @@ int[] empty = [];
 
 Console.WriteLine($"空集合长度：{empty.Length}");
 
+// ---------- 5. Array 也是集合 ----------
 Console.WriteLine("\\n=== 5. Array 也是集合 ===");
 
 int[] data = [5, 3, 8, 1, 9];
@@ -630,6 +644,7 @@ Console.WriteLine($"数组长度：{data.Length}");
 
 Console.WriteLine($"数组实现 IList<int>：{data is IList<int>}");
 
+// ---------- 6. yield 惰性求值演示 ----------
 Console.WriteLine("\\n=== 6. yield 惰性求值演示 ===");
 
 var range = GetRange(0, 1_000_000);
@@ -656,34 +671,32 @@ static IEnumerable<int> GetRange(int start, int count)
 
 public class MyLinkedList<T> : IEnumerable<T>
 {
-    // 链表节点：内部类
+    // 双向节点：O(1) 头尾插入；随机访问仍是 O(n)
     private class Node
     {
-        public T Value;            // 节点值
-        public Node? Next;         // 下一个节点
-        public Node? Prev;         // 上一个节点
+        public T Value;            // T 若是可变引用类型，改对象字段链表「看起来也变了」
+        public Node? Next;         // 可变链接：本集合非线程安全
+        public Node? Prev;
 
         public Node(T value) => Value = value;
     }
 
-    private Node? _head;  // 头节点
-    private Node? _tail;  // 尾节点
-    private int _count;   // 节点数
+    private Node? _head;  // 空表时头尾都是 null
+    private Node? _tail;
+    private int _count;
 
     public int Count => _count;
 
-    // 添加到尾部
     public void Add(T value)
     {
         var node = new Node(value);
         if (_tail == null)
         {
-            // 第一个节点：既是头也是尾
             _head = _tail = node;
         }
         else
         {
-            // 接到尾节点后
+            // 三步改指针，不是原子操作；并发 Add 会丢节点或成环
             _tail.Next = node;
             node.Prev = _tail;
             _tail = node;
@@ -691,24 +704,19 @@ public class MyLinkedList<T> : IEnumerable<T>
         _count++;
     }
 
-    // 实现 IEnumerable<T>.GetEnumerator
-    // 用 yield return 编写迭代器：编译器自动生成状态机
+    // yield 让编译器生成状态机；GetEnumerator() 立刻返回，MoveNext 才走这里
     public IEnumerator<T> GetEnumerator()
     {
-        // 从头遍历到尾，每次 yield 一个 Value
         Node? current = _head;
         while (current != null)
         {
-            yield return current.Value;  // 产出当前节点的值
-            current = current.Next;       // 移到下一个
+            yield return current.Value;  // 枚举中途 Add：可能看到新节点，也可能跳过，未定义
+            current = current.Next;
         }
-        // yield return 是惰性求值：调用方每次 MoveNext 才执行到这里
     }
 
-    // 显式实现非泛型 IEnumerable（兼容老代码）
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    // 反向遍历：演示 yield 的灵活性
     public IEnumerable<T> GetReverse()
     {
         Node? current = _tail;
@@ -719,8 +727,7 @@ public class MyLinkedList<T> : IEnumerable<T>
         }
     }
 
-    // 支持 Add 方法后，就可以用集合初始化器语法
-    // var list = new MyLinkedList<int> { 1, 2, 3 };
+    // 有 Add(T) 才能写 new MyLinkedList<int> { 1, 2, 3 } —— 这是语言约定，不是接口
 }
 `,
     lang: 'cs',
@@ -873,72 +880,70 @@ ll.AddAfter(node, "c");  // 在 a 后面插入 c
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「List 与 LinkedList」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - List<T> 与 LinkedList<T> 演示
+    code: `// ===========================================================
+// 第三十一章 List<T> 与 LinkedList<T>
+// 演示：容量与 Count、原地突变 API、Find/Sort/BinarySearch、链表节点插入、头部插入性能
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：集合表达式 [..]（C# 12）；record 位置参数（C# 9）；BinarySearch 找不到返回按位取反插入点
+// 陷阱：List 是可变的，ToArray/GetRange 才是快照。枚举时 Add/Remove 会抛 InvalidOperationException
+// ===========================================================
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
+// ---------- 1. Capacity ≠ Count：预分配避免几何扩容拷贝 ----------
 Console.WriteLine("=== 1. List<T> 容量与数量 ===");
 
 // 预分配容量：避免多次扩容
 var list = new List<int>(capacity: 10);
 Console.WriteLine($"初始 Capacity={list.Capacity}, Count={list.Count}");
 
-// 添加元素
 list.Add(10);
 list.Add(20);
 list.Add(30);
 Console.WriteLine($"Add 三个元素后 Capacity={list.Capacity}, Count={list.Count}");
 
-// 用 C# 12 集合表达式创建
 List<int> nums = [5, 3, 8, 1, 9, 3, 7];
 Console.WriteLine($"集合表达式创建：{string.Join(", ", nums)}");
 
+// ---------- 2. 增删改查 API ----------
 Console.WriteLine("\\n=== 2. 增删改查 API ===");
-// AddRange：批量添加
+// AddRange / Insert / Remove 都是原地改 nums，没有返回「新列表」
 nums.AddRange([100, 200, 300]);
 Console.WriteLine($"AddRange 后：{string.Join(", ", nums)}");
 
-// Insert：指定位置插入
-nums.Insert(0, 999);  // 在索引 0 插入
+nums.Insert(0, 999);  // 插入点之后全部后移，O(n)
 Console.WriteLine($"Insert(0, 999) 后：{string.Join(", ", nums)}");
 
-// Remove：移除第一个匹配
-nums.Remove(3);  // 移除第一个 3
+nums.Remove(3);  // 只移除第一个匹配；找不到返回 false 不抛
 Console.WriteLine($"Remove(3) 后：{string.Join(", ", nums)}");
 
-// RemoveAt：按索引移除
-nums.RemoveAt(0);  // 移除索引 0
+nums.RemoveAt(0);  // 按下标；越界才抛
 Console.WriteLine($"RemoveAt(0) 后：{string.Join(", ", nums)}");
 
-// RemoveAll：按条件移除
 int removed = nums.RemoveAll(x => x >= 100);
 Console.WriteLine($"RemoveAll(>=100) 移除了 {removed} 个：{string.Join(", ", nums)}");
 
-// Contains / IndexOf
 Console.WriteLine($"Contains(8) = {nums.Contains(8)}");
 Console.WriteLine($"IndexOf(3) = {nums.IndexOf(3)}");
 Console.WriteLine($"LastIndexOf(3) = {nums.LastIndexOf(3)}");
 
-// ToArray：拷贝出新数组
 int[] arr = nums.ToArray();
 Console.WriteLine($"ToArray 长度：{arr.Length}");
 
+// ---------- 3. 遍历与转换 API ----------
 Console.WriteLine("\\n=== 3. 遍历与转换 API ===");
-// ForEach：对每个元素执行操作
 nums.ForEach(x => Console.Write($"{x} "));
 Console.WriteLine();
 
-// ConvertAll：元素类型转换
 List<string> strList = nums.ConvertAll(x => $"[{x}]");
 Console.WriteLine($"ConvertAll：{string.Join(", ", strList)}");
 
-// TrueForAll：是否所有元素都满足
 Console.WriteLine($"TrueForAll(>0) = {nums.TrueForAll(x => x > 0)}");
 
-// Exists：是否存在
 Console.WriteLine($"Exists(>5) = {nums.Exists(x => x > 5)}");
 
+// ---------- 4. Find 系列 ----------
 Console.WriteLine("\\n=== 4. Find 系列 ===");
 List<Person> people =
 [
@@ -949,81 +954,70 @@ List<Person> people =
     new("钱七", 28)
 ];
 
-// Find：找第一个匹配
 Person? first28 = people.Find(p => p.Age == 28);
 Console.WriteLine($"Find(Age==28)：{first28}");
 
-// FindAll：找所有匹配
 List<Person> all28 = people.FindAll(p => p.Age == 28);
 Console.WriteLine($"FindAll(Age==28)：{all28.Count} 个");
 
-// FindIndex：找第一个匹配的索引
 int idx = people.FindIndex(p => p.Age > 30);
 Console.WriteLine($"FindIndex(Age>30)：{idx}");
 
-// FindLast：找最后一个匹配
 Person? last28 = people.FindLast(p => p.Age == 28);
 Console.WriteLine($"FindLast(Age==28)：{last28}");
 
+// ---------- 5. Sort 与 BinarySearch ----------
 Console.WriteLine("\\n=== 5. Sort 与 BinarySearch ===");
 List<int> sortList = [5, 3, 8, 1, 9, 2, 7];
 Console.WriteLine($"原数组：{string.Join(", ", sortList)}");
 
-// Sort()：升序排序
 sortList.Sort();
 Console.WriteLine($"Sort()：{string.Join(", ", sortList)}");
 
-// Sort(Comparison<T>)：用 lambda 自定义排序
-sortList.Sort((a, b) => b.CompareTo(a));  // 降序
+sortList.Sort((a, b) => b.CompareTo(a));  // Comparison<T> 必须满足全序，否则 Sort 行为未定义
 Console.WriteLine($"Sort(降序)：{string.Join(", ", sortList)}");
 
-// Reverse：反转
 sortList.Reverse();
 Console.WriteLine($"Reverse：{string.Join(", ", sortList)}");
 
-// BinarySearch：必须先排序
 sortList.Sort();
 int found = sortList.BinarySearch(7);
 Console.WriteLine($"BinarySearch(7) 在排序列表中：索引 {found}");
 
-// 找不到时返回的是"按位取反的插入位置"
 int notFound = sortList.BinarySearch(6);
-int insertAt = ~notFound;  // ~ 是按位取反，得到应插入位置
+int insertAt = ~notFound;  // 未排序就 BinarySearch 会得到错误下标且不抛
 Console.WriteLine($"BinarySearch(6) 找不到：返回 {notFound}，应插入到 {insertAt}");
 
+// ---------- 6. LinkedList<T> 演示 ----------
 Console.WriteLine("\\n=== 6. LinkedList<T> 演示 ===");
 var ll = new LinkedList<string>();
 
-// AddFirst / AddLast
 ll.AddLast("B");
 ll.AddFirst("A");
 ll.AddLast("C");
 Console.WriteLine($"链表：{string.Join(" -> ", ll)}");
 
-// 在节点前后插入
 LinkedListNode<string> nodeB = ll.Find("B")!;
 ll.AddBefore(nodeB, "B-前");
 ll.AddAfter(nodeB, "B-后");
 Console.WriteLine($"插入后：{string.Join(" -> ", ll)}");
 
-// Remove / RemoveFirst / RemoveLast
 ll.Remove("B-前");
-ll.RemoveFirst();  // 移除 A
-ll.RemoveLast();   // 移除 C
+ll.RemoveFirst();  // 空表再 RemoveFirst 会抛
+ll.RemoveLast();
 Console.WriteLine($"删除后：{string.Join(" -> ", ll)}");
 
 Console.WriteLine($"First={ll.First?.Value}, Last={ll.Last?.Value}, Count={ll.Count}");
 
+// ---------- 7. 性能对比：头部插入 ----------
 Console.WriteLine("\\n=== 7. 性能对比：头部插入 ===");
-// List 头部插入 O(n)
 var listPerf = new List<int>();
 var sw = Stopwatch.StartNew();
 for (int i = 0; i < 100_000; i++)
-    listPerf.Insert(0, i);  // 每次都要整体后移
+    listPerf.Insert(0, i);  // 每次 O(n) 搬移；随机访问 List 才是强项
 sw.Stop();
 Console.WriteLine($"List 头部插入 10 万次：{sw.ElapsedMilliseconds} ms");
 
-// LinkedList 头部插入 O(1)
 var llPerf = new LinkedList<int>();
 sw.Restart();
 for (int i = 0; i < 100_000; i++)
@@ -1031,8 +1025,8 @@ for (int i = 0; i < 100_000; i++)
 sw.Stop();
 Console.WriteLine($"LinkedList 头部插入 10 万次：{sw.ElapsedMilliseconds} ms");
 
-// 类型定义
-public record Person(string Name, int Age);`,
+public record Person(string Name, int Age);
+`,
     lang: 'cs',
   },
 
@@ -1194,14 +1188,20 @@ foreach (Person p in byAge[28])  // 所有 28 岁的人
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「Dictionary 与 HashSet」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - Dictionary 与 HashSet 演示
+    code: `// ===========================================================
+// 第三十二章 Dictionary 与 HashSet
+// 演示：TryGetValue、比较器、自定义 Key 的 Equals/GetHashCode、集合运算、ToLookup
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：索引初始化器（C# 6）、IEquatable<T>（避免 Equals 装箱）、ToLookup 一对多
+// 陷阱：Dictionary 非线程安全。作为 Key 的对象 Equals 依赖的字段不能再变，否则哈希桶找不到
+// ===========================================================
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
+// ---------- 1. Add 遇重复 key 抛；索引器是 upsert，重复则覆盖 ----------
 Console.WriteLine("=== 1. Dictionary 基础 ===");
 
-// 集合初始化器
 var fruitCount = new Dictionary<string, int>
 {
     ["apple"] = 5,
@@ -1209,42 +1209,37 @@ var fruitCount = new Dictionary<string, int>
     ["orange"] = 8
 };
 
-// Add：添加（重复 key 抛异常）
-fruitCount.Add("grape", 2);
+fruitCount.Add("grape", 2);  // 重复 key 抛 ArgumentException；并发 Add 会损坏内部桶
 
-// 索引器：upsert（存在则更新，不存在则添加）
-fruitCount["apple"] = 10;  // 更新
+fruitCount["apple"] = 10;  // 索引器 upsert：存在则覆盖，不存在则插入
 fruitCount["mango"] = 4;   // 添加
 
-// 遍历 KeyValuePair
 Console.WriteLine("当前库存：");
 foreach (var kv in fruitCount)
     Console.WriteLine($"  {kv.Key}：{kv.Value}");
 
 Console.WriteLine($"总数：{fruitCount.Count}");
 
+// ---------- 2. TryGetValue 最佳实践 ----------
 Console.WriteLine("\\n=== 2. TryGetValue 最佳实践 ===");
 
-// ❌ 反模式：两次哈希查找
+// ContainsKey + 索引器 = 两次哈希；中间若被别的线程 Remove，第二次仍可能抛
 if (fruitCount.ContainsKey("apple"))
 {
     int n = fruitCount["apple"];
     Console.WriteLine($"  [反模式] apple = {n}");
 }
 
-// ✅ 推荐：一次查找
 if (fruitCount.TryGetValue("apple", out int count))
 {
     Console.WriteLine($"  [推荐] apple = {count}");
 }
 
-// key 不存在时返回 false，out 参数是 default
 if (!fruitCount.TryGetValue("cherry", out int missing))
 {
     Console.WriteLine($"  cherry 不存在，out = {missing}");
 }
 
-// 索引访问：不存在抛异常
 try
 {
     int _ = fruitCount["cherry"];
@@ -1254,26 +1249,26 @@ catch (KeyNotFoundException ex)
     Console.WriteLine($"  索引访问不存在的 key 抛：{ex.GetType().Name}");
 }
 
+// ---------- 3. Remove 与 Contains ----------
 Console.WriteLine("\\n=== 3. Remove 与 Contains ===");
 bool removed = fruitCount.Remove("banana");
 Console.WriteLine($"Remove(banana) = {removed}");
 Console.WriteLine($"ContainsKey(apple) = {fruitCount.ContainsKey("apple")}");
 Console.WriteLine($"ContainsValue(8) = {fruitCount.ContainsValue(8)}");
 
-// Keys / Values 集合
 Console.WriteLine($"Keys：{string.Join(", ", fruitCount.Keys)}");
 Console.WriteLine($"Values：{string.Join(", ", fruitCount.Values)}");
 
+// ---------- 4. 自定义比较器：不区分大小写的键 ----------
 Console.WriteLine("\\n=== 4. 自定义比较器：不区分大小写的键 ===");
-// StringComparer.OrdinalIgnoreCase 让字符串键不区分大小写
 var caseInsensitive = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 caseInsensitive["Apple"] = 1;
 caseInsensitive["APPLE"] = 2;  // 这会更新，不会新增
 Console.WriteLine($"APPLE = {caseInsensitive["apple"]}");  // 2
 Console.WriteLine($"Count = {caseInsensitive.Count}");  // 1
 
+// ---------- 5. 自定义对象作为 Key（按 Id 判等） ----------
 Console.WriteLine("\\n=== 5. 自定义对象作为 Key（按 Id 判等）===");
-// PersonById 重写了 Equals 和 GetHashCode，让 Dictionary 按 Id 判等
 var personDict = new Dictionary<PersonById, string>();
 var p1 = new PersonById(1, "张三");
 var p2 = new PersonById(1, "张三（重名）");  // Id 相同
@@ -1282,6 +1277,7 @@ personDict[p2] = "经理";  // 因为 Id 相同，会更新而不是新增
 Console.WriteLine($"personDict.Count = {personDict.Count}");  // 1
 Console.WriteLine($"值 = {personDict[p1]}");  // 经理
 
+// ---------- 6. HashSet<T> 集合运算 ----------
 Console.WriteLine("\\n=== 6. HashSet<T> 集合运算 ===");
 var setA = new HashSet<int> { 1, 2, 3, 4, 5 };
 var setB = new HashSet<int> { 4, 5, 6, 7, 8 };
@@ -1289,45 +1285,40 @@ var setB = new HashSet<int> { 4, 5, 6, 7, 8 };
 Console.WriteLine($"A = {{{string.Join(", ", setA)}}}");
 Console.WriteLine($"B = {{{string.Join(", ", setB)}}}");
 
-// UnionWith：并集（A ∪ B）
 var union = new HashSet<int>(setA);
 union.UnionWith(setB);
 Console.WriteLine($"A ∪ B = {{{string.Join(", ", union)}}}");
 
-// IntersectWith：交集（A ∩ B）
 var intersect = new HashSet<int>(setA);
 intersect.IntersectWith(setB);
 Console.WriteLine($"A ∩ B = {{{string.Join(", ", intersect)}}}");
 
-// ExceptWith：差集（A - B）
 var except = new HashSet<int>(setA);
 except.ExceptWith(setB);
 Console.WriteLine($"A - B = {{{string.Join(", ", except)}}}");
 
-// SymmetricExceptWith：对称差集（只在 A 或只在 B 中）
 var symDiff = new HashSet<int>(setA);
 symDiff.SymmetricExceptWith(setB);
 Console.WriteLine($"A △ B = {{{string.Join(", ", symDiff)}}}");
 
-// 子集 / 超集判断
 var subSet = new HashSet<int> { 1, 2 };
 Console.WriteLine($"{{1,2}} 是 A 的子集？{subSet.IsSubsetOf(setA)}");
 Console.WriteLine($"A 是 {{1,2}} 的超集？{setA.IsSupersetOf(subSet)}");
 Console.WriteLine($"A 与 B 有交集？{setA.Overlaps(setB)}");
 
-// Add 重复元素返回 false
 bool added = setA.Add(3);
 Console.WriteLine($"Add(3) 重复添加返回：{added}");
 
+// ---------- 7. SortedSet<T> 自动排序 ----------
 Console.WriteLine("\\n=== 7. SortedSet<T> 自动排序 ===");
 var sorted = new SortedSet<int> { 5, 1, 9, 3, 7, 1 };  // 重复 1 会被去重
 Console.WriteLine($"SortedSet：{string.Join(", ", sorted)}");  // 1, 3, 5, 7, 9
 Console.WriteLine($"Min = {sorted.Min}, Max = {sorted.Max}");
 
-// GetViewBetween：取范围内的视图
 var view = sorted.GetViewBetween(3, 7);
 Console.WriteLine($"GetViewBetween(3, 7)：{string.Join(", ", view)}");
 
+// ---------- 8. ToLookup：一对多映射 ----------
 Console.WriteLine("\\n=== 8. ToLookup：一对多映射 ===");
 var people = new List<Person>
 {
@@ -1338,7 +1329,6 @@ var people = new List<Person>
     new("钱七", 25)
 };
 
-// ToLookup：按年龄分组，一个 key 对应多个值
 ILookup<int, string> byAge = people.ToLookup(p => p.Age, p => p.Name);
 
 Console.WriteLine($"28 岁的有：{string.Join(", ", byAge[28])}");
@@ -1347,23 +1337,22 @@ Console.WriteLine($"25 岁的有：{string.Join(", ", byAge[25])}");
 foreach (var group in byAge)
     Console.WriteLine($"  {group.Key} 岁：{string.Join(", ", group)}");
 
-// 类型定义
 public record Person(string Name, int Age);
 
-// 自定义作为 Dictionary Key 的类：重写 Equals 和 GetHashCode 让按 Id 判等
 public sealed class PersonById : IEquatable<PersonById>
 {
     public int Id { get; }
     public string Name { get; }
     public PersonById(int id, string name) { Id = id; Name = name; }
 
-    // 泛型集合优先走 IEquatable<T>，避免装箱并表达类型安全的相等语义
+    // 泛型集合优先走 IEquatable<T>，避免 object.Equals 装箱
     public bool Equals(PersonById? other) => other is not null && other.Id == Id;
     public override bool Equals(object? obj) => obj is PersonById other && Equals(other);
 
-    // 重写 GetHashCode：必须与 Equals 一致（Id 相同的对象哈希码必须相同）
+    // GetHashCode 必须只依赖 Equals 用到的字段；Id 可变就不要当 Key
     public override int GetHashCode() => HashCode.Combine(Id);
-}`,
+}
+`,
     lang: 'cs',
   },
 
@@ -1519,48 +1508,50 @@ Channel 能替代「Queue + lock + 手动阻塞」的大多数新代码；单线
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「Queue 与 Stack」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - Queue、Stack、PriorityQueue 演示
+    code: `// ===========================================================
+// 第三十三章 Queue、Stack、PriorityQueue
+// 演示：FIFO 任务队列、LIFO 撤销栈、括号匹配、最小堆/最大堆、环形缓冲、BlockingCollection
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：PriorityQueue<TElement,TPriority>（.NET 6+）；TryDequeue（.NET Core 2.0+）；集合表达式入队（C# 12）
+// 陷阱：Queue/Stack 都不是线程安全的。foreach 只是偷看，不会出队；空队列 Dequeue 抛，Try* 才返回 false
+// ===========================================================
 using System;
 using System.Collections.Generic;
 
+// ---------- 1. Queue：FIFO，Enqueue 入、Dequeue 出；Peek 不改集合 ----------
 Console.WriteLine("=== 1. Queue<T> 任务调度 ===");
 
-// 模拟任务队列：先到的任务先处理
 var taskQueue = new Queue<string>();
 
-// 入队：模拟任务到来
 taskQueue.Enqueue("检查邮件");
 taskQueue.Enqueue("编译代码");
 taskQueue.Enqueue("运行测试");
 taskQueue.Enqueue("部署上线");
 
 Console.WriteLine($"队列中有 {taskQueue.Count} 个任务");
-Console.WriteLine($"下一个要处理的：{taskQueue.Peek()}");  // 查看不取出
+Console.WriteLine($"下一个要处理的：{taskQueue.Peek()}");  // 空队列 Peek 会抛
 
-// 出队：FIFO 处理
 Console.WriteLine("\\n按顺序处理：");
 while (taskQueue.Count > 0)
 {
-    string task = taskQueue.Dequeue();  // 出队
+    string task = taskQueue.Dequeue();  // 出队是突变；多线程请换 ConcurrentQueue
     Console.WriteLine($"  ▶ 处理：{task}");
 }
 
 Console.WriteLine($"队列已空：{taskQueue.Count == 0}");
 
-// TryDequeue：安全出队
 if (!taskQueue.TryDequeue(out var emptyTask))
     Console.WriteLine("TryDequeue 返回 false（队列为空）");
 
+// ---------- 2. Stack<T> 撤销操作 ----------
 Console.WriteLine("\\n=== 2. Stack<T> 撤销操作 ===");
 
-// 模拟文本编辑器的撤销栈
 var undoStack = new Stack<string>();
 string currentText = "";
 
-// 每次操作前把当前状态压栈
 void PerformEdit(string action, string newText)
 {
-    undoStack.Push(currentText);  // 保存旧状态
+    undoStack.Push(currentText);  // 压的是旧快照；引用类型请克隆，否则弹栈拿到的是同一对象
     currentText = newText;
     Console.WriteLine($"  编辑[{action}] → \\"{currentText}\\"");
 }
@@ -1571,7 +1562,6 @@ PerformEdit("加感叹号", "Hello World!");
 
 Console.WriteLine($"\\n当前文本：\\"{currentText}\\"");
 
-// 撤销：弹栈恢复
 Console.WriteLine("\\n执行撤销：");
 while (undoStack.Count > 0)
 {
@@ -1579,9 +1569,9 @@ while (undoStack.Count > 0)
     Console.WriteLine($"  ↶ 撤销后 → \\"{currentText}\\"");
 }
 
+// ---------- 3. 括号匹配（Stack 经典应用） ----------
 Console.WriteLine("\\n=== 3. 括号匹配（Stack 经典应用）===");
 
-// 用栈检查括号是否匹配
 string expr1 = "(a+b)*[c-d]";
 string expr2 = "(a+b]*[c-d)";
 string expr3 = "((())";
@@ -1590,7 +1580,6 @@ Console.WriteLine($"\\"{expr1}\\" 匹配？{IsBracketMatched(expr1)}");
 Console.WriteLine($"\\"{expr2}\\" 匹配？{IsBracketMatched(expr2)}");
 Console.WriteLine($"\\"{expr3}\\" 匹配？{IsBracketMatched(expr3)}");
 
-// 本地函数：用 Stack 检查括号匹配
 static bool IsBracketMatched(string expr)
 {
     var stack = new Stack<char>();
@@ -1605,22 +1594,20 @@ static bool IsBracketMatched(string expr)
     {
         if (c == '(' || c == '[' || c == '{')
         {
-            stack.Push(c);  // 左括号压栈
+            stack.Push(c);
         }
         else if (pairs.TryGetValue(c, out char expected))
         {
-            // 右括号：检查栈顶是否匹配
             if (stack.Count == 0 || stack.Pop() != expected)
                 return false;
         }
     }
-    return stack.Count == 0;  // 栈空才算完全匹配
+    return stack.Count == 0;  // 还有剩左括号 = 未闭合
 }
 
+// ---------- 4. PriorityQueue<TElement, TPriority> ----------
 Console.WriteLine("\\n=== 4. PriorityQueue<TElement, TPriority> ===");
 
-// 模拟急诊室：按病情优先级处理病人
-// 优先级数字越小越紧急（默认最小堆）
 var er = new PriorityQueue<string, int>();
 
 er.Enqueue("感冒患者", 5);       // 普通优先级
@@ -1632,16 +1619,16 @@ er.Enqueue("中风疑似", 2);
 Console.WriteLine("急诊室接诊顺序：");
 while (er.Count > 0)
 {
-    string patient = er.Dequeue();  // 优先级最小的先出
+    string patient = er.Dequeue();  // 同优先级不保证 FIFO；稳定排序请自己带序号
     Console.WriteLine($"  ▶ 接诊：{patient}");
 }
 
+// ---------- 5. PriorityQueue 自定义比较器（最大堆） ----------
 Console.WriteLine("\\n=== 5. PriorityQueue 自定义比较器（最大堆）===");
 
-// 默认是最小堆，想要最大堆：用自定义比较器反转
 var maxHeap = new PriorityQueue<string, int>(
     Comparer<int>.Create((a, b) => b.CompareTo(a)));
-// 比较器返回 b - a，让大值"更小"，从而大值先出
+// 比较器必须稳定且反对称；返回 0 视为同优先级，不是「相等就去重」
 
 maxHeap.Enqueue("低分任务", 10);
 maxHeap.Enqueue("高分任务", 100);
@@ -1651,6 +1638,7 @@ Console.WriteLine("按分数从高到低处理：");
 while (maxHeap.Count > 0)
     Console.WriteLine($"  ▶ {maxHeap.Dequeue()}");
 
+// ---------- 6. Peek 与 enqueue 模式 ----------
 Console.WriteLine("\\n=== 6. Peek 与 enqueue 模式 ===");
 
 var pq = new PriorityQueue<string, int>();
@@ -1658,18 +1646,18 @@ pq.Enqueue("A", 3);
 pq.Enqueue("B", 1);
 pq.Enqueue("C", 2);
 
-// Peek：查看但不取出，总是返回优先级最高的
 Console.WriteLine($"Peek：{pq.Peek()}（优先级最高）");
 pq.Dequeue();
 Console.WriteLine($"Dequeue 后 Peek：{pq.Peek()}");
 
+// ---------- 7. 队列容量预分配 ----------
 Console.WriteLine("\\n=== 7. 队列容量预分配 ===");
-// 与 List 类似，Queue 也能预分配容量
 var bigQueue = new Queue<int>(capacity: 1000);
 for (int i = 0; i < 1000; i++)
     bigQueue.Enqueue(i);
 Console.WriteLine($"预分配 1000 容量后入队 1000 个，Count = {bigQueue.Count}");
 
+// ---------- 8. IEnumerable 不会出队 ----------
 Console.WriteLine("\\n===== 8. IEnumerable 不会出队 =====");
 var look = new Queue<int>([1, 2, 3]);
 foreach (var n in look)
@@ -1680,6 +1668,7 @@ while (look.TryDequeue(out int n))
 Console.WriteLine();
 Console.WriteLine("空队列 TryPeek？" + look.TryPeek(out _));
 
+// ---------- 9. 环形缓冲思想（容量 4） ----------
 Console.WriteLine("\\n===== 9. 环形缓冲思想（容量 4） =====");
 var ring = new int[4];
 int head = 0, tail = 0, count = 0;
@@ -1700,6 +1689,7 @@ int RingDequeue()
 RingEnqueue(10); RingEnqueue(20); RingEnqueue(30);
 Console.WriteLine("环形出队 " + RingDequeue() + "，再入 40 后 Count=" + count);
 
+// ---------- 10. BlockingCollection 一句 ----------
 Console.WriteLine("\\n===== 10. BlockingCollection 一句 =====");
 var blocking = new System.Collections.Concurrent.BlockingCollection<int>(boundedCapacity: 2);
 blocking.Add(1);
@@ -1855,15 +1845,21 @@ var list2 = list.Add(1);  // 返回新集合，list 不变
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「SortedList 与 SortedDictionary」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - SortedList、SortedDictionary、SortedSet 演示
+    code: `// ===========================================================
+// 第三十四章 SortedList / SortedDictionary / SortedSet
+// 演示：按键有序字典、插入查找性能、IComparer、KeyedCollection、只读包装
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：ReadOnlyDictionary（.NET 4.5+）；KeyedCollection 的 int 索引器与 int 键会冲突
+// 陷阱：SortedList 插入是 O(n) 搬数组；数据会持续增长选 SortedDictionary。比较器把两元素判 0 视为同一元素
+// ===========================================================
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 
+// ---------- 1. SortedList：两根平行数组，可按键也可按下标，插入要挪位置 ----------
 Console.WriteLine("=== 1. SortedList 基础 ===");
 
-// SortedList：内部两个并行数组，按键排序
 var sorted = new SortedList<string, int>
 {
     ["banana"] = 3,
@@ -1872,19 +1868,17 @@ var sorted = new SortedList<string, int>
     ["date"] = 2
 };
 
-// 遍历是按键升序
 Console.WriteLine("SortedList 按键升序遍历：");
 foreach (var kv in sorted)
     Console.WriteLine($"  {kv.Key}：{kv.Value}");
 
-// 可以按键和按索引两种方式访问
 Console.WriteLine($"\\nsorted[\\"apple\\"] = {sorted["apple"]}");   // 按键
 Console.WriteLine($"Keys[0] = {sorted.Keys[0]}");                  // 按索引
 Console.WriteLine($"Values[0] = {sorted.Values[0]}");              // 按索引
 
+// ---------- 2. SortedDictionary 基础 ----------
 Console.WriteLine("\\n=== 2. SortedDictionary 基础 ===");
 
-// SortedDictionary：内部红黑树，按键排序
 var sd = new SortedDictionary<string, int>
 {
     ["banana"] = 3,
@@ -1897,9 +1891,9 @@ Console.WriteLine("SortedDictionary 按键升序遍历：");
 foreach (var kv in sd)
     Console.WriteLine($"  {kv.Key}：{kv.Value}");
 
-// 注意：SortedDictionary 不能按索引访问
-// sd.Keys[0]  // ❌ 编译错误
+// SortedDictionary 是树，没有 Keys[i]；需要下标请用 SortedList 或先 ToArray
 
+// ---------- 3. 三种集合性能对比 ----------
 Console.WriteLine("\\n=== 3. 三种集合性能对比 ===");
 
 const int N = 10_000;
@@ -1908,7 +1902,6 @@ var rnd = new Random(42);
 for (int i = 0; i < N; i++)
     keys.Add(rnd.Next(0, N * 10));
 
-// 测试 SortedList 插入性能
 var sl = new SortedList<int, int>();
 var sw = Stopwatch.StartNew();
 foreach (var k in keys)
@@ -1916,7 +1909,6 @@ foreach (var k in keys)
 sw.Stop();
 Console.WriteLine($"SortedList 插入 {N} 个：{sw.ElapsedMilliseconds} ms");
 
-// 测试 SortedDictionary 插入性能
 var sdict = new SortedDictionary<int, int>();
 sw.Restart();
 foreach (var k in keys)
@@ -1924,7 +1916,6 @@ foreach (var k in keys)
 sw.Stop();
 Console.WriteLine($"SortedDictionary 插入 {N} 个：{sw.ElapsedMilliseconds} ms");
 
-// 测试 SortedSet 插入性能
 var sset = new SortedSet<int>();
 sw.Restart();
 foreach (var k in keys)
@@ -1932,7 +1923,6 @@ foreach (var k in keys)
 sw.Stop();
 Console.WriteLine($"SortedSet 插入 {N} 个：{sw.ElapsedMilliseconds} ms");
 
-// 查找性能对比
 sw.Restart();
 for (int i = 0; i < N; i++)
     _ = sl.ContainsKey(keys[i]);
@@ -1945,9 +1935,9 @@ for (int i = 0; i < N; i++)
 sw.Stop();
 Console.WriteLine($"SortedDictionary 查找 {N} 次：{sw.ElapsedMilliseconds} ms");
 
+// ---------- 4. 自定义 IComparer<Person> ----------
 Console.WriteLine("\\n=== 4. 自定义 IComparer<Person> ===");
 
-// 自定义比较器：按年龄排序
 var personSet = new SortedSet<Person>(new PersonByAgeComparer())
 {
     new("张三", 30),
@@ -1963,6 +1953,7 @@ foreach (var p in personSet)
 Console.WriteLine($"最小年龄：{personSet.Min}");
 Console.WriteLine($"最大年龄：{personSet.Max}");
 
+// ---------- 5. KeyedCollection 演示 ----------
 Console.WriteLine("\\n=== 5. KeyedCollection 演示 ===");
 
 var people = new PersonCollection
@@ -1972,47 +1963,41 @@ var people = new PersonCollection
     new(3, "王五", 28)
 };
 
-// 既能按索引访问（List 特性）
 Console.WriteLine($"第一个元素：{((IList<PersonWithId>)people)[0]}");
 
-// 又能按键访问（Dictionary 特性）
 Console.WriteLine($"Id=2：{people[2]}");
 
-// 修改元素时键会自动更新
 people.RemoveAt(0);
 people.Insert(0, new(10, "张三丰", 100));  // KeyedCollection 的 int 索引器与 int 键冲突，不能直接 people[0]=
 Console.WriteLine($"修改后 Id=10：{people[10]}");
 
+// ---------- 6. ReadOnlyDictionary ----------
 Console.WriteLine("\\n=== 6. ReadOnlyDictionary ===");
 
 var source = new Dictionary<string, int> { ["a"] = 1, ["b"] = 2 };
-var readOnly = new ReadOnlyDictionary<string, int>(source);
+var readOnly = new ReadOnlyDictionary<string, int>(source);  // 包装而非拷贝：改 source 这边仍看得到
 
 Console.WriteLine($"ReadOnlyDictionary 元素数：{readOnly.Count}");
 Console.WriteLine($"readOnly[\\"a\\"] = {readOnly["a"]}");
 
-// 尝试修改会抛异常
 Console.WriteLine("ReadOnlyDictionary 不支持修改（会抛 NotSupportedException）");
 
+// ---------- 7. SortedSet 集合操作 ----------
 Console.WriteLine("\\n=== 7. SortedSet 集合操作 ===");
 
 var setA = new SortedSet<int> { 1, 3, 5, 7, 9 };
 var setB = new SortedSet<int> { 2, 3, 5, 8 };
 
-// 创建副本避免修改原集合
 var union = setA.Union(setB);
 Console.WriteLine($"A ∪ B = {{{string.Join(", ", union)}}}");
 
 var intersect = setA.Intersect(setB);
 Console.WriteLine($"A ∩ B = {{{string.Join(", ", intersect)}}}");
 
-// GetViewBetween：取范围内视图（SortedSet 特有）
 Console.WriteLine($"A 中 [3, 7] 范围：{{{string.Join(", ", setA.GetViewBetween(3, 7))}}}");
 
-// 类型定义
 public record Person(string Name, int Age);
 
-// 自定义比较器：按年龄排序
 public class PersonByAgeComparer : IComparer<Person>
 {
     public int Compare(Person? x, Person? y)
@@ -2020,21 +2005,20 @@ public class PersonByAgeComparer : IComparer<Person>
         if (x is null && y is null) return 0;
         if (x is null) return -1;
         if (y is null) return 1;
-        // 先按年龄，年龄相同按姓名（保证"不同对象"不被视为相等）
+        // Compare 返回 0 = 同一元素，SortedSet 会丢其中一个；所以年龄相同还要比姓名
         int result = x.Age.CompareTo(y.Age);
         return result != 0 ? result : x.Name.CompareTo(y.Name);
     }
 }
 
-// PersonWithId：带 Id 的 Person
 public record PersonWithId(int Id, string Name, int Age);
 
-// KeyedCollection：既是 List 又是 Dictionary
 public class PersonCollection : KeyedCollection<int, PersonWithId>
 {
-    // 从元素中提取 key
+    // 键从元素提取，插入后改 item.Id 不会自动挪桶——要用 ChangeItemKey 或当不可变
     protected override int GetKeyForItem(PersonWithId item) => item.Id;
-}`,
+}
+`,
     lang: 'cs',
   },
 
@@ -2192,7 +2176,13 @@ Bag 可能让你「刚 Add 的自己 Take 走」，别当任务队列。需要�
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「并发集合」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 并发集合演示
+    code: `// ===========================================================
+// 第三十五章 并发集合
+// 演示：ConcurrentDictionary、ConcurrentQueue/Bag、BlockingCollection、Channel、锁 vs 细粒度
+// 适用：.NET 8 / C# 12 顶级语句（含 await，编译器会生成 async 入口）
+// 版本：Channel<T>（.NET Core 3+ / .NET 8）；ConcurrentDictionary.AddOrUpdate / GetOrAdd
+// 陷阱：并发集合「单次 API」原子，不等于「先读再写」组合原子。GetOrAdd 工厂可能被调用多次
+// ===========================================================
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -2200,20 +2190,16 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
+// ---------- 1. ConcurrentDictionary：单次 AddOrUpdate 原子，不要先 Contains 再赋值 ----------
 Console.WriteLine("=== 1. ConcurrentDictionary 并发累加 ===");
 
-// 模拟：多个线程并发统计单词频次
 var counts = new ConcurrentDictionary<string, int>();
 var words = new[] { "apple", "banana", "apple", "cherry", "banana", "apple" };
 
-// 模拟多个线程同时处理不同单词
 Parallel.For(0, 10_000, i =>
 {
     string word = words[i % words.Length];
-    // AddOrUpdate：原子地"添加或更新"
-    // 参数 1：键
-    // 参数 2：如果键不存在，用的初始值
-    // 参数 3：如果键存在，用工厂计算新值
+    // 更新工厂可能在竞争下重试；不要在工厂里做有副作用的 IO
     counts.AddOrUpdate(word, 1, (_, old) => old + 1);
 });
 
@@ -2221,19 +2207,18 @@ Console.WriteLine("单词统计（10000 次并发累加）：");
 foreach (var kv in counts)
     Console.WriteLine($"  {kv.Key}：{kv.Value}");
 
+// ---------- 2. GetOrAdd 懒加载 ----------
 Console.WriteLine("\\n=== 2. GetOrAdd 懒加载 ===");
 
-// GetOrAdd：原子地"获取或创建"，常用于懒加载
 var cache = new ConcurrentDictionary<int, string>();
 var tasks = new List<Task<string>>();
 
-// 10 个线程同时尝试"创建 key=1 的对象"
 for (int i = 0; i < 10; i++)
 {
     tasks.Add(Task.Run(() =>
         cache.GetOrAdd(1, key =>
         {
-            Console.WriteLine($"  工厂被调用，key={key}");
+            Console.WriteLine($"  工厂被调用，key={key}");  // 竞争时工厂可能跑多次，只有一个值留下
             return $"Value-{key}";
         })));
 }
@@ -2241,12 +2226,12 @@ for (int i = 0; i < 10; i++)
 await Task.WhenAll(tasks);
 Console.WriteLine($"最终值：{cache[1]}");
 
+// ---------- 3. ConcurrentQueue 与 ConcurrentBag ----------
 Console.WriteLine("\\n=== 3. ConcurrentQueue 与 ConcurrentBag ===");
 
 var cq = new ConcurrentQueue<int>();
 var cb = new ConcurrentBag<int>();
 
-// 并发入队
 Parallel.For(0, 1000, i =>
 {
     cq.Enqueue(i);
@@ -2256,7 +2241,6 @@ Parallel.For(0, 1000, i =>
 Console.WriteLine($"ConcurrentQueue 元素数：{cq.Count}");
 Console.WriteLine($"ConcurrentBag 元素数：{cb.Count}");
 
-// TryDequeue：安全出队
 int taken = 0;
 while (cq.TryDequeue(out int item))
 {
@@ -2265,12 +2249,11 @@ while (cq.TryDequeue(out int item))
     if (taken >= 3) break;
 }
 
+// ---------- 4. BlockingCollection 生产者-消费者 ----------
 Console.WriteLine("\\n=== 4. BlockingCollection 生产者-消费者 ===");
 
-// 创建有界 BlockingCollection（容量 5）
 using var bc = new BlockingCollection<int>(boundedCapacity: 5);
 
-// 生产者：1 个线程生产数据
 var producer = Task.Run(() =>
 {
     for (int i = 1; i <= 20; i++)
@@ -2279,15 +2262,12 @@ var producer = Task.Run(() =>
         Console.WriteLine($"  [生产者] 添加 {i}");
         Thread.Sleep(10);  // 模拟生产耗时
     }
-    bc.CompleteAdding();  // 通知：不再添加了
+    bc.CompleteAdding();  // 漏调的话消费者 foreach 会永远阻塞
     Console.WriteLine("  [生产者] 完成添加");
 });
 
-// 消费者：1 个线程消费数据
 var consumer = Task.Run(() =>
 {
-    // GetConsumingEnumerable：自动等待并枚举
-    // 直到 CompleteAdding 被调用且集合空了才结束
     foreach (var item in bc.GetConsumingEnumerable())
     {
         Console.WriteLine($"  [消费者] 处理 {item}");
@@ -2299,30 +2279,28 @@ var consumer = Task.Run(() =>
 await Task.WhenAll(producer, consumer);
 Console.WriteLine("生产者-消费者全部完成");
 
+// ---------- 5. 多消费者 BlockingCollection ----------
 Console.WriteLine("\\n=== 5. 多消费者 BlockingCollection ===");
 
 using var bc2 = new BlockingCollection<string>(10);
 
-// 3 个消费者并发处理
 var consumers = Enumerable.Range(0, 3).Select(id => Task.Run(() =>
 {
     foreach (var item in bc2.GetConsumingEnumerable())
         Console.WriteLine($"  消费者 #{id} 处理：{item}");
 })).ToArray();
 
-// 生产者
 foreach (var item in new[] { "任务A", "任务B", "任务C", "任务D", "任务E" })
     bc2.Add(item);
 bc2.CompleteAdding();
 
 await Task.WhenAll(consumers);
 
+// ---------- 6. Channel<T> 异步管道 ----------
 Console.WriteLine("\\n=== 6. Channel<T> 异步管道 ===");
 
-// 创建有界 Channel：容量 3
 var channel = Channel.CreateBounded<string>(3);
 
-// 异步生产者
 async Task ProduceAsync()
 {
     for (int i = 1; i <= 5; i++)
@@ -2332,13 +2310,11 @@ async Task ProduceAsync()
         Console.WriteLine($"  [Writer] 写入 {msg}");
         await Task.Delay(50);
     }
-    channel.Writer.Complete();  // 通知：不再写入
+    channel.Writer.Complete();  // 对偶于 BlockingCollection.CompleteAdding
 }
 
-// 异步消费者
 async Task ConsumeAsync()
 {
-    // ReadAllAsync：异步枚举，直到 Writer.Complete 且缓冲区空
     await foreach (var item in channel.Reader.ReadAllAsync())
     {
         Console.WriteLine($"  [Reader] 读取 {item}");
@@ -2346,10 +2322,10 @@ async Task ConsumeAsync()
     }
 }
 
-// 同时启动生产者和消费者
 await Task.WhenAll(ProduceAsync(), ConsumeAsync());
 Console.WriteLine("Channel 管道完成");
 
+// ---------- 7. 性能对比：Dictionary + lock vs ConcurrentDictionary ----------
 Console.WriteLine("\\n=== 7. 性能对比：Dictionary + lock vs ConcurrentDictionary ===");
 
 const int N = 100_000;
@@ -2357,11 +2333,10 @@ var plainDict = new Dictionary<int, int>();
 object lockObj = new();
 var concurrentDict = new ConcurrentDictionary<int, int>();
 
-// 普通 Dictionary + lock
 var sw = Stopwatch.StartNew();
 Parallel.For(0, N, i =>
 {
-    lock (lockObj)  // 每次都加锁，性能差
+    lock (lockObj)  // 整表一把锁：正确但吞吐差；漏锁比慢更致命
     {
         plainDict[i] = i;
     }
@@ -2369,14 +2344,14 @@ Parallel.For(0, N, i =>
 sw.Stop();
 Console.WriteLine($"Dictionary + lock 写 {N} 次：{sw.ElapsedMilliseconds} ms");
 
-// ConcurrentDictionary
 sw.Restart();
 Parallel.For(0, N, i =>
 {
     concurrentDict[i] = i;  // 细粒度锁，性能好
 });
 sw.Stop();
-Console.WriteLine($"ConcurrentDictionary 写 {N} 次：{sw.ElapsedMilliseconds} ms");`,
+Console.WriteLine($"ConcurrentDictionary 写 {N} 次：{sw.ElapsedMilliseconds} ms");
+`,
     lang: 'cs',
   },
 ];

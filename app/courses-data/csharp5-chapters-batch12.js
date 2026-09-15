@@ -171,8 +171,15 @@ static bool LogAndContinue(Exception ex)
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「异常处理」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 异常处理完整演示
-// 演示：try/catch/finally、throw vs throw ex、when 过滤器、自定义异常、InnerException
+    code: `// ============================================================
+// 第六十章 异常处理 —— 可运行演示（net8.0 / C# 12 顶级语句）
+// ------------------------------------------------------------
+// catch 必须从具体到一般：IndexOutOfRange 写在 Exception 后面会编译失败。
+// 重抛只用 throw; —— throw ex; 会把堆栈截断到 catch 处，线上找不到真源头。
+// when 过滤器在进入 catch 之前求值：返回 false 时调用栈原样向上走，适合「记一笔但不吞」。
+// 生产陷阱：catch (Exception) 后返回成功会把故障藏进 200 指标；finally 里再抛会覆盖原始异常。
+// 资源释放优先 using / IDisposable，手写 finally+Dispose 容易漏路径。
+// ============================================================
 
 using System;
 using System.IO;
@@ -183,23 +190,23 @@ try
 {
     Console.WriteLine("=== 1. try/catch/finally 基础 ===");
     int[] numbers = { 1, 2, 3 };
-    // 故意访问越界索引，触发 IndexOutOfRangeException
-    int value = numbers[10]; // 索引越界
+    // 越界是确定性故障：用具体类型接住，别用 Exception 一把梭。
+    int value = numbers[10];
     Console.WriteLine($"不会执行到这里: {value}");
 }
 catch (IndexOutOfRangeException ex)
 {
-    // 捕获特定异常：数组索引越界
+    // Message 给人看；排障靠类型 + StackTrace，不要解析中文句子做分支。
     Console.WriteLine($"捕获到索引越界: {ex.Message}");
 }
 catch (Exception ex)
 {
-    // 兜底捕获：处理所有其他异常
+    // 兜底 catch 只应记录并失败，生产里再「吞掉返回默认值」会把事故变成脏数据。
     Console.WriteLine($"兜底捕获: {ex.Message}");
 }
 finally
 {
-    // 无论是否异常都会执行，常用于资源清理
+    // finally 总会跑，但其中再抛异常会盖掉 try 里的原始异常——清理逻辑要自己吞或记。
     Console.WriteLine("finally 块执行：清理资源");
 }
 
@@ -225,9 +232,8 @@ static void DangerousCall()
     }
     catch (Exception)
     {
-        // throw;  // ✅ 保留原始堆栈（推荐）
-        throw;       // 重抛但保留调用栈
-        // throw ex; // ❌ 会重置堆栈，丢失 InnerMethod 信息
+        // throw; 保留 InnerMethod 的抛出点。若写成 throw ex; 堆栈从本 catch 重算，APM 只会指向这里。
+        throw;
     }
 }
 
@@ -251,7 +257,7 @@ try
 }
 catch (NotFoundException ex) when (ex.Message.Contains("资源"))
 {
-    // 只有当异常消息包含"资源"时才进入此 catch
+    // when 用 Message 过滤只适合演示；生产按 ErrorCode / HResult / 状态码过滤，文案会改。
     Console.WriteLine($"[when 过滤命中] {ex.Message}");
 }
 catch (Exception ex) when (LogFilter(ex))
@@ -264,7 +270,7 @@ catch (Exception ex) when (LogFilter(ex))
 static bool LogFilter(Exception ex)
 {
     Console.WriteLine($"[过滤器日志] 异常类型: {ex.GetType().Name}");
-    return false; // 返回 false，异常继续向上传播
+    return false; // false = 不接住：上层仍能看到完整堆栈，这是「旁路日志」的正确姿势
 }
 
 // ===== 4. 自定义异常 InvalidUserException =====
@@ -315,7 +321,7 @@ catch (IOException ex)
 }
 finally
 {
-    // 确保 FileStream 一定被关闭
+    // 演示手写 Dispose。真实代码用 using var fs = new FileStream(...)，漏路径更少。
     fs?.Dispose();
     Console.WriteLine("FileStream 已释放");
 }
@@ -344,7 +350,7 @@ catch (Exception ex)
 }
 
 // ===== 自定义异常定义 =====
-// 继承 Exception，标记 Serializable，提供 3 个构造函数
+// 自定义异常要可序列化（跨 AppDomain / 某些日志管道仍依赖），并提供无参、消息、Inner 三个构造。
 [Serializable]
 public class InvalidUserException : Exception
 {
@@ -546,8 +552,14 @@ COM 互操作才需要 \`HResult\`；普通 Web/业务异常保持默认即可�
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 - 自定义异常与异常策略演示
-// 演示：Result<T> 类型、BusinessException(ErrorCode)、Try 模式、checked、Result 链式调用
+    code: `// ============================================================
+// 第六十一章 自定义异常与异常策略 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// 预期失败（解析、校验）走 Result / Try*，不要靠抛 FormatException 当控制流。
+// 真正意外（DB 宕了、不变量被破坏）才抛异常；跨边界再转成 Result 或 ProblemDetails。
+// ErrorCode 是稳定契约，客户端按码分支；Message 给人看，改文案不该是 breaking change。
+// checked 只包「金额 / 数量绝不能静默环绕」的算术；默认 unchecked 会把 MaxValue+1 变成负数。
+// ============================================================
 
 using System;
 using System.Collections.Generic;
@@ -576,7 +588,7 @@ Console.WriteLine($"链式结果: {finalResult}");
 // 解析方法：返回 Result 而非抛异常
 static Result<int> ParseAge(string input)
 {
-    // 使用 Try 模式：int.TryParse 避免抛 FormatException
+    // 热路径上 TryParse 比 throw+catch 便宜几个数量级：异常分配 + 堆栈采集很贵。
     if (int.TryParse(input, out int age))
     {
         return new Result<int>.Ok(age); // 成功：包装为 Ok
@@ -597,7 +609,7 @@ static Result<int> ValidateAge(int age)
 // 保存方法：模拟保存，可能抛 BusinessException
 static Result<int> SaveAge(int age)
 {
-    // 内部用异常，边界转换为 Result
+    // 基础设施可以抛；应用边界必须把异常收成 Err，避免泄漏到 HTTP 成 500。
     try
     {
         if (age == 999)
@@ -650,7 +662,7 @@ try
     checked
     {
         int max = int.MaxValue;       // int 最大值 2147483647
-        int overflow = max + 1;        // 溢出：抛 OverflowException
+        int overflow = max + 1;        // 金额/库存这类字段必须 checked，静默环绕就是资金事故
         Console.WriteLine($"不会执行: {overflow}");
     }
 }
@@ -663,7 +675,7 @@ catch (OverflowException ex)
 unchecked
 {
     int max = int.MaxValue;
-    int wrapped = max + 1;             // 环绕为负数，不抛异常
+    int wrapped = max + 1;             // 默认 unchecked：Max+1 变成负数，日志里像「逻辑写反了」
     Console.WriteLine($"unchecked 溢出环绕: {wrapped}");
 }
 
@@ -724,7 +736,7 @@ public abstract record Result<T>
     // 失败分支：携带错误信息
     public sealed record Err(string Error) : Result<T>;
 
-    // Bind 方法：链式调用，成功才继续，失败直接传播
+    // Bind 短路失败：第一个 Err 之后不再执行后续 IO，避免「校验失败还去写库」。
     public Result<TU> Bind<TU>(Func<T, Result<TU>> next)
         => this switch
         {
@@ -933,8 +945,14 @@ class Person { public string Name; public int Age; }
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 - 调试技术演示
-// 演示：Conditional("DEBUG")、Debug.Assert、DebuggerDisplay、DebuggerStepThrough、自定义 TraceListener
+    code: `// ============================================================
+// 第六十二章 调试技术 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// [Conditional("DEBUG")] 连实参求值一起删掉：Release 里昂贵的日志字符串根本不会算。
+// Debug.Assert 只在 Debug 构建生效；生产不变量要用正式校验 + 失败指标，不能指望弹窗。
+// Debugger.IsAttached 决定「要不要多打诊断」，绝不能用来判断是不是生产环境。
+// Stopwatch 适合演示；正式基准用 BenchmarkDotNet，避免 GC / 预热把数字带偏。
+// ============================================================
 
 using System;
 using System.Diagnostics;
@@ -949,14 +967,14 @@ LogInfo("这条日志在所有构建都出现");      // 普通方法，总是�
 
 // DEBUG 条件方法：参数求值也会被移除
 string expensiveMsg = ComputeExpensiveLog();
-LogDebug(expensiveMsg); // Release 中 ComputeExpensiveLog 不会被调用
+LogDebug(expensiveMsg); // 坑：你已经先算了 expensiveMsg。要让 Release 跳过计算，必须 LogDebug(ComputeExpensiveLog()) 直接传入调用。
 
 // ===== 2. Debug.Assert 与 Debug.WriteLine =====
 Console.WriteLine("\\n=== 2. Debug.Assert ===");
 
 int age = 25;
 // Assert：条件为 false 时触发（Debug 构建弹窗或终止）
-Debug.Assert(age >= 0, "年龄不能为负数"); // age >= 0 成立，继续执行
+Debug.Assert(age >= 0, "年龄不能为负数"); // Release 里整句消失，别把业务守卫写在 Assert 里
 Debug.WriteLine($"调试输出: 当前年龄 = {age}"); // 输出到调试器 Output 窗口
 
 // 故意触发 Assert（注释掉以避免运行中断）
@@ -998,7 +1016,7 @@ Console.WriteLine("\\n=== 6. 调试器状态 ===");
 if (Debugger.IsAttached)
 {
     Console.WriteLine("当前在调试器中运行");
-    // 调试模式下的特殊行为
+    // 附加调试器时才走这里。用它开关「更啰嗦的诊断」可以；用它当环境探测会在容器里永远是 false。
     Debugger.Log(1, "Test", "调试器日志输出\\n");
 }
 else
@@ -1048,7 +1066,7 @@ static int AddWithStepThrough(int a, int b)
 // ===== 类型定义 =====
 
 // DebuggerDisplay：控制调试器悬停显示
-[DebuggerDisplay("Person: Name={Name}, Age={Age}")]
+[DebuggerDisplay("Person: Name={Name}, Age={Age}")] // 只影响调试器悬停，不要把 PII（邮箱/证件）放进 Display
 public class Person
 {
     public string Name { get; set; } = "";
@@ -1303,8 +1321,14 @@ logger.LogInformation(MyEvents.UserLogin, "用户 {UserId} 登录", userId);
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「日志与诊断」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 日志与诊断演示
-// 演示：Microsoft.Extensions.Logging 结构化日志、自定义 Logger、Activity 跟踪、Meter 计数
+    code: `// ============================================================
+// 第六十三章 日志与诊断 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// 结构化占位符 {UserId} 会进字段；插值字符串会把整句熔成一条不可检索的文本。
+// 日志里的 PII（邮箱、手机、token）必须打码：日志读者通常远多于接口调用者。
+// Activity 是一次请求的因果链；Meter 标签只用低基数维度（status/channel），别把 orderId 打进指标。
+// 沙箱没有 Microsoft.Extensions.Logging 包，下面是形状对齐的精简抽象，生产请用官方实现。
+// ============================================================
 
 using System;
 using System.Diagnostics;
@@ -1339,10 +1363,10 @@ decimal totalAmount = 299.9m;
 // ✅ 正确：结构化占位符 {Property}
 logger.LogInformation("用户 {UserId} 购买了 {Count} 件商品，总计 {Amount:C}",
     userId, productCount, totalAmount);
-// UserId / Count / Amount 作为独立字段被记录，便于查询
+// 查询写成 UserId=U10086，而不是全文搜「用户 U10086 购买了」——后者一改文案查询全废。
 
 // ❌ 错误示范（字符串插值，丢失结构化信息）
-// logger.LogInformation($"用户 {userId} 购买了 {productCount} 件商品");
+// 不要改成插值字符串：占位符会消失，后端无法按字段建索引，也更容易把 PII 整段打出去。
 
 // ===== 3. 日志级别演示 =====
 Console.WriteLine("\\n=== 3. 日志级别 ===");
@@ -1360,7 +1384,7 @@ try
 }
 catch (Exception ex)
 {
-    // 第二个参数是 Exception，会记录堆栈
+    // 异常必须作为独立参数传入，才能带上 StackTrace；拼进 message 会丢类型与 InnerException。
     logger.LogError(ex, "处理订单时发生异常，订单号={OrderId}", "ORD-001");
 }
 
@@ -1403,7 +1427,7 @@ using var activitySource = new ActivitySource("MyApp", "1.0.0");
 // 启动一个 Activity（相当于 span）
 using (var activity = activitySource.StartActivity("ProcessOrder"))
 {
-    activity?.SetTag("order.id", "ORD-2024-001"); // 添加标签
+    activity?.SetTag("order.id", "ORD-2024-001"); // 追踪标签可以带业务 id；指标标签不行（基数爆炸）
     activity?.SetTag("order.amount", 299.9);
 
     logger.LogInformation("开始处理订单 ORD-2024-001");
@@ -1441,6 +1465,7 @@ var orderDuration = meter.CreateHistogram<double>("order_duration_ms", unit: "ms
 // 创建 ObservableGauge：当前值（队列长度）
 long queueLength = 0;
 var queueGauge = meter.CreateObservableGauge("order_queue_length", () => queueLength, unit: "个");
+// ObservableGauge 是拉取式：导出器来问才读当前值。别在回调里做 IO 或分配。
 
 // 订阅 Meter 导出指标（模拟 Prometheus 抓取）
 using var meterListener = new MeterListener();

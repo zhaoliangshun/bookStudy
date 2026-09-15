@@ -188,7 +188,15 @@ GC.UnregisterForFullGCNotification();
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「垃圾回收」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 —— 垃圾回收机制演示
+    code: `// ============================================================
+// 第六十四章 垃圾回收 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// GC 按代工作：短命对象应死在 Gen0；活过几次会晋升，Full GC 才是延迟杀手。
+// 本 demo 多处 GC.Collect() 只为让代数可见。生产代码几乎从不手调——会打乱自适应调优。
+// LOH 阈值约 85000 字节，大数组直接进 Gen2；频繁分配会碎片化，必要时 CompactOnce。
+// pinned 数组 GC 搬不走，钉太多会让堆出现「无法压缩的洞」，P/Invoke 用完立刻 unpin。
+// Server GC 吞吐优先，Workstation 延迟优先；容器要显式选，别用桌面默认去跑服务。
+// ============================================================
 using System;
 using System.Diagnostics;
 using System.Runtime;
@@ -204,7 +212,7 @@ Console.WriteLine($"当前线程已分配字节: {GC.GetAllocatedBytesForCurrent
 // === 2. 演示分代回收 ===
 Console.WriteLine("\\n=== 分代回收演示 ===");
 
-// 强制先做一次完整回收，确保环境干净
+// 教学用：清空堆，让后面的代数读数可重复。生产热路径调用 Collect 会制造停顿尖峰。
 GC.Collect();
 GC.WaitForPendingFinalizers();
 GC.Collect();
@@ -214,7 +222,7 @@ Console.WriteLine($"初始 Gen0 内存: {GC.GetGCMemoryInfo().GenerationInfo[0].
 // 创建一批短生命周期对象，触发 Gen0 回收
 for (int i = 0; i < 100_000; i++)
 {
-    var temp = new byte[64];  // 64 字节小对象，进 SOH Gen0
+    var temp = new byte[64];  // 小对象进 SOH Gen0；循环里的局部引用结束即不可达，正好喂给 Gen0
 }
 
 // 此时大部分 temp 应该已经没人引用了
@@ -226,7 +234,7 @@ Console.WriteLine($"Gen0 回收后: {GC.GetGCMemoryInfo().GenerationInfo[0].Size
 
 // === 3. 对象晋升演示 ===
 Console.WriteLine("\\n=== 对象晋升演示 ===");
-var survivor = new byte[1024];  // 这个对象一直被引用
+var survivor = new byte[1024];  // 仍被根引用：GC 不能收，只能晋升。缓存/静态字段就是这样把对象送进 Gen2 的。
 Console.WriteLine($"分配后所在代: {GC.GetGeneration(survivor)}");  // 0
 
 GC.Collect(0);  // 只回收 Gen0
@@ -242,7 +250,7 @@ GCMemoryInfo infoBefore = GC.GetGCMemoryInfo();
 Console.WriteLine($"托管堆总大小: {infoBefore.HeapSizeBytes:N0} bytes");
 Console.WriteLine($"其中 LOH 大小: {infoBefore.GenerationInfo[3].SizeAfterBytes:N0} bytes");
 
-// 分配一个 ≥85000 字节的大数组 → 直接进 LOH（Gen2）
+// ≥ ~85000 字节走 LOH，代数直接是 2：它不会在 Gen0 被收拾，碎片要靠压缩或对象池。
 var largeArray = new byte[100_000];
 Console.WriteLine($"大对象 (100000 bytes) 所在代: {GC.GetGeneration(largeArray)}");  // 2
 
@@ -269,19 +277,19 @@ Console.WriteLine($"AllocateArray (清零) 10w 次: {sw.ElapsedMilliseconds} ms"
 sw.Restart();
 for (int i = 0; i < 100_000; i++)
 {
-    byte[] arr = GC.AllocateUninitializedArray<byte>(1024);  // 不清零，快一点
+    byte[] arr = GC.AllocateUninitializedArray<byte>(1024);  // 跳过清零；缓冲必须自己填满有效区间，否则旧数据泄漏
 }
 sw.Stop();
 Console.WriteLine($"AllocateUninitializedArray (不清零) 10w 次: {sw.ElapsedMilliseconds} ms");
 
 // === 7. pinned 数组（GC 不会移动它）===
 Console.WriteLine("\\n=== Pinned 数组 ===");
-byte[] pinnedArr = GC.AllocateArray<byte>(16, pinned: true);  // 直接固定
+byte[] pinnedArr = GC.AllocateArray<byte>(16, pinned: true);  // 钉住后 GC 无法移动；只给互操作短窗口用，不要当普通缓冲
 Console.WriteLine($"pinned 数组地址: {Marshal.UnsafeAddrOfPinnedArrayElement(pinnedArr, 0):X}");
 
 // === 8. NoGCRegion：临时禁用 GC ===
 Console.WriteLine("\\n=== NoGCRegion 临时禁用 GC ===");
-if (GC.TryStartNoGCRegion(64 * 1024 * 1024))  // 给 64MB 空间，期间不触发 GC
+if (GC.TryStartNoGCRegion(64 * 1024 * 1024))  // 硬实时窗口：超预算会失败。务必 try/finally EndNoGCRegion，否则后续分配行为难料。
 {
     Console.WriteLine("已进入 NoGCRegion");
     long b = GC.GetAllocatedBytesForCurrentThread();
@@ -305,6 +313,7 @@ Console.WriteLine($"GetTotalAllocatedBytes: {GC.GetTotalAllocatedBytes():N0} byt
 Console.WriteLine("\\n=== LOH 压缩模式 ===");
 Console.WriteLine($"当前 LOH 压缩模式: {GCSettings.LargeObjectHeapCompactionMode}");
 // 下次 Full GC 时压缩 LOH（适合内存碎片严重的场景）
+// CompactOnce 只对「下一次 Full GC」生效，用完立刻打回 Default，避免每次 Full GC 都付出压缩税。
 GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
 GC.Collect(2, GCCollectionMode.Forced, true, true);  // 阻塞、强制、压缩 LOH
 Console.WriteLine("已强制压缩 LOH");
@@ -546,7 +555,14 @@ CA2000（“未释放对象”）会抱怨 \`new FileStream\` 没进 \`using\`�
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 —— IDisposable / Finalizer / SafeHandle / IAsyncDisposable 全套演示
+    code: `// ============================================================
+// 第六十五章 IDisposable 与 Finalizer —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// Dispose 是确定性释放；Finalizer 只是「忘了 Dispose」的兜底，而且会把对象多活一代。
+// 非托管句柄优先 SafeHandle：ReleaseHandle 在 CER 里跑，AppDomain 卸载也不该漏。
+// IAsyncDisposable 给「关闭要 IO」的资源（连接、管道）；同步 Dispose 里堵异步是死锁温床。
+// 已 Dispose 的实例再操作应抛 ObjectDisposedException，而不是静默写坏 native 内存。
+// ============================================================
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -558,14 +574,14 @@ using (var resource = new NativeBuffer(1024))
 {
     resource.Write(0, 42);
     Console.WriteLine($"  读取: {resource.Read(0)}");
-}  // ← 离开 using 块自动 Dispose
+}  // 离开作用域即 Dispose：异常路径也会走，这是 finally 手写 Dispose 做不到的整齐。
 
 // === 2. using var 声明（无大括号）===
 Console.WriteLine("\\n=== using var 声明 ===");
 using var r2 = new NativeBuffer(64);
 r2.Write(0, 100);
 Console.WriteLine($"  using var 声明: {r2.Read(0)}");
-// 方法结束时自动 Dispose r2
+// using var 的寿命是整个方法：别在长方法开头租昂贵资源却到结尾才释放。
 
 // === 3. 演示 Finalizer 行为 ===
 Console.WriteLine("\\n=== Finalizer 行为 ===");
@@ -573,7 +589,7 @@ Console.WriteLine("创建短生命周期对象（有 Finalizer）...");
 for (int i = 0; i < 5; i++)
 {
     var tmp = new LeakyObject(i);
-    tmp = null;  // 不再引用
+    tmp = null;  // 显式丢掉根；无此赋值时 JIT 可能把对象保持到方法结束，Finalizer 演示会「看起来没跑」。
 }
 GC.Collect();
 GC.WaitForPendingFinalizers();  // 等 Finalizer 跑完
@@ -652,7 +668,7 @@ sealed class NativeBuffer : IDisposable
     public void Dispose()
     {
         Dispose(disposing: true);
-        GC.SuppressFinalize(this);  // 已手动释放，告诉 GC 不用跑 Finalizer
+        GC.SuppressFinalize(this);  // 省掉一次 Finalizer 队列排队；忘了调，对象会晋升、延迟升高
         Console.WriteLine($"  [NativeBuffer] Dispose 调用，SuppressFinalize");
     }
 
@@ -672,7 +688,7 @@ sealed class NativeBuffer : IDisposable
         _disposed = true;
     }
 
-    ~NativeBuffer()  // Finalizer：兜底，万一忘 Dispose
+    ~NativeBuffer()  // Finalizer 线程跑，不能碰其他托管对象（它们可能已经死了）
     {
         Dispose(disposing: false);
         Console.WriteLine($"  [NativeBuffer] Finalizer 跑了（说明忘 Dispose）");
@@ -709,7 +725,7 @@ sealed class MySafeHandle : SafeHandle
 
     public override bool IsInvalid => handle == IntPtr.Zero;
 
-    // 在 CER 中执行，保证即使 AppDomain 卸载也能释放
+    // SafeHandle.ReleaseHandle 受 Constrained Execution Region 保护，比自己写析构更不容易漏句柄。
     protected override bool ReleaseHandle()
     {
         Console.WriteLine($"  [MySafeHandle] ReleaseHandle 释放句柄 {handle}");
@@ -964,7 +980,14 @@ string result = string.Create(9, 42, (span, value) =>
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 —— Span/Memory/ArrayPool/stackalloc 高性能字符串解析演示
+    code: `// ============================================================
+// 第六十六章 Span 与 Memory —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// Span<T> 是 ref struct：不能进 class 字段、不能跨 await、不能装箱。跨异步边界用 Memory<T>。
+// Slice 是视图不是拷贝：改 middle[0] 就是改原数组。把 Span 传出方法后，底层数组若已归还/出栈即悬空。
+// stackalloc 的寿命是当前方法：循环内反复 stackalloc 会撑爆线程栈，缓冲要提到循环外复用。
+// ArrayPool.Rent 返回的长度 ≥ 请求值，读写必须用「有效长度」切片；归还时 clearArray 防 PII 留在池里。
+// ============================================================
 using System;
 using System.Buffers;
 using System.Diagnostics;
@@ -976,8 +999,8 @@ using System.Text;
 Console.WriteLine("=== Span 基础 ===");
 int[] arr = { 1, 2, 3, 4, 5, 6, 7, 8 };
 Span<int> span = arr.AsSpan();           // 整个数组
-Span<int> middle = span.Slice(2, 4);     // [3,4,5,6]
-middle[0] = 99;                          // 修改影响原数组
+Span<int> middle = span.Slice(2, 4);     // 零拷贝窗口，不是 new int[4]
+middle[0] = 99;                          // 写的是原数组；若这是别人的缓冲，就是一次静默数据损坏
 Console.WriteLine($"  arr[2] = {arr[2]} (应是 99)");
 
 // 范围运算符切片（C# 8+）
@@ -989,7 +1012,7 @@ Console.WriteLine("\\n=== 字符串 AsSpan 解析 ===");
 string input = "user=admin;pass=P@ssw0rd;role=admin";
 ReadOnlySpan<char> inputSpan = input.AsSpan();
 
-// 手写解析器：不用 Split（会分配 string 数组）
+// Split 每个片段都 new string。热路径解析用 IndexOf + Slice，直到真正需要 string 再 ToString。
 int idx = 0;
 while (idx < inputSpan.Length)
 {
@@ -1009,7 +1032,7 @@ while (idx < inputSpan.Length)
 
 // === 3. stackalloc：栈上分配小缓冲 ===
 Console.WriteLine("\\n=== stackalloc 栈上分配 ===");
-Span<char> buf = stackalloc char[32];    // 32 字符在栈上
+Span<char> buf = stackalloc char[32];    // 栈上，无 GC。体积要固定且小；运行时才知道的大缓冲走 ArrayPool。
 "Hello".AsSpan().CopyTo(buf);
 "World".AsSpan().CopyTo(buf[5..]);
 buf[5] = ' ';
@@ -1033,20 +1056,22 @@ try
 }
 finally
 {
-    ArrayPool<byte>.Shared.Return(rented, clearArray: true);  // 归还并清零
+    ArrayPool<byte>.Shared.Return(rented, clearArray: true);  // 不清零则下一个租户可能读到你的密钥/身份证号
 }
 
 // === 5. Memory<T>：可跨 await ===
 Console.WriteLine("\\n=== Memory<T> 跨异步 ===");
 Memory<int> mem = new[] { 10, 20, 30, 40, 50 }.AsMemory();
-ProcessAsync(mem).GetAwaiter().GetResult();  // 顶级语句保持同步，才能使用 Span
+// Memory 可以跨 await；到了同步方法再 .Span。把 Span 存进字段或传到 async 方法会直接编译失败。
+ProcessAsync(mem).GetAwaiter().GetResult();
 Console.WriteLine($"  处理后 mem[0] = {mem.Span[0]}");
 
 // === 6. CollectionsMarshal.AsSpan：直接访问 List 内部数组 ===
 Console.WriteLine("\\n=== CollectionsMarshal.AsSpan ===");
 List<int> list = new() { 1, 2, 3, 4, 5 };
 Span<int> listSpan = CollectionsMarshal.AsSpan(list);
-listSpan[0] = 999;  // 直接改 List 内部数组
+// 拿到内部数组的视图。随后 Add/Remove 一扩容，这份 Span 就指向被丢弃的旧数组。
+listSpan[0] = 999;
 Console.WriteLine($"  list[0] = {list[0]} (应是 999)");
 
 // 在不修改 List 大小的情况下，用 Span 遍历最快
@@ -1111,7 +1136,7 @@ try
 {
     string csvLine = "Alice,30,Engineer";
     csvLine.AsSpan().CopyTo(csvBuf);
-    ReadOnlySpan<char> csv = csvBuf.AsSpan(0, csvLine.Length);  // 只取有效长度，别带出租借数组里的旧数据
+    ReadOnlySpan<char> csv = csvBuf.AsSpan(0, csvLine.Length);  // Rent 可能给 512；不切片就会把池里上一位租户的垃圾当 CSV
 
     int p = 0;
     while (p < csv.Length)
@@ -1130,8 +1155,8 @@ finally
 // ============ 异步方法 ============
 async Task ProcessAsync(Memory<int> mem)
 {
-    await Task.Delay(10);  // 模拟 IO
-    DoubleInPlace(mem);    // Span 必须放在同步方法里
+    await Task.Delay(10);  // await 之后局部 Span 非法；把 Memory 传下去，同步区再取 Span
+    DoubleInPlace(mem);
 }
 
 void DoubleInPlace(Memory<int> mem)
@@ -1351,7 +1376,14 @@ C# 13 允许泛型参数标 \`allows ref struct\`，于是 \`Span<T>\` 能进更
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 —— ref struct / ref readonly / ref 字段 / scoped / nint 全套演示
+    code: `// ============================================================
+// 第六十七章 ref struct 与 ref readonly —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// ref struct 只能活在栈上，所以 Span 不会被装箱进堆、也不会被 async 状态机捕获。
+// ref 字段（C# 11）持有「对别人变量的引用」：赋值写的是目标，寿命不能超过被引用的局部量。
+// scoped Span 参数禁止逃逸出方法，这是编译器在帮你防「返回一块已经出栈的内存」。
+// GCHandle.Pinned 与 Span 一样：钉住期间 GC 压缩绕开它，用完必须 Free，否则碎片。
+// ============================================================
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -1373,13 +1405,13 @@ Console.WriteLine($"  长度: {sb.Length}");
 Console.WriteLine("\\n=== ref 字段演示 ===");
 int num = 10;
 RefHolder<int> holder = new(ref num);
-holder.Value = 999;  // 直接改外部变量
+holder.Value = 999;  // ref 字段没有拷贝：改的是 num 本身。holder 活过 num 就是悬空写。
 Console.WriteLine($"  外部 num = {num} (应是 999)");
 
 // === 3. in 参数：按引用传递大 struct ===
 Console.WriteLine("\\n=== in 参数 ===");
 BigVector vec = new() { X = 1.5, Y = 2.5, Z = 3.5 };
-Helpers.PrintVector(in vec);  // 不拷贝整个 struct
+Helpers.PrintVector(in vec);  // in = 只读引用。大 struct 用 in 避免拷贝，但要当心内部可变字段被别的别名改掉。
 
 // === 4. ref 返回：直接修改内部数据 ===
 Console.WriteLine("\\n=== ref 返回 ===");
@@ -1421,7 +1453,7 @@ try
 }
 finally
 {
-    handle.Free();  // 必须释放
+    handle.Free();  // 漏 Free = 对象永钉。P/Invoke 窗口外不要保持 Pinned。
     Console.WriteLine("  已释放 GCHandle");
 }
 
@@ -1529,7 +1561,7 @@ static class Helpers
         Console.WriteLine($"  X={v.X}, Y={v.Y}, Z={v.Z}（in 参数未拷贝）");
     }
 
-    // scoped：禁止 Span 逃逸出方法
+    // scoped 让编译器拒绝 return data / 存进实例字段：stackalloc 的内存在方法返回后不存在。
     public static void ProcessScoped(scoped Span<int> data)
     {
         for (int i = 0; i < data.Length; i++)
@@ -1822,7 +1854,14 @@ struct Header { public int Id; public byte Type; }  // Pack=1 紧凑布局
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 —— 性能优化技巧对比演示
+    code: `// ============================================================
+// 第六十八章 性能优化技巧 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// 先测分配再谈微优化：GetAllocatedBytesForCurrentThread 比「感觉慢」更接近真相。
+// 字符串 + 循环是 O(n²) 分配；StringBuilder / string.Join / string.Create 才是热路径选项。
+// 非 static lambda 捕获局部会 new 闭包对象——循环里的 LINQ 很容易把 Gen0 打满。
+// 本文件数字只是示意；正式对比请用 BenchmarkDotNet，并关掉这些人为的 GC.Collect 干扰。
+// ============================================================
 using System;
 using System.Buffers;
 using System.Diagnostics;
@@ -1836,7 +1875,7 @@ using System.Collections.Concurrent;
 Console.WriteLine("=== 字符串拼接性能对比 ===");
 const int N = 10_000;
 
-// (1) + 拼接：最慢，O(n²) 分配
+// 每次 s += 都 new 一份更长的 string，旧的留给 GC。N=1 万时分配量是平方级。
 var sw = Stopwatch.StartNew();
 long memBefore = GC.GetAllocatedBytesForCurrentThread();
 {
@@ -1897,7 +1936,7 @@ Console.WriteLine("\\n=== 装箱 vs 泛型 ===");
 sw.Restart();
 memBefore = GC.GetAllocatedBytesForCurrentThread();
 System.Collections.ArrayList list1 = new();
-for (int i = 0; i < 10_000; i++) list1.Add(i);  // 装箱
+for (int i = 0; i < 10_000; i++) list1.Add(i);  // ArrayList 收 object：每个 int 都在堆上多一个盒子
 long memBoxed = GC.GetAllocatedBytesForCurrentThread() - memBefore;
 sw.Stop();
 Console.WriteLine($"  ArrayList（装箱）: {sw.ElapsedMilliseconds} ms, 分配 {memBoxed:N0} bytes");
@@ -1939,7 +1978,7 @@ Console.WriteLine($"  new byte[1024] 1000 次: {sw.ElapsedMilliseconds} ms, 分�
 Console.WriteLine("\\n=== static lambda ===");
 int threshold = 500;
 
-// 非 static lambda 捕获 threshold → 生成闭包类，每次调用分配
+// 捕获 threshold 的 lambda 每轮都可能分配 DisplayClass；改成 static + 常量/参数才能消掉。
 sw.Restart();
 memBefore = GC.GetAllocatedBytesForCurrentThread();
 for (int i = 0; i < 100_000; i++)
@@ -1999,7 +2038,7 @@ sw.Restart();
 ReadOnlySpan<int> sa = vecA;
 ReadOnlySpan<int> sb2 = vecB;
 Span<int> sr = vecResult;
-int vectorSize = Vector<int>.Count;  // 通常 8（256 位 AVX2）
+int vectorSize = Vector<int>.Count;  // 硬件决定宽度。SIMD 只对紧凑数值数组划算，别对 List<T> 幻想自动加速。
 int iVec;
 for (iVec = 0; iVec + vectorSize <= sa.Length; iVec += vectorSize)
 {

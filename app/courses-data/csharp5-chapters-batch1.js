@@ -168,15 +168,17 @@ namespace MyApp
 //    C# 9+ 引入，整个文件只需要直接写执行代码即可。
 
 // 2) 声明几个变量，演示 C# 的类型推断
-var language = "C#";          // var 让编译器推断类型，这里推断为 string
-var version = 12;             // 推断为 int
+//    var 是编译期推断：写出的 IL 里类型已经钉死，不是 Python 那种运行期可变类型。
+var language = "C#";          // 右侧是字符串字面量 → 推断为 string
+var version = 12;             // 无后缀整数默认 int；要 long 得写 12L
 var framework = ".NET 8";     // 推断为 string
 var releaseYear = 2023;       // 推断为 int（.NET 8 发布于 2023 年 11 月）
 
 // 3) 简单输出：Console.WriteLine 会在末尾自动换行
 Console.WriteLine("===== 欢迎来到 C# 教程 =====");
 
-// 4) 字符串插值：$ 前缀 + {变量名} 即可把变量嵌入字符串
+// 4) 字符串插值：美元符号紧贴引号，花括号里写表达式（C# 6+）
+//    比 + 拼接少一次中间字符串分配，也更不容易漏空格。
 Console.WriteLine($"语言：{language} {version}");
 Console.WriteLine($"框架：{framework}，发布年份：{releaseYear}");
 
@@ -403,13 +405,13 @@ using System;                          // 引入 System 命名空间
 using System.Runtime.InteropServices;  // 引入运行时互操作命名空间
 
 // 1) 输出当前 .NET 运行时版本
-//    Environment.Version 返回 CLR 的主版本号
+//    Environment.Version 是 CLR 版本；TargetFramework 写 net8.0 时这里通常是 8.0.x。
+//    不要拿它当「你装了哪个 SDK」——SDK 版本用 dotnet --info 看。
 Console.WriteLine("===== .NET 运行时信息 =====");
 Console.WriteLine($"CLR 版本：{Environment.Version}");
-//    .NET 8 的 Environment.Version 通常是 8.0.x
 
-// 2) 输出更完整的框架描述字符串
-//    RuntimeInformation.FrameworkDescription 包含完整信息
+// 2) 框架描述字符串：给人看的完整标签，例如 ".NET 8.0.x"
+//    日志里建议打这一项，排障时比只打「8」清楚。
 Console.WriteLine($"框架描述：{RuntimeInformation.FrameworkDescription}");
 
 // 3) 输出操作系统信息
@@ -418,7 +420,8 @@ Console.WriteLine($"OS 架构：{RuntimeInformation.OSArchitecture}");
 Console.WriteLine($"进程架构：{RuntimeInformation.ProcessArchitecture}");
 
 // 4) 跨平台判断：使用 OperatingSystem 静态类（.NET 5+）
-//    这些方法在编译器和运行时都会做适配，避免直接判断字符串
+//    优先用这些 API，不要自己解析 OSDescription 字符串（发行版文案会变）。
+//    编译到单一 RID 时，用不到的分支会被裁掉，AOT 更友好。
 if (OperatingSystem.IsWindows())
 {
     Console.WriteLine("当前运行在 Windows 上");
@@ -444,8 +447,8 @@ Console.WriteLine($"工作目录：{Environment.CurrentDirectory}");
 string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 Console.WriteLine($"桌面目录：{desktop}");
 
-// 8) 输出处理器数量
-//    ProcessorCount 在做并行计算时常用，用来决定线程池大小
+// 8) 逻辑处理器数量（含超线程），不是物理核心数
+//    并行度、通道容量常拿它当上限；容器里它还会被 cgroup 限制影响。
 Console.WriteLine($"CPU 核心数：{Environment.ProcessorCount}");
 
 // 9) 演示：当前是否 64 位进程
@@ -453,13 +456,13 @@ Console.WriteLine($"CPU 核心数：{Environment.ProcessorCount}");
 bool is64Bit = IntPtr.Size == 8;
 Console.WriteLine($"是否 64 位进程：{is64Bit}");
 
-// 10) 系统 TickCount（启动后毫秒数），用于简单计时
-//     注意：环境 tick 是 int，约 24.9 天后会回绕
+// 10) 系统 TickCount（启动后毫秒数），用于简单间隔，不是墙钟
+//     TickCount 是 32 位，约 24.9 天回绕成负数；长时间运行用 TickCount64。
 int ticks = Environment.TickCount;
 Console.WriteLine($"系统启动至今：{ticks} ms");
 
-// 11) 输出命令行参数
-//     顶级语句中可用 args 数组；这里演示 Environment.GetCommandLineArgs
+// 11) GetCommandLineArgs：[0] 永远是进程路径，用户参数从 [1] 开始
+//     顶级语句里的 args 则不包含进程路径，这是新手最容易对不上的一点。
 string[] cmdLineArgs = Environment.GetCommandLineArgs();
 Console.WriteLine($"命令行参数个数：{cmdLineArgs.Length}");
 if (cmdLineArgs.Length > 0)
@@ -679,7 +682,8 @@ using System;
 using System.Reflection;
 
 // 1) 获取当前程序入口程序集
-//    Assembly.GetEntryAssembly() 返回启动当前进程的程序集
+//    GetEntryAssembly：启动进程的那一个（exe）。单测宿主 / 原生宿主里可能为 null。
+//    GetExecutingAssembly：包含「正在跑的这段代码」的程序集，和入口不一定相同。
 Assembly? entryAssembly = Assembly.GetEntryAssembly();
 Console.WriteLine("===== 程序集信息 =====");
 if (entryAssembly is not null)
@@ -687,7 +691,7 @@ if (entryAssembly is not null)
     // 输出程序集的全名（包含名称、版本、文化、公钥标记）
     Console.WriteLine($"入口程序集全名：{entryAssembly.FullName}");
 
-    // 输出程序集的位置（DLL/EXE 的物理路径）
+    // Location：磁盘路径。单文件发布 / Native AOT 下经常是空字符串，不要当必有。
     Console.WriteLine($"程序集位置：{entryAssembly.Location}");
 }
 else
@@ -700,8 +704,8 @@ else
 Assembly execAssembly = Assembly.GetExecutingAssembly();
 Console.WriteLine($"执行程序集：{execAssembly.GetName().Name}");
 
-// 3) 获取当前 AppDomain 信息
-//    AppDomain 是 .NET 中加载程序集、隔离代码的边界
+// 3) AppDomain：.NET Framework 时代的隔离边界
+//    在 .NET Core / .NET 8 里通常只剩默认域；插件隔离请用 AssemblyLoadContext。
 Console.WriteLine("\\n===== AppDomain 信息 =====");
 AppDomain domain = AppDomain.CurrentDomain;
 Console.WriteLine($"AppDomain 友好名称：{domain.FriendlyName}");
@@ -725,7 +729,7 @@ Console.WriteLine($"当前工作目录：{Environment.CurrentDirectory}");
 Console.WriteLine($"系统目录：{Environment.SystemDirectory}");
 
 // 7) 获取 .NET 命令行参数
-//    GetCommandLineArgs 第一个元素是程序本身的路径
+//    GetCommandLineArgs 第一个元素是程序本身的路径；顶级语句 args 不含这一项。
 string[] cmdArgs = Environment.GetCommandLineArgs();
 Console.WriteLine($"\\n===== 命令行参数 =====");
 Console.WriteLine($"参数个数：{cmdArgs.Length}");
@@ -988,12 +992,13 @@ int age = 22;                // 整型变量（C# 出生于 2002 年，至 2024 
 double version = 12.0;       // 浮点变量
 bool isAwesome = true;       // 布尔变量
 
-// 3) 字符串拼接：用 + 号把多个字符串拼起来
+// 3) 字符串拼接：+ 会把右侧 ToString() 再拼上去
+//    循环里反复 + 会造出大量中间字符串；热路径改用 StringBuilder 或插值。
 Console.WriteLine("语言名：" + name);
 Console.WriteLine("年龄：" + age.ToString());
 
-// 4) 字符串插值：$ 前缀 + {变量名}，更现代更可读
-//    推荐用这种方式，比 + 拼接更清晰
+// 4) 字符串插值（C# 6+）：美元符号紧贴引号，比复合格式 {0} 更不容易对错位
+//    生产日志仍常混用两种；选一种并在代码审查里保持一致。
 Console.WriteLine($"版本：{version}");
 Console.WriteLine($"是否优秀：{isAwesome}");
 
@@ -1023,7 +1028,8 @@ Console.Write("请输入你的名字（沙箱可能跳过）：");
 string? input = Console.ReadLine();   // ReadLine 返回 string?（可能为 null）
 
 // 10) 处理可能的 null（C# 8+ 可空引用类型）
-//     ?? 提供默认值，避免 null 导致后续报错
+//     ReadLine 在管道结束、Ctrl+Z/Ctrl+D 时返回 null，不是空字符串。
+//     ?? 只在左侧为 null 时替换；空字符串 "" 会原样留下。
 string userName = input ?? "匿名用户";
 Console.WriteLine($"你好，{userName}！欢迎学习 {name}。");
 
@@ -1036,7 +1042,7 @@ Console.ForegroundColor = ConsoleColor.Green;
 Console.WriteLine("这是绿色文字");
 Console.ForegroundColor = ConsoleColor.Yellow;
 Console.WriteLine("这是黄色文字");
-// 恢复默认颜色
+// 恢复默认颜色。改过 ForegroundColor 一定要 Reset，否则后续所有输出都带着颜色。
 Console.ResetColor();
 
 Console.WriteLine("===== 程序结束 =====");`,
@@ -1294,7 +1300,8 @@ using System;
 Console.WriteLine("===== 顶级语句演示 =====");
 
 // 2) 访问命令行参数 args
-//    args 是顶级语句中隐式可用的 string[]，包含传给程序的参数
+//    顶级语句隐式提供 string[] args，等价于 Main(string[] args) 的那个参数。
+//    和 Environment.GetCommandLineArgs() 不同：这里不含进程路径。
 Console.WriteLine($"收到参数个数：{args.Length}");
 
 // 3) 遍历参数
@@ -1325,7 +1332,7 @@ if (showHelp)
     Console.WriteLine("用法：dotnet run [--name <名字>] [--help]");
     Console.WriteLine("  --name <名字>   设置欢迎的用户名");
     Console.WriteLine("  --help, -h      显示帮助");
-    return 0;   // 显示帮助后正常退出
+    return 0;   // 显示帮助后正常退出。顶级语句一旦出现 return 整数，入口就被推断成返回 int。
 }
 
 // 6) 调用下面定义的局部函数
@@ -1333,8 +1340,8 @@ if (showHelp)
 PrintBanner();
 
 // 7) 演示 return 退出码
-//    通常 0 表示成功，非 0 表示错误
-//    shell 中用 $? 或 $LASTEXITCODE 查看
+//    约定：0 成功，非 0 失败。shell 用 $? / $LASTEXITCODE 读取。
+//    优先 return，不要 Environment.Exit：后者立刻杀进程，using / finally 来不及跑。
 if (args.Length > 0 && args[0] == "--fail")
 {
     Console.Error.WriteLine("收到 --fail 参数，模拟失败退出");
@@ -1350,7 +1357,8 @@ Console.WriteLine("===== 演示结束 =====");
 return 0;   // 入口因前面的 return 被推断为返回 int，所有路径都要有返回值
 
 // ---------- 局部函数定义区 ----------
-// 顶级语句中定义的方法必须放在所有执行语句之后
+// 顶级语句：可执行语句必须全部写在类型/方法声明之前（否则 CS8803）。
+// 局部函数可以捕获上面的变量；普通方法不行，所以 ComputeExitCode 要自己接收 argv。
 void PrintBanner()
 {
     // 在方法内可以使用 Console 等任何已导入的类型
@@ -1654,13 +1662,14 @@ while (attempts < MaxAttempts)
     }
 
     // 8) 去掉首尾空白后解析为整数
-    //    int.TryParse 解析失败返回 false，不会抛异常
+    //    TryParse 失败返回 false，不会抛异常——用户输入必须走这条路，禁止 int.Parse。
+    //    默认跟随当前文化：某些区域「1,000」能解析，另一些会失败。生产指定 InvariantCulture。
     if (!int.TryParse(input.Trim(), out int guess))
     {
         Console.ForegroundColor = ConsoleColor.Red;
         Console.Error.WriteLine($"「{input}」不是有效数字，请重新输入。");
         Console.ResetColor();
-        continue;   // 不计入尝试次数
+        continue;   // 非法输入不计入尝试次数，避免「输错一次少一条命」
     }
 
     // 9) 范围检查
@@ -1709,7 +1718,8 @@ if (!guessed)
     Console.ResetColor();
 }
 
-// 13) 输出统计信息（演示对齐与格式化）
+// 13) 输出统计信息：插值里的逗号是对齐宽度，- 表示左对齐
+//     这是复合格式的对齐语法，和「千分位逗号」不是一回事。
 Console.WriteLine();
 Console.WriteLine("===== 本局统计 =====");
 Console.WriteLine($"{"目标数字",-10}: {target}");

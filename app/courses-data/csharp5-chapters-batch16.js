@@ -148,9 +148,17 @@ aes.Encrypt(nonce, plaintext, ciphertext, tag, associatedData);
     code: `using System.Security.Cryptography;
 using System.Text;
 
+// ============================================================
+// 第一百一十六章 加密与安全编码 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// 密码存储：随机盐 + 慢哈希（PBKDF2/Argon2）+ FixedTimeEquals。MD5/可比较哈希等于没存。
+// HMAC 保证完整性，AES-GCM 同时给机密性与完整性；ECB/CBC 无 tag 不能当「加密」交差。
+// nonce/IV 绝不能复用。RandomNumberGenerator 才是密钥材料；new Random() / Guid 不是。
+// ============================================================
+
 // —— 1. 密码存储：PBKDF2 + 随机盐 + 恒定时间比较 ——
 byte[] salt = RandomNumberGenerator.GetBytes(16);
-const int Iterations = 210_000; // 演示值；生产按 OWASP 用 60 万以上并写入记录
+const int Iterations = 210_000; // 迭代次数必须和盐一起入库；硬编码改大后旧记录无法校验
 byte[] stored = Rfc2898DeriveBytes.Pbkdf2(
     Encoding.UTF8.GetBytes("correct horse battery staple"),
     salt, Iterations, HashAlgorithmName.SHA256, outputLength: 32);
@@ -176,7 +184,7 @@ var ciphertext = new byte[order.Length];
 var tag = new byte[16];
 using (var aes = new AesGcm(aesKey, tagSizeInBytes: 16))
 {
-    // 参数顺序：(nonce, plaintext, ciphertext, tag, associatedData)
+    // associatedData（这里复用 HMAC 字节）绑定上下文：密文被挪到另一订单也应解密失败。nonce 12 字节且每次随机。
     aes.Encrypt(nonce, order, ciphertext, tag, mac);
 }
 var decrypted = new byte[order.Length];
@@ -317,6 +325,14 @@ a.Normalize() == b.Normalize(); // true（FormC）
     code: `using System.Globalization;
 using System.Text;
 
+// ============================================================
+// 第一百一十七章 字符编码与本地化 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// string.Length 是 UTF-16 单元，不是用户感知字符。截断用 StringInfo，否则会切开 emoji / 组合音标。
+// 对外协议默认 UTF-8；带 BOM 的 UTF-8 在 HTTP 头里经常被下游当成乱码。
+// 视觉相同 ≠ 位相同：规范化（FormC）后再做相等/字典键，否则「é」能绕过黑名单。
+// ============================================================
+
 // —— 1. string 的真相：UTF-16 code unit ≠ 字符 ——
 string family = "👨‍👩‍👧‍👦"; // ZWJ 连接的家庭 emoji
 Console.WriteLine($"family.Length = {family.Length}（UTF-16 单元）");
@@ -331,7 +347,7 @@ Console.WriteLine($"UTF-8：{utf8.Length} 字节；UTF-16：{utf16.Length} 字�
 Console.WriteLine($"带 BOM 的 UTF-8：{Encoding.UTF8.GetPreamble().Length + utf8.Length} 字节");
 
 // —— 3. 严格解码：拒绝脏数据 ——
-var strict = new UTF8Encoding(false, throwOnInvalidBytes: true);
+var strict = new UTF8Encoding(false, throwOnInvalidBytes: true); // 默认 Encoding.UTF8 会替换非法字节，等于静默吞脏数据
 try
 {
     _ = strict.GetString([0xC3, 0x28, 0x41]); // 0xC3 0x28 不是合法 UTF-8 序列
@@ -476,6 +492,14 @@ var result = partitioner.AsParallel().Select(Expensive).ToArray();
 `,
     code: `using System.Diagnostics;
 
+// ============================================================
+// 第一百一十八章 PLINQ 与数据并行 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// PLINQ 适合 CPU 密集、无共享可变状态。IO / 带锁的 lambda 并行只会把争用放大。
+// AsOrdered 要付合并税；不需要顺序就别要。WithDegreeOfParallelism 默认 ≈ 核心数，再加码会过度订阅。
+// Aggregate 用局部累加再合并，避免多线程写同一个 long。共享 List.Add 没有锁就是数据竞争。
+// ============================================================
+
 int[] numbers = Enumerable.Range(2, 1_000_000).ToArray();
 
 // —— 1. 串行基准 ——
@@ -487,7 +511,7 @@ Console.WriteLine($"串行：{sequential:N0} 个素数，耗时 {sw.ElapsedMilli
 // —— 2. PLINQ 并行 ——
 sw.Restart();
 long parallel = numbers.AsParallel()
-    .WithDegreeOfParallelism(Environment.ProcessorCount)
+    .WithDegreeOfParallelism(Environment.ProcessorCount) // 容器里要读分配到的 CPU，不是宿主机 Environment.ProcessorCount
     .Count(IsPrime);
 sw.Stop();
 Console.WriteLine($"并行：{parallel:N0} 个素数，耗时 {sw.ElapsedMilliseconds} ms（核心数 {Environment.ProcessorCount}）");
@@ -652,6 +676,14 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Text;
 
+// ============================================================
+// 第一百一十九章 不可变集合与对象池 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// ImmutableArray.Add 返回新快照，原引用仍安全地给其他线程读——这是无锁共享的前提。
+// FrozenDictionary 启动建一次、之后只读；每请求 ToFrozenDictionary 是在交构建税。
+// ArrayPool.Rent 长度 ≥ 请求值，必须记有效长度；Return(clearArray: true) 防止 PII 留在池里。
+// ============================================================
+
 // —— 1. ImmutableArray：返回新快照，原集合不变 ——
 ImmutableArray<string> currencies = ImmutableArray.Create("USD", "EUR", "JPY");
 ImmutableArray<string> extended = currencies.Add("CNY");
@@ -676,7 +708,7 @@ try
 }
 finally
 {
-    ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+    ArrayPool<byte>.Shared.Return(buffer, clearArray: true); // 缓冲可能刚写过 Authorization 头；不清零即泄漏
 }
 
 // —— 4. 手写对象池：StringBuilder 复用 ——
@@ -697,7 +729,7 @@ public sealed class StringBuilderPool(int capacity)
 
     public void Return(StringBuilder builder)
     {
-        builder.Clear(); // 归还前重置状态
+        builder.Clear(); // 只清 Length，Capacity 保留。不 Clear 就把上一单内容拼进下一单。
         if (_items.Count < capacity)
         {
             _items.Push(builder);
@@ -826,6 +858,14 @@ JSON 可读、通用、够快——直到吞吐、体积或延迟成为硬指标
     code: `using System.Buffers.Binary;
 using System.Text;
 
+// ============================================================
+// 第一百二十章 二进制序列化与高性能协议 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// 多字节整数要显式端序。BinaryPrimitives *BigEndian 是网络序；BitConverter 跟本机端序走，跨机器会炸。
+// 解码先校验「声明长度 vs 实际剩余」，截断包必须拒绝，读下去就是把邻包当金额。
+// 长度前缀用 1 字节时名称最长 255；协议变更要带版本号，不要靠「看起来还能解」兼容。
+// ============================================================
+
 // 协议：[名称长度:1][名称 UTF-8][数量:int32 大端][金额:float32 大端]
 byte[] packet = Encode(new Order("membership", 3, 128.50f));
 Console.WriteLine($"编码后 {packet.Length} 字节（JSON 表示约 46 字节）");
@@ -835,7 +875,7 @@ Console.WriteLine($"往返一致：{decoded == new Order("membership", 3, 128.50
 // 截断的包必须被拒绝，而不是读出垃圾
 try
 {
-    _ = Decode(packet[..^8]);
+    _ = Decode(packet[..^8]); // 故意截断：合格解码器抛错，而不是用栈上残留值拼出一笔订单
     Console.WriteLine("截断包：意外解码成功（这是 bug）");
 }
 catch (ArgumentOutOfRangeException)
@@ -993,6 +1033,14 @@ public sealed class PluginLoadContext : AssemblyLoadContext
     code: `using System.Reflection;
 using System.Runtime.Loader;
 
+// ============================================================
+// 第一百二十一章 插件架构与程序集隔离 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// 可收集 AssemblyLoadContext 才能卸载插件；默认 ALC 加载的程序集进程内永不卸载。
+// 不同类型身份：ALC 里的 Plugin ≠ 宿主 typeof(Plugin)，强转会失败——契约程序集必须共享到默认上下文。
+// Unload 是异步的：局部引用必须死掉再 GC，WeakReference 观察的就是这件事。
+// ============================================================
+
 string? assemblyPath = Assembly.GetExecutingAssembly().Location;
 if (string.IsNullOrEmpty(assemblyPath) || !File.Exists(assemblyPath))
 {
@@ -1046,7 +1094,7 @@ public sealed class PluginLoadContext : AssemblyLoadContext
         if (assemblyName.StartsWith("System", StringComparison.Ordinal)
             || assemblyName.StartsWith("Microsoft", StringComparison.Ordinal))
         {
-            return null; // 框架程序集共享默认上下文，避免 Console 等静态状态分裂
+            return null; // 返回 null 让默认 ALC 解析。框架各加载一份 = 静态单例分裂、无法卸载。
         }
         return _resolver.ResolveAssemblyToPath(name) is { } path
             ? LoadFromAssemblyPath(path)
@@ -1195,6 +1243,14 @@ Blazor 没有 HWND 线程，但有**电路 / 渲染同步上下文**：在任意
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
+// ============================================================
+// 第一百二十二章 客户端与 UI 技术全景 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// ViewModel 不引用控件类型，才能在控制台/测试里验证。UI 框架只负责绑定。
+// 派生属性（Total）要在源属性变更时一起 OnPropertyChanged，否则界面金额不刷新。
+// ICommand.CanExecute 变化必须 RaiseCanExecuteChanged，否则按钮会卡在禁用或永远可点。
+// ============================================================
+
 // MVVM：ViewModel 不依赖任何 UI 框架，行为可直接在控制台验证
 var viewModel = new OrderViewModel();
 viewModel.PropertyChanged += (_, e) =>
@@ -1218,7 +1274,7 @@ public sealed class OrderViewModel : INotifyPropertyChanged
             if (_quantity == value) return;
             _quantity = Math.Clamp(value, 1, 99);
             OnPropertyChanged();
-            OnPropertyChanged(nameof(Total)); // 派生属性联动通知
+            OnPropertyChanged(nameof(Total)); // 只通知 Quantity 时，绑定 Total 的 Label 会显示旧值
         }
     }
 
@@ -1363,6 +1419,14 @@ var response = await chatClient.GetResponseAsync<SupportTicket>(
 `,
     code: `using System.Numerics;
 
+// ============================================================
+// 第一百二十三章 C# 与 AI 应用集成 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// 演示用 bigram 哈希向量，不是模型 embedding。生产阈值必须在真实模型上标定，不能抄 0.95。
+// 语义缓存命中要记录来源；把缓存答案当「模型刚生成」会让过期政策/价格在用户侧活很久。
+// 用户输入进提示词前要当不可信数据：注入、PII 外泄、超长撑爆上下文都是应用层责任。
+// ============================================================
+
 // —— 1. 伪 embedding：字符二元组（bigram）向量（真实系统调用 embedding 模型）——
 float[] v1 = VectorMath.Embed("如何重置密码");
 float[] v2 = VectorMath.Embed("密码怎么重置");
@@ -1388,7 +1452,7 @@ public static class VectorMath
         {
             vector[Fnv1a(normalized.Substring(i, 2)) % dimensions] += 1f;
         }
-        // L2 归一化，余弦相似度才稳定
+        // 未归一化时向量长度参与点积，短句会系统性偏低，阈值完全失灵。
         float norm = MathF.Sqrt(vector.Sum(x => x * x));
         if (norm > 0f)
         {
@@ -1543,7 +1607,15 @@ CI 里用 \`dotnet format --verify-no-changes\` 和编辑器配置把语言版�
 2. 独立扩展“特性博物馆”：在一个文件里分别用 C# 6 表达式体属性、C# 7 元组解构、C# 9 record 与 with 表达式、C# 11 required 成员、C# 12 集合表达式各写一个可编译示例并注明最低 LangVersion；在 net8.0 项目验证全部通过后，再写一个使用 \`field\` 关键字的属性，观察它在 C# 12 下报错——说明为什么它是 C# 14 特性。
 3. 生产场景：为团队制定 LangVersion 治理方案——用 Directory.Build.props 把所有项目钉在具体版本数字（如 12），CI 加 \`dotnet format --verify-no-changes\` 防止格式与语法漂移；挑一个 C# 7 风格模块做现代化改造（out var 改 is 模式匹配、匿名方法改 lambda、补可空标注），做成独立 PR，并在说明里写清为什么 \`preview\` 与 \`latest\` 禁止进生产 csproj。
 `,
-    code: `// 语言特性“博物馆”：每处标注引入版本
+    code: `// ============================================================
+// 第一百二十四章 C# 语言版本演进 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// 每段标注引入版本：读老代码时才能判断「当时为什么那样写」，而不是一律改成最新语法。
+// LangVersion 钉具体数字（12），不要 latest/preview——CI 升级 SDK 不该偷偷改变语言。
+// 本文件刻意只用 C# 12 能编译的特性；field 关键字、params 集合等 C# 14 语法放正文。
+// ============================================================
+
+// 语言特性“博物馆”：每处标注引入版本
 var orders = new Order[]
 {
     new("企业版续费", 1280m),   // C# 9：目标类型 new
@@ -1724,7 +1796,15 @@ COM 组件、Office 自动化往往要求 STA。迁到 ASP.NET Core（默认 MTA
 2. 独立实现特征测试快照：对 \`LegacyReport.Render\` 的一组固定输入（orders-2023 到 orders-2026）把输出哈希写入黄金文件；随后重构 \`ReportRenderer\` 的内部实现（比如改字符串拼接方式）重新对拍，验证快照不变；再故意改动一个输出字符，确认测试会失败。
 3. 生产场景：为一个 System.Web 单体设计绞杀迁移方案——列出按路由粒度的迁移顺序清单；订单表迁移用 Expand–Contract（先双写、后台比对、切读、最后删旧列，双写经 Outbox 保证幂等）；旧入口全部套 \`[Obsolete]\` 转发壳收敛调用点；粘性灰度按 5% → 50% → 100% 推进且每步带回滚预案，并定义验收指标（下单成功率、P99 与旧系统的对比阈值）。
 `,
-    code: `// —— 1. 绞杀者路由：粘性哈希灰度切流 ——
+    code: `// ============================================================
+// 第一百二十五章 遗留系统现代化改造 —— 可运行演示（net8.0 / C# 12）
+// ------------------------------------------------------------
+// 绞杀者：按请求粘性哈希切流，同一 ID 始终打到同一后端，对比与回滚才做得到。
+// 双读只对比、不切写；不一致要告警而不是悄悄以新为准（新实现才是更可能错的那个）。
+// [Obsolete] 是编译期驱赶，不是删除。转发壳要标明移除版本，否则警告会被 #pragma 养到永远。
+// ============================================================
+
+// —— 1. 绞杀者路由：粘性哈希灰度切流 ——
 var router = new StranglerRouter(newTrafficRatio: 0.7m);
 var counters = new Dictionary<string, int>();
 foreach (int i in Enumerable.Range(1, 1_000))
@@ -1764,7 +1844,7 @@ public sealed class StranglerRouter(decimal newTrafficRatio)
 {
     private readonly decimal _newTrafficRatio = newTrafficRatio;
 
-    // 粘性路由：同一 ID 永远走同一后端，便于对比与排障
+    // 随机百分比切流会让同一用户在新旧之间跳动，事故无法复现。哈希粘性就是为了这一点。
     public string Route(string requestId)
     {
         uint hash = 2166136261u;

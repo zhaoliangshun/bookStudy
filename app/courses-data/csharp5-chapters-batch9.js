@@ -181,8 +181,12 @@ await foreach (var item in ProduceAsync())
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「异步编程基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 异步编程基础演示
-// 演示：async/await 基础、ValueTask 与 Task 对比、IAsyncEnumerable 流式返回、await foreach 消费
+    code: `// ===========================================================
+// 第四十六章 异步编程基础 —— 可运行演示
+// 核心：async/await 不阻塞线程；先启动再 WhenAll 才是并行
+// 坑：async void 异常逃逸、ValueTask 不可二次 await、库代码 ConfigureAwait(false)
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
 using System.Collections.Generic;
@@ -194,22 +198,22 @@ using System.Threading.Tasks;
 // 注意：顶级语句不能直接声明 static 字段，static 字段必须属于某个类型
 var _cache = new Dictionary<int, string>();
 
-// === 1. 最基础的 async/await ===
+// ---------- 1. async/await：await 让出线程，不是再开一条 OS 线程 ----------
 // async 修饰方法、内部用 await 等待、返回 Task<T>
 async Task<string> FetchUserNameAsync(int userId)
 {
     // 模拟一次网络请求（用 Task.Delay 代替真实 IO）
-    await Task.Delay(300);  // 异步等待，不阻塞线程
+    await Task.Delay(300);  // 异步等待，不阻塞线程；禁止用 Thread.Sleep 冒充异步
     return $"用户-{userId}";
 }
 
-// === 2. 串行 vs 并行 ===
+// ---------- 2. 串行 vs 并行：先启动 Task 再 WhenAll，不要立刻 await 第一个 ----------
 // 串行：一个一个等，总耗时 = 累加
 async Task RunSerialAsync()
 {
     var sw = Stopwatch.StartNew();
     string a = await FetchUserNameAsync(1);  // 等 300ms
-    string b = await FetchUserNameAsync(2);  // 再等 300ms
+    string b = await FetchUserNameAsync(2);  // 再等 300ms；第二段在第一段完成后才启动
     sw.Stop();
     Console.WriteLine($"串行：{a} + {b}，耗时 {sw.ElapsedMilliseconds}ms");
 }
@@ -220,12 +224,12 @@ async Task RunParallelAsync()
     var sw = Stopwatch.StartNew();
     Task<string> t1 = FetchUserNameAsync(1);  // 启动任务1（不 await）
     Task<string> t2 = FetchUserNameAsync(2);  // 启动任务2（不 await）
-    string[] results = await Task.WhenAll(t1, t2);  // 同时等两个
+    string[] results = await Task.WhenAll(t1, t2);  // 同时等两个；禁止 .Result/.Wait，UI 同步上下文会死锁
     sw.Stop();
     Console.WriteLine($"并行：{results[0]} + {results[1]}，耗时 {sw.ElapsedMilliseconds}ms");
 }
 
-// === 3. Task<T> vs ValueTask<T> ===
+// ---------- 3. ValueTask：同步完成可免分配；同一实例禁止二次 await / .Result ----------
 // Task<T> 是引用类型，每次都会产生堆分配
 // ValueTask<T> 是值类型，可避免分配（适合"经常同步完成"的高频方法）
 // 模拟一个带缓存的查询：缓存命中时同步返回 ValueTask，不命中时返回真正的异步 Task
@@ -234,7 +238,7 @@ ValueTask<string> GetValueAsync(int key)
     // 缓存命中：直接返回，零分配
     if (_cache.TryGetValue(key, out var v))
     {
-        return new ValueTask<string>(v);  // 同步完成路径
+        return new ValueTask<string>(v);  // 同步完成路径；调用方只能 await 一次
     }
     // 缓存未命中：走真正的异步路径
     return new ValueTask<string>(LoadAndCacheAsync(key));
@@ -249,21 +253,21 @@ async Task<string> LoadAndCacheAsync(int key)
     return v;
 }
 
-// === 4. async void 陷阱演示（注释掉，仅作说明） ===
+// ---------- 4. async void：异常无法被 await 捕获，会直接打到同步上下文 ----------
 // async void 的异常无法被 await 捕获，会直接让进程崩溃
 // 仅在事件处理器中使用，例如：button.Click += async (s, e) => { ... };
 // 其他地方一律用 async Task
 
-// === 5. ConfigureAwait(false) 演示 ===
+// ---------- 5. ConfigureAwait(false)：库代码不要抢回调用方同步上下文 ----------
 // 在类库中，应该总是 ConfigureAwait(false) 避免回到调用方同步上下文
 async Task<string> LibraryMethodAsync()
 {
-    // ConfigureAwait(false)：不尝试回到原始上下文
+    // ConfigureAwait(false)：不尝试回到原始上下文；ASP.NET Core 无同步上下文，但类库仍应写上
     await Task.Delay(100).ConfigureAwait(false);
     return "库方法完成";
 }
 
-// === 6. IAsyncEnumerable<T>：异步流 ===
+// ---------- 6. IAsyncEnumerable：把 CT 标 EnumeratorCancellation 才能传进迭代器 ----------
 // 类似 IEnumerable<T>，但每次 MoveNextAsync 都是异步的
 async IAsyncEnumerable<int> GenerateNumbersAsync(
     [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
@@ -271,12 +275,12 @@ async IAsyncEnumerable<int> GenerateNumbersAsync(
     for (int i = 1; i <= 5; i++)
     {
         ct.ThrowIfCancellationRequested();  // 支持取消
-        await Task.Delay(150, ct);  // 模拟异步获取每一条数据
+        await Task.Delay(150, ct);  // 模拟异步获取每一条数据；Delay 必须带 ct 否则取消无效
         yield return i;  // 异步 yield：产出一个值后挂起，等消费者要下一个再继续
     }
 }
 
-// === 7. await foreach 消费异步流 ===
+// ---------- 7. await foreach：等价于 MoveNextAsync 循环，结束会 DisposeAsync ----------
 async Task ConsumeStreamAsync()
 {
     Console.WriteLine("开始消费异步流...");
@@ -287,7 +291,7 @@ async Task ConsumeStreamAsync()
     Console.WriteLine("异步流消费完毕");
 }
 
-// === 主入口：顶级语句按顺序执行 ===
+// ---------- 主入口：顶级语句本身可以 await ----------
 Console.WriteLine("==== 1. 串行 vs 并行 ====");
 await RunSerialAsync();       // 预计约 600ms
 await RunParallelAsync();     // 预计约 300ms
@@ -297,7 +301,7 @@ Console.WriteLine("\\n==== 2. ValueTask 缓存演示 ====");
 string v1 = await GetValueAsync(100);
 Console.WriteLine($"第一次取值：{v1}");
 // 第二次：缓存命中，走同步路径（无堆分配）
-string v2 = await GetValueAsync(100);
+string v2 = await GetValueAsync(100);  // 若把 v1 的 ValueTask 再 await 一次是未定义行为
 Console.WriteLine($"第二次取值：{v2}");
 
 Console.WriteLine("\\n==== 3. ConfigureAwait(false) 库方法 ====");
@@ -500,8 +504,12 @@ Console.WriteLine(sw.ElapsedMilliseconds);
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 - Task 与并行演示
-// 演示：Task.Run/WhenAll/WhenAny + Parallel.For + CancellationToken + Stopwatch 测速
+    code: `// ===========================================================
+// 第四十七章 Task 与并行 —— 可运行演示
+// 核心：WhenAll 聚合异常；WhenAny 不会取消落败任务
+// 坑：用 Task.Run 包已经异步的 IO；Parallel.For 里乱 lock 会串行化
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
 using System.Collections.Concurrent;
@@ -511,20 +519,19 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-// === 1. Task.Run 基础 ===
-// Task.Run 把工作丢到线程池上执行
+// ---------- 1. Task.Run：给 CPU 工作；已经异步的 IO 再包一层只会浪费线程 ----------
 async Task DemoTaskRunAsync()
 {
     Task<int> t = Task.Run(() =>
     {
-        Thread.Sleep(100);  // 模拟 CPU 工作
+        Thread.Sleep(100);  // 模拟 CPU 工作；真 IO 应直接 await，不要 Task.Run + Sleep
         return 42;
     });
     int result = await t;  // 等待结果
     Console.WriteLine($"Task.Run 结果：{result}");
 }
 
-// === 2. Task.WhenAll：并行等待所有完成 ===
+// ---------- 2. WhenAll：总耗时约等于最慢那个；有失败仍等全部结束 ----------
 async Task DemoWhenAllAsync()
 {
     var sw = Stopwatch.StartNew();
@@ -539,7 +546,7 @@ async Task DemoWhenAllAsync()
     Console.WriteLine($"WhenAll: [{string.Join(", ", results)}]，耗时 {sw.ElapsedMilliseconds}ms");
 }
 
-// === 3. Task.WhenAny：等任意一个完成 ===
+// ---------- 3. WhenAny：只等最快的；落败任务继续跑，不取消就会泄漏工作 ----------
 async Task DemoWhenAnyAsync()
 {
     // 三个任务完成时间不同，看谁先回来
@@ -548,12 +555,12 @@ async Task DemoWhenAnyAsync()
     Task<int> t3 = Task.Run(async () => { await Task.Delay(200); return 3; });
 
     // WhenAny 返回最先完成的那个 Task
-    Task<int> first = await Task.WhenAny(t1, t2, t3);
+    Task<int> first = await Task.WhenAny(t1, t2, t3);  // t1/t3 仍在跑；生产里应对落败者 cts.Cancel()
     int result = await first;  // 拿到结果（这里通常很快，因为已经完成了）
     Console.WriteLine($"WhenAny 最先返回：{result}");
 }
 
-// === 4. WhenAll 异常聚合演示 ===
+// ---------- 4. WhenAll 异常：await 只重抛第一个，其余在 Exception.InnerExceptions ----------
 async Task DemoWhenAllExceptionAsync()
 {
     // 三个任务，两个会抛异常
@@ -566,7 +573,7 @@ async Task DemoWhenAllExceptionAsync()
     Task<int[]> all = Task.WhenAll(t1, t2, t3);
     try
     {
-        await all;  // await 只会重新抛出第一个异常
+        await all;  // await 只会重新抛出第一个异常；其余必须查 all.Exception
     }
     catch (Exception ex)
     {
@@ -581,8 +588,7 @@ async Task DemoWhenAllExceptionAsync()
     }
 }
 
-// === 5. TaskCreationOptions.LongRunning ===
-// 长任务用 LongRunning，会给一个独立线程而不是占用线程池
+// ---------- 5. LongRunning：向线程池要专用线程，滥用会把进程线程打爆 ----------
 async Task DemoLongRunningAsync()
 {
     var sw = Stopwatch.StartNew();
@@ -596,9 +602,7 @@ async Task DemoLongRunningAsync()
     Console.WriteLine($"LongRunning 任务完成，耗时 {sw.ElapsedMilliseconds}ms");
 }
 
-// === 6. 现代延续：使用 await ===
-// ContinueWith 容易带来调度器、异常传播和嵌套 Task 陷阱；
-// 普通异步业务流程直接 await，语义更清楚。
+// ---------- 6. 延续用 await，避开 ContinueWith 的调度器/嵌套 Task 陷阱 ----------
 async Task DemoContinuationAsync()
 {
     int value = await Task.Run(() => 10);
@@ -606,7 +610,7 @@ async Task DemoContinuationAsync()
     Console.WriteLine($"await 延续结果：{doubled}");
 }
 
-// === 7. Parallel.For 并行计算 ===
+// ---------- 7. Parallel.For：每次 lock 累加会把并行打回串行，热路径用 Interlocked ----------
 void DemoParallelFor()
 {
     // 1 到 1 千万的整数数组（用于求和演示）
@@ -627,7 +631,7 @@ void DemoParallelFor()
     Console.WriteLine($"Parallel.For 求和 = {sum}（应为 {expected}），耗时 {sw.ElapsedMilliseconds}ms");
 }
 
-// === 8. Parallel.ForEach + ParallelOptions ===
+// ---------- 8. ParallelOptions：不传 CancellationToken 就只能暴力停进程 ----------
 void DemoParallelForEachWithCancel()
 {
     using var cts = new CancellationTokenSource();
@@ -655,8 +659,7 @@ void DemoParallelForEachWithCancel()
     }
 }
 
-// === 9. Partitioner 手动分区 ===
-// 对于轻量循环体，手动分块比默认每个元素一个任务更高效
+// ---------- 9. Partitioner：轻量循环体按范围分块，避免每元素一个委托 ----------
 void DemoPartitioner()
 {
     long sum = 0;
@@ -675,7 +678,7 @@ void DemoPartitioner()
     Console.WriteLine($"Partitioner 求和 = {sum}（应为 {expected}），耗时 {sw.ElapsedMilliseconds}ms");
 }
 
-// === 主入口 ===
+// ---------- 主入口 ----------
 Console.WriteLine("==== 1. Task.Run ====");
 await DemoTaskRunAsync();
 
@@ -891,15 +894,19 @@ TaskScheduler.UnobservedTaskException += (s, e) =>
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「取消与异常处理」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 取消与异常处理演示
-// 演示：CancellationToken 各种用法 + CreateLinkedTokenSource + WhenAll 异常聚合 + UnobservedTaskException
+    code: `// ===========================================================
+// 第四十八章 取消与异常处理 —— 可运行演示
+// 核心：Token 协作式取消；WhenAll 的 await 只抛第一个异常
+// 坑：async void、未观察 Task 异常、忘了 dispose 链接的 CTS
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
-// === 1. 基础：CancellationTokenSource + IsCancellationRequested ===
+// ---------- 1. 协作取消：循环必须自己看 Token，否则 Cancel 只是立了个旗 ----------
 async Task DemoBasicCancelAsync()
 {
     using var cts = new CancellationTokenSource();
@@ -908,7 +915,7 @@ async Task DemoBasicCancelAsync()
     int count = 0;
     Task t = Task.Run(() =>
     {
-        while (!cts.Token.IsCancellationRequested)  // 自己轮询检查
+        while (!cts.Token.IsCancellationRequested)  // 自己轮询检查；漏检就会在 Sleep 里空转完
         {
             Thread.Sleep(50);
             count++;
@@ -919,7 +926,7 @@ async Task DemoBasicCancelAsync()
     await t;  // 任务正常退出（没抛异常）
 }
 
-// === 2. ThrowIfCancellationRequested：用异常中止 ===
+// ---------- 2. ThrowIfCancellationRequested：把取消变成异常，调用方可区分超时/失败 ----------
 async Task DemoThrowCancelAsync()
 {
     using var cts = new CancellationTokenSource();
@@ -931,7 +938,7 @@ async Task DemoThrowCancelAsync()
         {
             for (int i = 0; i < 100; i++)
             {
-                cts.Token.ThrowIfCancellationRequested();  // 检查并抛异常
+                cts.Token.ThrowIfCancellationRequested();  // 检查并抛异常；Delay 也要传同一个 Token
                 await Task.Delay(50);
             }
         }, cts.Token);
@@ -943,20 +950,20 @@ async Task DemoThrowCancelAsync()
     }
 }
 
-// === 3. Register 回调 ===
+// ---------- 3. Register：取消时回调，后注册的先跑（LIFO） ----------
 async Task DemoRegisterCallbackAsync()
 {
     using var cts = new CancellationTokenSource();
 
     // 注册取消时执行的回调，可注册多个
-    cts.Token.Register(() => Console.WriteLine("  回调 1：清理资源"));
+    cts.Token.Register(() => Console.WriteLine("  回调 1：清理资源"));  // 后注册的会先执行
     cts.Token.Register(() => Console.WriteLine("  回调 2：记录日志"));
 
     cts.CancelAfter(200);  // 200ms 后取消，自动触发回调
     await Task.Delay(400);  // 等回调执行
 }
 
-// === 4. CreateLinkedTokenSource：链接多个取消源 ===
+// ---------- 4. 链接 Token：任一源取消则全体取消；linked 必须 Dispose 以免泄漏回调 ----------
 async Task DemoLinkedTokenAsync()
 {
     // 模拟"用户取消"和"超时取消"两个源
@@ -989,7 +996,7 @@ async Task DemoLinkedTokenAsync()
     }
 }
 
-// === 5. WhenAll 异常聚合 + Flatten ===
+// ---------- 5. Flatten：嵌套 WhenAll 会套多层 AggregateException，拍平后再遍历 ----------
 async Task DemoAggregateExceptionAsync()
 {
     // 三个任务，两个抛异常
@@ -1007,21 +1014,20 @@ async Task DemoAggregateExceptionAsync()
     catch
     {
         // all.Exception 是 AggregateException
-        var agg = all.Exception!.Flatten();  // 拍平嵌套
+        var agg = all.Exception!.Flatten();  // 拍平嵌套；漏 Flatten 只能看到内层 AggregateException
         Console.WriteLine($"  Flatten 后内部异常数：{agg.InnerExceptions.Count}");
         foreach (var ex in agg.InnerExceptions)
             Console.WriteLine($"  - {ex.GetType().Name}: {ex.Message}");
     }
 }
 
-// === 6. UnobservedTaskException 全局监听 ===
-// 这个事件在 Task 被 GC 时触发，前提是该 Task 抛了异常但没人观察
+// ---------- 6. 未观察异常：Task 被 GC 时才触发，生产里必须 await 或 ContinueWith 观察 ----------
 void SetupUnobservedHandler()
 {
     TaskScheduler.UnobservedTaskException += (sender, e) =>
     {
         Console.WriteLine($"  [全局] 未观察的异常：{e.Exception.Message}");
-        e.SetObserved();  // 标记已处理，避免传播
+        e.SetObserved();  // 标记已处理，避免传播；不调用则 .NET Framework 会终结进程
     };
 }
 
@@ -1035,7 +1041,7 @@ void FireUnobservedException()
     // 这里只演示设置，不做强制 GC
 }
 
-// === 7. async void 陷阱演示（注释版，不要真的跑） ===
+// ---------- 7. async void 陷阱（注释版，不要真的跑） ----------
 // async void BadAsync()
 // {
 //     await Task.Delay(100);
@@ -1043,14 +1049,14 @@ void FireUnobservedException()
 // }
 // 正确做法：async Task，调用方 await 即可捕获
 
-// === 8. 区分 OperationCanceledException vs TaskCanceledException ===
+// ---------- 8. TaskCanceledException 是 OperationCanceledException 的子类 ----------
 async Task DemoCanceledExceptionTypesAsync()
 {
     using var cts = new CancellationTokenSource();
     cts.Cancel();  // 先取消
 
     // 任务还没开始就被取消，会抛 TaskCanceledException
-    Task t = Task.Run(() => { }, cts.Token);
+    Task t = Task.Run(() => { }, cts.Token);  // 已取消的 Token 让任务尚未跑体就进入 Canceled
     try { await t; }
     catch (TaskCanceledException)
     {
@@ -1304,8 +1310,12 @@ if (queue.TryDequeue(out var v)) { ... }
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「并发同步」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 并发同步演示
-// 演示：lock 共享变量 + SemaphoreSlim 异步锁 + Interlocked 原子操作 + CountdownEvent 等待多任务
+    code: `// ===========================================================
+// 第四十九章 并发同步 —— 可运行演示
+// 核心：lock 专用对象；async 里用 SemaphoreSlim 而不是 lock
+// 坑：Wait 后必须 finally Release；读写锁进出成对；Interlocked 比 lock 便宜
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
 using System.Collections.Concurrent;
@@ -1315,17 +1325,17 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-// === 1. 不加锁的"丢更新"演示 ===
+// ---------- 1. 竞态：counter++ 不是原子的，读改写三步会被打断 ----------
 void DemoRaceCondition()
 {
     int counter = 0;
     // 1 万次自增，多线程并发
-    Parallel.For(0, 10000, _ => counter++);
+    Parallel.For(0, 10000, _ => counter++);  // 丢更新：最终值几乎一定 < 10000
     Console.WriteLine($"  无锁：counter = {counter}（预期 10000）");
     // 多半输出小于 10000
 }
 
-// === 2. 用 lock 保护（SafeCounter 类定义在文件末尾） ===
+// ---------- 2. lock：锁 this/字符串/Type 会跟别人撞；用私有 readonly 对象 ----------
 void DemoLock()
 {
     var counter = new SafeCounter();
@@ -1333,7 +1343,7 @@ void DemoLock()
     Console.WriteLine($"  lock：counter = {counter.Read()}（应为 10000）");
 }
 
-// === 3. Monitor.TryEnter：带超时的 lock ===
+// ---------- 3. TryEnter：拿不到锁要走失败分支，Exit 必须在 finally ----------
 void DemoMonitorTryEnter()
 {
     object sync = new();
@@ -1346,7 +1356,7 @@ void DemoMonitorTryEnter()
         }
         finally
         {
-            Monitor.Exit(sync);  // 必须在 finally 中释放
+            Monitor.Exit(sync);  // 必须在 finally 中释放；漏 Exit 会造成死锁
         }
     }
     else
@@ -1355,7 +1365,7 @@ void DemoMonitorTryEnter()
     }
 }
 
-// === 4. Interlocked：原子操作（比 lock 高效得多） ===
+// ---------- 4. Interlocked：单变量累加优先于 lock；CAS 是无锁算法的底座 ----------
 void DemoInterlocked()
 {
     int counter = 0;
@@ -1377,8 +1387,7 @@ void DemoInterlocked()
     Console.WriteLine($"  Interlocked.Add：sum = {sum}");
 }
 
-// === 5. SemaphoreSlim：异步信号量（最常用的"异步锁"） ===
-// 限制同时只能有 2 个任务进入临界区
+// ---------- 5. SemaphoreSlim：async 路径的「锁」；禁止在 lock 里 await ----------
 async Task DemoSemaphoreSlimAsync()
 {
     using var sem = new SemaphoreSlim(2);  // 初始允许 2 个并发
@@ -1386,7 +1395,7 @@ async Task DemoSemaphoreSlimAsync()
 
     async Task WorkerAsync(int id)
     {
-        await sem.WaitAsync();  // 异步等待信号量（不会阻塞线程）
+        await sem.WaitAsync();  // 异步等待信号量（不会阻塞线程）；与 Wait() 混用要认清线程模型
         try
         {
             int current = Interlocked.Increment(ref running);
@@ -1400,7 +1409,7 @@ async Task DemoSemaphoreSlimAsync()
         }
         finally
         {
-            sem.Release();  // 必须在 finally 中释放
+            sem.Release();  // 必须在 finally 中释放；异常路径漏 Release 会把后续请求永久堵住
         }
     }
 
@@ -1409,7 +1418,7 @@ async Task DemoSemaphoreSlimAsync()
     Console.WriteLine($"  最大并发数：{maxObserved}（应 ≤ 2）");
 }
 
-// === 6. ReaderWriterLockSlim：读写锁（Cache 类定义在文件末尾） ===
+// ---------- 6. 读写锁：读共享写独占；Enter/Exit 必须成对，递归策略要选对 ----------
 void DemoReaderWriterLock()
 {
     var cache = new Cache();
@@ -1417,7 +1426,7 @@ void DemoReaderWriterLock()
     Console.WriteLine($"  读写锁：cache['a'] = {cache.Get("a")}");
 }
 
-// === 7. CountdownEvent：等 N 个任务完成 ===
+// ---------- 7. CountdownEvent：等 N 个信号；异步场景更常用 Task.WhenAll ----------
 void DemoCountdownEvent()
 {
     using var cde = new CountdownEvent(5);  // 等待 5 个信号
@@ -1434,7 +1443,7 @@ void DemoCountdownEvent()
     Console.WriteLine($"  CountdownEvent 全部完成，耗时 {sw.ElapsedMilliseconds}ms（约 100ms）");
 }
 
-// === 8. Barrier：阶段同步 ===
+// ---------- 8. Barrier：所有参与者都到达才能进下一阶段，有人掉队会永久等 ----------
 void DemoBarrier()
 {
     int threads = 3;
@@ -1445,7 +1454,7 @@ void DemoBarrier()
     {
         // 阶段 1
         phases[i] = 1;
-        barrier.SignalAndWait();  // 等所有线程都到这
+        barrier.SignalAndWait();  // 等所有线程都到这；少一个 Signal 全体卡住
 
         // 阶段 2（保证此时所有线程都完成了阶段 1）
         phases[i] = 2;
@@ -1455,7 +1464,7 @@ void DemoBarrier()
     Console.WriteLine($"  Barrier 完成，所有线程最终阶段：{string.Join(",", phases)}");
 }
 
-// === 9. ConcurrentQueue：线程安全队列 ===
+// ---------- 9. ConcurrentQueue：无锁队列；消费必须 TryDequeue，foreach 不会出队 ----------
 void DemoConcurrentQueue()
 {
     var queue = new ConcurrentQueue<int>();
@@ -1513,7 +1522,7 @@ class SafeCounter
         // 同一时刻只有一个线程能进入这个块
         lock (_sync)
         {
-            _value++;
+            _value++;  // 复合操作必须整体进锁；只锁 ++ 的一半没有意义
         }
     }
 
@@ -1536,7 +1545,7 @@ class Cache
         {
             return _data.TryGetValue(key, out var v) ? v : null;
         }
-        finally { _rw.ExitReadLock(); }
+        finally { _rw.ExitReadLock(); }  // 漏 Exit 会让写者永久等待
     }
 
     public void Set(string key, string value)
@@ -1722,8 +1731,12 @@ async Task ConsumeAsync()
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「IAsyncEnumerable 与 Channels」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - IAsyncEnumerable 与 Channels 演示
-// 演示：异步流产出与消费 + Channel 生产者消费者管道 + 背压效果
+    code: `// ===========================================================
+// 第五十章 IAsyncEnumerable 与 Channels —— 可运行演示
+// 核心：异步流 + Channel 管道；Writer.Complete 漏写则消费者永久挂起
+// 坑：有界 Channel 背压；EnumeratorCancellation 才能把 CT 传进迭代器
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
 using System.Collections.Generic;
@@ -1734,11 +1747,10 @@ using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-// === 1. IAsyncEnumerable<T> 基础 ===
-// 异步迭代器方法，可以在 yield return 之间穿插 await
+// ---------- 1. 异步迭代器：yield 之间可以 await，调用时仍不执行循环体 ----------
 async IAsyncEnumerable<int> GenerateNumbersAsync(
     int count,
-    [EnumeratorCancellation] CancellationToken ct = default)
+    [EnumeratorCancellation] CancellationToken ct = default)  // 没有这个特性，WithCancellation 传不进来
 {
     for (int i = 1; i <= count; i++)
     {
@@ -1748,7 +1760,7 @@ async IAsyncEnumerable<int> GenerateNumbersAsync(
     }
 }
 
-// === 2. await foreach 消费 ===
+// ---------- 2. await foreach：结束时 DisposeAsync；中途 break 也会释放 ----------
 async Task DemoAsyncStreamAsync()
 {
     Console.WriteLine("  开始消费异步流...");
@@ -1765,7 +1777,7 @@ async Task DemoAsyncStreamAsync()
     Console.WriteLine($"  求和 = {sum}，耗时 {sw.ElapsedMilliseconds}ms（约 500ms）");
 }
 
-// === 3. 异步流 + 取消 ===
+// ---------- 3. WithCancellation：把外部 CT 接到 EnumeratorCancellation 参数 ----------
 async Task DemoAsyncStreamCancelAsync()
 {
     using var cts = new CancellationTokenSource();
@@ -1774,7 +1786,7 @@ async Task DemoAsyncStreamCancelAsync()
     try
     {
         // WithCancellation 把 CT 传到迭代器内部
-        await foreach (var n in GenerateNumbersAsync(100).WithCancellation(cts.Token))
+        await foreach (var n in GenerateNumbersAsync(100).WithCancellation(cts.Token))  // 漏 WithCancellation 则迭代器收不到取消
         {
             Console.WriteLine($"  消费：{n}");
         }
@@ -1785,7 +1797,7 @@ async Task DemoAsyncStreamCancelAsync()
     }
 }
 
-// === 4. Channel<T> 基础：单生产者单消费者 ===
+// ---------- 4. Channel：漏写 Writer.Complete，ReadAllAsync 会永远挂起 ----------
 async Task DemoChannelBasicAsync()
 {
     // 创建一个有界 Channel，容量 10
@@ -1799,7 +1811,7 @@ async Task DemoChannelBasicAsync()
             await channel.Writer.WriteAsync(i);  // 写入（满则等待）
             Console.WriteLine($"  写入：{i}");
         }
-        channel.Writer.Complete();  // 通知：写完了，不再有数据
+        channel.Writer.Complete();  // 通知：写完了，不再有数据；不 Complete 消费者收不到结束
     }
 
     // 消费者：从 Channel 读数据
@@ -1818,7 +1830,7 @@ async Task DemoChannelBasicAsync()
     Console.WriteLine("  Channel 基础演示完成");
 }
 
-// === 5. Channel 多生产者多消费者管道 ===
+// ---------- 5. 多消费者：所有 reader 结束后才能 Complete 下一阶段 ----------
 async Task DemoChannelPipelineAsync()
 {
     // 第一阶段 → 第二阶段 → 输出
@@ -1845,7 +1857,7 @@ async Task DemoChannelPipelineAsync()
                 await Task.Delay(10);  // 模拟工作
             }
         }
-        catch (ChannelClosedException) { /* stage1 关闭了 */ }
+        catch (ChannelClosedException) { /* stage1 关闭了；Complete 之后再读会走到这里 */ }
     }
 
     // 多个 transformer 都跑完后，关闭 stage2
@@ -1853,7 +1865,7 @@ async Task DemoChannelPipelineAsync()
     {
         var transformers = Enumerable.Range(0, 3).Select(TransformerAsync);
         await Task.WhenAll(transformers);
-        stage2.Writer.Complete();  // 所有 transformer 结束，stage2 也关
+        stage2.Writer.Complete();  // 必须等全部 transformer 结束；提前 Complete 会丢尚未写入的数据
     }
 
     // 终端消费者：从 stage2 读
@@ -1874,7 +1886,7 @@ async Task DemoChannelPipelineAsync()
     Console.WriteLine($"  管道总耗时 {sw.ElapsedMilliseconds}ms");
 }
 
-// === 6. 背压演示：有界 Channel + Wait 模式 ===
+// ---------- 6. 背压：有界 + Wait 时生产者速度被消费者卡住；DropWrite 会丢数据 ----------
 async Task DemoBackpressureAsync()
 {
     // 容量 3，FullMode 默认是 Wait：满了写方会等待
@@ -1890,7 +1902,7 @@ async Task DemoBackpressureAsync()
     {
         for (int i = 1; i <= 10; i++)
         {
-            await channel.Writer.WriteAsync(i);  // 满了会阻塞在这里
+            await channel.Writer.WriteAsync(i);  // 满了会阻塞在这里；换 DropWrite 则这里返回但数据可能已丢
             Console.WriteLine($"    写入 {i} @ {sw.ElapsedMilliseconds}ms");
         }
         channel.Writer.Complete();
@@ -1910,7 +1922,7 @@ async Task DemoBackpressureAsync()
     Console.WriteLine($"  背压演示总耗时 {sw.ElapsedMilliseconds}ms（约 1000ms）");
 }
 
-// === 7. Channel 关闭与 TryRead ===
+// ---------- 7. Complete 后仍可读完缓冲；再 TryWrite 失败而不是抛 ----------
 async Task DemoChannelCompletionAsync()
 {
     var channel = Channel.CreateUnbounded<int>();
@@ -1918,7 +1930,7 @@ async Task DemoChannelCompletionAsync()
     // 写两条然后 Complete
     channel.Writer.TryWrite(1);
     channel.Writer.TryWrite(2);
-    channel.Writer.Complete();  // 不再写入
+    channel.Writer.Complete();  // 不再写入；已入队的 1、2 仍能被读出
 
     // ReadAllAsync 会读到所有已写入项，然后正常结束
     int count = 0;
@@ -2141,8 +2153,12 @@ async Task B()
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「线程与线程池」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 线程与线程池演示
-// 演示：ThreadPool.QueueUserWorkItem + ThreadLocal<Random> + AsyncLocal<string> 上下文流转 + 测量 ThreadPool 启动延迟
+    code: `// ===========================================================
+// 第五十一章 线程与线程池 —— 可运行演示
+// 核心：优先线程池而非 new Thread；AsyncLocal 随 ExecutionContext 流转
+// 坑：Thread.Sleep 占满池会饥饿；SetMinThreads 只在确认饥饿时调
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
 using System.Collections.Generic;
@@ -2150,7 +2166,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
-// === 1. Thread 类：直接创建线程（历史写法，新代码不推荐） ===
+// ---------- 1. new Thread：1MB 栈 + 调度开销，新代码应走线程池 ----------
 void DemoThread()
 {
     var t = new Thread(() =>
@@ -2161,13 +2177,13 @@ void DemoThread()
 
     // 默认 IsBackground = false（前台线程，进程会等它结束才退出）
     // 设为 true 则是后台线程，进程可以不等它就退出
-    t.IsBackground = true;
+    t.IsBackground = true;  // false 则进程要等它结束；服务里漏 Join 的前台线程会拖住退出
     t.Start();
-    t.Join();  // 等待线程结束
+    t.Join();  // 等待线程结束；Join 是同步阻塞，别在 UI 线程乱 Join
     Console.WriteLine("  Thread 演示完成");
 }
 
-// === 2. ThreadPool.QueueUserWorkItem：扔到线程池 ===
+// ---------- 2. QueueUserWorkItem：工作必须尽快归还线程，禁止长时间 Sleep ----------
 void DemoThreadPoolQueue()
 {
     int done = 0;
@@ -2186,7 +2202,7 @@ void DemoThreadPoolQueue()
     Console.WriteLine("  ThreadPool.QueueUserWorkItem 完成");
 }
 
-// === 3. 查看 / 配置线程池 ===
+// ---------- 3. 线程池规模：min 默认≈核数，突发并发会先排队再慢慢加线程 ----------
 void ShowThreadPoolInfo()
 {
     ThreadPool.GetMinThreads(out int minWorker, out int minIO);
@@ -2198,8 +2214,7 @@ void ShowThreadPoolInfo()
     Console.WriteLine($"  可用工作线程：{availWorker}");
 }
 
-// === 4. 测量 ThreadPool 冷启动延迟 ===
-// 默认线程池增长很慢（每 ~0.5s 才 +1），突发并发会卡顿
+// ---------- 4. 冷启动：默认大约每 0.5s 才注入 1 个新工作线程 ----------
 async Task DemoThreadPoolRampUpAsync()
 {
     // 不调 SetMinThreads 时，启动 100 个并发任务的延迟会很明显
@@ -2219,7 +2234,7 @@ async Task DemoThreadPoolRampUpAsync()
     // 如果 min 设置过低，这里可能 > 1000ms（线程池慢慢涨）
 }
 
-// === 5. SetMinThreads 调优：把 min 调高，减少冷启动延迟 ===
+// ---------- 5. SetMinThreads：只在确认饥饿时调；调太高会浪费内存和调度 ----------
 void TryTuneMinThreads()
 {
     // 把最小工作线程调到 50，让线程池一开始就有 50 个线程待命
@@ -2230,13 +2245,12 @@ void TryTuneMinThreads()
         Console.WriteLine("  SetMinThreads 失败");
 }
 
-// === 6. ThreadLocal<T>：每线程一份副本 ===
-// 经典场景：Random 不是线程安全的，每个线程要独立实例
+// ---------- 6. ThreadLocal：每线程一份；用完要 Dispose，否则线程退出后值可能泄漏 ----------
 void DemoThreadLocal()
 {
     // ThreadLocal<T>：每个线程访问 Value 时得到一个独立实例
     // 工厂函数为每个新线程创建一个 Random
-    var localRand = new ThreadLocal<Random>(() => new Random(Thread.CurrentThread.ManagedThreadId));
+    var localRand = new ThreadLocal<Random>(() => new Random(Thread.CurrentThread.ManagedThreadId));  // 生产代码用完应 Dispose
 
     int[] results = new int[5];
     Parallel.For(0, 5, i =>
@@ -2249,11 +2263,7 @@ void DemoThreadLocal()
     // 注意：.NET 6+ 的 Random.Shared 已是线程安全，新代码可以直接用
 }
 
-// === 7. AsyncLocal<T>：异步上下文流转 ===
-// 在 await 切换线程后，AsyncLocal 的值仍然跟随
-// 注意：static AsyncLocal 字段必须放在类型里，不能直接放在顶级语句
-// 这里通过下面定义的 AppContext 静态类来持有（类型声明可以放在文件末尾）
-
+// ---------- 7. AsyncLocal：随 ExecutionContext 过 await，不是「跟着某个线程」 ----------
 async Task DemoAsyncLocalAsync()
 {
     // 在调用链顶端设置上下文
@@ -2272,8 +2282,7 @@ async Task DemoAsyncLocalAsync()
     }
 }
 
-// === 8. AsyncLocal 的"写入隔离"特性 ===
-// 子调用链修改 AsyncLocal 不会影响父调用链（每次 await 是快照副本）
+// ---------- 8. 写入隔离：子调用链改 AsyncLocal 不会污染父级快照 ----------
 async Task DemoAsyncLocalWriteIsolationAsync()
 {
     AppContext.CurrentUser.Value = "Parent";
@@ -2281,7 +2290,7 @@ async Task DemoAsyncLocalWriteIsolationAsync()
     async Task ChildAsync()
     {
         Console.WriteLine($"    [Child 开始] user = {AppContext.CurrentUser.Value}");  // Parent
-        AppContext.CurrentUser.Value = "Child";  // 修改只影响这个子调用链
+        AppContext.CurrentUser.Value = "Child";  // 修改只影响这个子调用链；父级仍是 Parent
         await Task.Delay(10);
         Console.WriteLine($"    [Child 结束] user = {AppContext.CurrentUser.Value}");  // Child
     }
@@ -2290,7 +2299,7 @@ async Task DemoAsyncLocalWriteIsolationAsync()
     Console.WriteLine($"  [Parent] user = {AppContext.CurrentUser.Value}");  // 仍是 Parent
 }
 
-// === 9. 线程池饥饿演示（注释版） ===
+// ---------- 9. 线程池饥饿：同步阻塞占满工作线程后，新 Task.Run 只能排队 ----------
 // 下面这段代码会让线程池饿死，仅作说明，不要在 demo 里跑
 // for (int i = 0; i < 100; i++)
 //     Task.Run(() => Thread.Sleep(int.MaxValue));  // 占着线程不放

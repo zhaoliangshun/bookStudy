@@ -200,29 +200,29 @@ bool isSerializable = Attribute.IsDefined(typeof(Person), typeof(SerializableAtt
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 —— 反射基础演示
+    code: `// ===========================================================
+// 第五十七章 反射基础 —— 可运行演示
+// 核心：typeof / GetType / Type.GetType；BindingFlags 必须显式列出范围
+// 坑：Invoke 每次装箱+分配参数数组；MemberInfo 应缓存；AOT 会裁掉字符串引用的成员
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
-
 using System.Reflection;
-
 using System.Text;
 
-Type t1 = typeof(Person);
-
+// ---------- 1. 三种拿到 Type 的方式 ----------
+Type t1 = typeof(Person);                    // 编译期就钉死，Person 改名这里会一起红
 Person sample = new Person("Tom", 20);
-
-Type t2 = sample.GetType();
-
-Type? t3 = Type.GetType("Person");
+Type t2 = sample.GetType();                  // 看的是对象真实类型，不是变量声明类型
+Type? t3 = Type.GetType("Person");           // 无命名空间、无程序集名：本进程里经常是 null
 
 Console.WriteLine($"typeof   => {t1.FullName}");
-
 Console.WriteLine($"GetType  => {t2.FullName}");
-
 Console.WriteLine($"Type.Get => {(t3?.FullName ?? "<null>")}");
 
 Console.WriteLine("\\n--- Type 属性 ---");
+// ---------- 2. IsXxx 读的是元数据，不是实例当前状态 ----------
 
 Console.WriteLine($"Name           = {t1.Name}");
 
@@ -243,12 +243,14 @@ Console.WriteLine($"IsSealed       = {t1.IsSealed}");
 Console.WriteLine($"IsSerializable = {t1.IsSerializable}");
 
 Console.WriteLine("\\n--- 所有 public 成员 ---");
+// ---------- 3. GetMembers 每次都分配新数组，热路径请缓存结果 ----------
 
 foreach (MemberInfo m in t1.GetMembers())
     Console.WriteLine($"  {m.MemberType,-15} {m.Name}");
 
 Console.WriteLine("\\n--- 含 private/static 的字段 ---");
-
+// ---------- 4. BindingFlags：可见性与 Instance/Static 必须同时给出，少一边就是空 ----------
+// 漏掉 NonPublic 就看不见 _secret；漏掉 Static 就看不见 Species。
 BindingFlags allFlags = BindingFlags.Public | BindingFlags.NonPublic
                       | BindingFlags.Instance | BindingFlags.Static;
 
@@ -256,12 +258,14 @@ foreach (FieldInfo f in t1.GetFields(allFlags))
     Console.WriteLine($"  {f.FieldType.Name,-10} {f.Name} (Static={f.IsStatic}, Private={f.IsPrivate})");
 
 Console.WriteLine("\\n--- 动态创建 + 调用方法 ---");
-
+// ---------- 5. Invoke/GetValue：每次装箱、分配 object[]，循环里比直接调用慢数量级 ----------
+// Activator 按构造参数类型重载匹配；找不到就 MissingMethodException。
+// 参数数组里的值类型会装箱；AOT 下这一段是 trim 警告重灾区。
 object? instance = Activator.CreateInstance(t1, new object[] { "Alice", 25 });
 
 Console.WriteLine($"实例化结果: {instance}");
 
-FieldInfo? nameField = t1.GetField("Name");
+FieldInfo? nameField = t1.GetField("Name");  // Name 在本 demo 是字段；若改成属性，这里就是 null
 
 if (nameField != null && instance != null)
 {
@@ -280,13 +284,13 @@ if (ageProp != null && instance != null)
     Console.WriteLine($"属性 Age 新值: {ageProp.GetValue(instance)}");
 }
 
-MethodInfo? greet1 = t1.GetMethod("Greet", Type.EmptyTypes);
+MethodInfo? greet1 = t1.GetMethod("Greet", Type.EmptyTypes);  // 重载必须靠参数类型列表区分
 
 greet1?.Invoke(instance, null);
 
 MethodInfo? greet2 = t1.GetMethod("Greet", new[] { typeof(string) });
 
-string? result = (string?)greet2?.Invoke(instance, new object[] { "Hey" });
+string? result = (string?)greet2?.Invoke(instance, new object[] { "Hey" });  // 新 object[] + 装箱，别放在 tight loop  // 新 object[] + 装箱，别放在 tight loop
 
 Console.WriteLine($"带参方法返回: {result}");
 
@@ -297,6 +301,7 @@ string? label = (string?)labelMethod?.Invoke(null, new object?[] { instance });
 Console.WriteLine($"静态方法返回: {label}");
 
 Console.WriteLine("\\n--- 泛型方法 ---");
+// ---------- 6. 开放 MethodInfo 必须 MakeGenericMethod，每次 Make 也有开销，结果应缓存 ----------
 
 MethodInfo? echoOpen = t1.GetMethod("Echo");
 
@@ -312,14 +317,17 @@ if (echoOpen != null)
 }
 
 Console.WriteLine("\\n--- 私有方法 ---");
+// ---------- 7. 反射打穿 private 是封装漏洞，单元测试以外应视为禁止 ----------
 
 MethodInfo? whisper = t1.GetMethod("Whisper", BindingFlags.NonPublic | BindingFlags.Instance);
 
 whisper?.Invoke(instance, null);
 
 Console.WriteLine("\\n--- 事件 ---");
+// ---------- 8. 字段式 event 的后备委托能被 NonPublic GetField 摸到 ----------
 
 EventInfo? nameChangedEvent = t1.GetEvent("NameChanged");
+// 字段级事件在类里有同名私有委托字段，用 NonPublic GetField 能摸到——这是封装漏洞，不是特性。
 
 Console.WriteLine($"事件 NameChanged 类型: {nameChangedEvent?.EventHandlerType?.Name}");
 
@@ -333,6 +341,7 @@ if (eventField?.GetValue(instance) is EventHandler del)
     del.Invoke(instance, EventArgs.Empty);
 
 Console.WriteLine("\\n--- 构造函数 ---");
+// ---------- 9. GetConstructors 默认只要 public；私有 ctor 同样要 NonPublic ----------
 
 foreach (ConstructorInfo ctor in t1.GetConstructors())
 {
@@ -342,6 +351,7 @@ foreach (ConstructorInfo ctor in t1.GetConstructors())
 }
 
 Console.WriteLine("\\n--- 特性检查 ---");
+// ---------- 10. IsDefined 比 GetCustomAttribute 便宜，但热路径仍应缓存 bool ----------
 
 bool hasSerializable = Attribute.IsDefined(t1, typeof(SerializableAttribute));
 
@@ -565,20 +575,21 @@ public class Container
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「反射高级应用」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 —— 反射高级应用演示
+    code: `// ===========================================================
+// 第五十八章 反射高级应用 —— 可运行演示
+// 核心：MakeGenericType；CreateDelegate 比反复 Invoke 便宜一个数量级
+// 坑：开放泛型不能 new；DynamicMethod 在 Native AOT 不可用；热路径必须缓存 MemberInfo
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
-
 using System.Collections.Generic;
-
 using System.Linq;
-
 using System.Reflection;
-
 using System.Reflection.Emit;
 
 Console.WriteLine("--- Activator.CreateInstance ---");
-
+// ---------- 1. Activator：每次都走构造匹配；无参泛型重载要求公共无参 ctor ----------
 object? a = Activator.CreateInstance(typeof(ConsoleLogger));
 
 object? b = Activator.CreateInstance(typeof(ConsoleLogger), nonPublic: false);
@@ -592,6 +603,7 @@ Console.WriteLine($"b => {b}");
 Console.WriteLine($"c => {c}");
 
 Console.WriteLine("\\n--- MakeGenericType ---");
+// ---------- 2. 开放泛型不能 new；MakeGenericType 的结果应缓存，不要每次请求都 Make ----------
 
 Type openList = typeof(List<>);
 
@@ -605,13 +617,14 @@ object listInstance = Activator.CreateInstance(closedList)!;
 
 MethodInfo? addMethod = closedList.GetMethod("Add");
 
-addMethod?.Invoke(listInstance, new object[] { 100 });
+addMethod?.Invoke(listInstance, new object[] { 100 });  // 循环里请改成 CreateDelegate，避免反复分配 object[]
 
 addMethod?.Invoke(listInstance, new object[] { 200 });
 
 Console.WriteLine($"反射调用 Add 两次后 Count = {closedList.GetProperty("Count")!.GetValue(listInstance)}");
 
 Console.WriteLine("\\n--- MakeGenericMethod ---");
+// ---------- 3. 泛型方法同样：GetMethod 拿开放定义，Make 之后缓存封闭 MethodInfo ----------
 
 MethodInfo openEmpty = typeof(Array).GetMethod("Empty")!;
 
@@ -622,6 +635,7 @@ string[] emptyArr = (string[])closedEmpty.Invoke(null, null)!;
 Console.WriteLine($"Array.Empty<string>() 长度 = {emptyArr.Length}");
 
 Console.WriteLine("\\n--- Delegate.CreateDelegate ---");
+// ---------- 4. 钉成委托后走虚调用，比每次 Invoke 查元数据+装箱便宜一个数量级 ----------
 
 MethodInfo? logMethod = typeof(ConsoleLogger).GetMethod("Log", new[] { typeof(string) })!;
 
@@ -635,6 +649,7 @@ logAction(logger, "由委托调用 Log");
 Console.WriteLine($"委托类型: {logAction.GetType().Name}, Target: {logAction.Target ?? "<static>"}");
 
 Console.WriteLine("\\n--- DynamicMethod 实现加法 ---");
+// ---------- 5. 运行期 emit IL：Native AOT / iOS 直接不可用，能编译期生成就别拖到运行期 ----------
 
 DynamicMethod dm = new DynamicMethod("Add", typeof(int),
     new[] { typeof(int), typeof(int) }, typeof(object).Module);
@@ -656,6 +671,7 @@ Console.WriteLine($"Add(3, 4) = {addFn(3, 4)}");
 Console.WriteLine($"Add(100, 200) = {addFn(100, 200)}");
 
 Console.WriteLine("\\n--- AssemblyBuilder / TypeBuilder ---");
+// ---------- 6. 动态程序集默认只能 Run，不能保存到磁盘；CreateType 之后才能 Invoke ----------
 
 AssemblyName an = new AssemblyName("DynamicLib");
 
@@ -683,6 +699,7 @@ string? greeting = (string?)builtType.GetMethod("SayHello")!.Invoke(builtInstanc
 Console.WriteLine($"动态类型实例方法返回: {greeting}");
 
 Console.WriteLine("\\n--- 迷你 DI 容器 ---");
+// ---------- 7. 每次 Resolve 都 GetConstructors + 递归 Activator，真实容器会缓存工厂委托 ----------
 
 Container container = new();
 
@@ -697,6 +714,7 @@ UserService svc = container.Resolve<UserService>();
 svc.Greet("Reflection DI");
 
 Console.WriteLine("\\n--- 反射缓存模式 ---");
+// ---------- 8. 启动时扫一遍 FieldInfo，之后 GetValue 仍有装箱，但省掉了反复 GetField ----------
 
 ReflectionCache<Person> cache = new();
 
@@ -754,7 +772,7 @@ public class Container
         if (!_map.TryGetValue(service, out Type? impl))
             throw new InvalidOperationException($"未注册类型: {service.FullName}");
         // 找第一个构造函数（实际 DI 容器会按参数最多/最长匹配策略选择）
-        ConstructorInfo ctor = impl.GetConstructors()[0];
+        ConstructorInfo ctor = impl.GetConstructors()[0];  // 每次 Resolve 都反射；生产应缓存 ConstructorInfo / 编译表达式
         // 递归解析每个构造参数
         object[] args = ctor.GetParameters()
             .Select(p => Resolve(p.ParameterType))
@@ -772,7 +790,7 @@ public class ReflectionCache<T>
     public ReflectionCache()
     {
         // 一次性把所有 public 实例字段缓存起来
-        foreach (FieldInfo f in typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance))
+        foreach (FieldInfo f in typeof(T).GetFields(BindingFlags.Public | BindingFlags.Instance))  // 只在构造时扫一次
             _fields[f.Name] = f;
     }
 
@@ -1016,17 +1034,20 @@ string BuildInsert<T>(T entity)
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 —— 特性 Attribute 演示
+    code: `// ===========================================================
+// 第五十九章 特性 Attribute —— 可运行演示
+// 核心：Attribute 是编译期元数据；GetCustomAttribute 读取仍走反射
+// 坑：构造参数必须是常量；热路径要缓存特性结果；AllowMultiple/Inherited 决定叠放与继承
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
-
 using System.Collections.Generic;
-
 using System.Reflection;
-
 using System.Text;
 
 Console.WriteLine("=== 读取 User 类型元数据 ===");
+// ---------- 1. GetCustomAttribute 走反射，启动时扫一遍并缓存，不要每次 BuildInsert 都读 ----------
 
 Type userType = typeof(User);
 
@@ -1038,12 +1059,7 @@ Console.WriteLine($"表名: {tableName}");
 
 foreach (PropertyInfo prop in userType.GetProperties())
 {
-    ColumnAttribute? col = prop.GetCustomAttribute<ColumnAttribute>();
-    if (col == null)
-    {
-        Console.WriteLine($"  {prop.Name,-12} -> [忽略]");
-        continue;
-    }
+    ColumnAttribute? col = prop.GetCustomAttribute<ColumnAttribute>();  // 每个属性一次反射；真实 ORM 会在启动时建模型
     MaxLengthAttribute? max = prop.GetCustomAttribute<MaxLengthAttribute>();
     string flags = (col.IsPrimaryKey ? "PK " : "") + (col.IsRequired ? "必填 " : "");
     Console.WriteLine($"  {prop.Name,-12} -> 列 {col.Name,-12} 类型 {prop.PropertyType.Name,-8} {flags}{(max != null ? "max=" + max.Length : "")}");
@@ -1070,6 +1086,7 @@ string ddl = SqlBuilder.BuildCreateTable(typeof(User));
 Console.WriteLine($"\\n生成的 DDL:\\n{ddl}");
 
 Console.WriteLine("\\n=== 内置特性演示 ===");
+// ---------- 2. Obsolete 是编译器警告；Flags 改 ToString；Conditional 在未定义符号时删调用 ----------
 
 ObsoleteMethodInfo();
 
@@ -1082,6 +1099,7 @@ Log("Debug 模式可见");
 Log("Release 模式编译时这行被删除");
 
 Console.WriteLine("\\n=== 模拟 JSON 字段映射 ===");
+// ---------- 3. 用特性名当 JSON 键；未知字段被忽略，缺列保持 CLR 默认值 ----------
 
 Dictionary<string, object?> json = new()
 {
@@ -1122,7 +1140,7 @@ static T? MapFromJson<T>(Dictionary<string, object?> json) where T : new()
         if (json.TryGetValue(col.Name, out object? val) && val != null)
         {
             // 简化：直接转换
-            object? converted = Convert.ChangeType(val, p.PropertyType);
+            object? converted = Convert.ChangeType(val, p.PropertyType);  // 文化敏感；日期/小数生产应用 InvariantCulture
             p.SetValue(obj, converted);
         }
     }
@@ -1141,11 +1159,11 @@ enum Permission
     All = Read | Write | Execute
 }
 
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]  // Inherited：子类 GetCustomAttribute 也能看见
 public class TableAttribute : Attribute
 {
     public string Name { get; }
-    // 位置参数：构造函数参数
+    // 位置参数：构造函数参数，必须是编译期常量，不能 new 字典、不能 await
     public TableAttribute(string name) => Name = name;
 }
 
@@ -1154,8 +1172,8 @@ public class TableAttribute : Attribute
 public class ColumnAttribute : Attribute
 {
     public string Name { get; }
-    public bool IsPrimaryKey { get; set; }  // 命名参数
-    public bool IsRequired { get; set; }    // 命名参数
+    public bool IsPrimaryKey { get; set; }  // 命名参数：贴特性时 IsPrimaryKey = true
+    public bool IsRequired { get; set; }    // 命名参数；位置参数必须写在命名参数前面
     public ColumnAttribute(string name) => Name = name;
 }
 
@@ -1167,7 +1185,7 @@ public class MaxLengthAttribute : Attribute
     public MaxLengthAttribute(int length) => Length = length;
 }
 
-// === 2. 应用特性到 User 实体 ===
+// ---------- 4. 贴到实体上：没有 [Column] 的属性会被 ORM/生成器直接跳过 ----------
 [Table("users")]
 public class User
 {
@@ -1212,7 +1230,7 @@ public static class SqlBuilder
     {
         Type t = typeof(T);
         // 1. 获取表名
-        TableAttribute? tblAttr = t.GetCustomAttribute<TableAttribute>();
+        TableAttribute? tblAttr = t.GetCustomAttribute<TableAttribute>();  // 每次 INSERT 都反射；生产应缓存表名/列映射
         string tableName = tblAttr?.Name ?? t.Name;
 
         // 2. 遍历属性收集列名和值
@@ -1488,19 +1506,20 @@ Native AOT **没有**运行时 JIT，\`AssemblyBuilder.DefineDynamicAssembly\` /
 
 ### 练习
 `,
-    code: `// C# 12 顶级语句 —— 源生成器演示
-// 注意：本 demo 演示【运行时可见的部分】，即 JsonSerializerContext 实战。
-// 真正的源生成器实现（IIncrementalGenerator）以注释伪代码形式给出。
+    code: `// ===========================================================
+// 第六十章 源生成器简介 —— 可运行演示
+// 核心：JsonSerializerContext 把反射元数据前移到编译期；AOT 友好
+// 坑：无 Context 的 Serialize 仍走反射；本页跑的不是完整 Roslyn 生成器
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
 
 using System;
-
 using System.Collections.Generic;
-
 using System.Text.Json;
-
 using System.Text.Json.Serialization;
 
 Console.WriteLine("=== JsonSerializerContext 演示 ===");
+// ---------- 1. 必须把类型登记到 [JsonSerializable]；漏登记运行期会抛 ----------
 
 Person p = new Person
 {
@@ -1510,7 +1529,7 @@ Person p = new Person
     Tags = new List<string> { "vip", "active" },
 };
 
-string json = JsonSerializer.Serialize(p, AppJsonContext.Default.Person);
+string json = JsonSerializer.Serialize(p, AppJsonContext.Default.Person);  // 带 JsonTypeInfo：无反射、可 trim
 
 Console.WriteLine($"序列化 Person:\\n{json}");
 
@@ -1525,6 +1544,7 @@ string listJson = JsonSerializer.Serialize(people, AppJsonContext.Default.ListPe
 Console.WriteLine($"\\n序列化 List<Person>:\\n{listJson}");
 
 Console.WriteLine("\\n=== 反射 vs 源生成器对比 ===");
+// ---------- 2. 不带 context 的 Serialize 走反射缓存；Trim/AOT 下会警告或丢成员 ----------
 
 Order order = new Order
 {
@@ -1533,7 +1553,7 @@ Order order = new Order
     Customer = p,
 };
 
-string jsonReflect = JsonSerializer.Serialize(order);
+string jsonReflect = JsonSerializer.Serialize(order);  // 反射路径：首次很慢，之后有缓存，但 AOT 不友好
 
 Console.WriteLine($"反射方式: {jsonReflect}");
 
@@ -1542,12 +1562,14 @@ string jsonGen = JsonSerializer.Serialize(order, AppJsonContext.Default.Order);
 Console.WriteLine($"源生成器: {jsonGen}");
 
 Console.WriteLine("\\n=== 模拟特性驱动生成（伪代码展示）===");
+// ---------- 3. 本页 ToString 是手写的；真正生成器会在编译期注入同样代码 ----------
 
 Product prod = new Product { Id = 42, Title = "Phone", Price = 4999m };
 
 Console.WriteLine(prod.ToString());
 
 Console.WriteLine("\\n=== 源生成器骨架伪代码 ===");
+// ---------- 4. IIncrementalGenerator 必须单独分析器项目，不能跟本控制台 demo 编在一起 ----------
 
 Console.WriteLine(@"// 单独项目里实现（需引用 Microsoft.CodeAnalysis.CSharp 包）
 using Microsoft.CodeAnalysis;

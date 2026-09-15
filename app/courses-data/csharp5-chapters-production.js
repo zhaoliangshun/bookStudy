@@ -99,12 +99,17 @@ export const csharp5Preface = {
 - 故障注入清单（重复请求、死锁、Redis 宕机、毒消息、SIGTERM）有自动测试或演练记录。
 
 达不到以上标准，就还在“会写代码”；达到了，才开始“能负责生产系统”。结语会给出毕业后的 90 天计划——教程结束不是能力结束。`,
-  code: `// 前言 demo：把生产能力拆成可验证的检查项
+  code: `// ============================================================
+// 前言主 demo：生产能力必须拆成可打勾的检查项。
+// “我会 C#”不够；安全、密钥、告警、回滚没证据，就还在学习阶段。
+// 后面各章都用同样的思路：能证明，才算掌握。
+// ============================================================
+
 var capabilities = new[]
 {
     new Capability("语言与类型系统", true),
     new Capability("自动化测试", true),
-    new Capability("安全与密钥管理", false),
+    new Capability("安全与密钥管理", false), // 常见缺口：demo 能跑，密钥仍写在配置文件
     new Capability("监控、告警与回滚", false),
 };
 
@@ -114,9 +119,11 @@ foreach (var item in capabilities)
     Console.WriteLine($"[{state}] {item.Name}");
 }
 
+// static lambda：不捕获外部变量，避免编译器生成闭包对象
 int completed = capabilities.Count(static item => item.Completed);
 Console.WriteLine($"当前进度：{completed}/{capabilities.Length}");
 
+// record：不可变数据载体；生产里检查项还应带证据链接（测试名、演练日期）
 public sealed record Capability(string Name, bool Completed);
 `,
   lang: "cs",
@@ -240,6 +247,8 @@ chore(ci): require CODEOWNERS review on /infra
 // ============================================================
 
 // ---------- 1. 合并门禁 ----------
+// All(...) 要求每一项都是 Passed。Pending 和 Failed 一样会挡住合并——
+// 「还在看」不是绿灯。真实 CI 里 required checks 就是这个语义。
 var checks = new[]
 {
     new PullRequestCheck("build", CheckState.Passed),
@@ -249,6 +258,7 @@ var checks = new[]
 };
 
 bool mergeable = checks.All(static check => check.State is CheckState.Passed);
+// static lambda：不捕获外层变量，避免无意闭包；is 模式匹配比 == 更能表达「状态属于 Passed」。
 foreach (var check in checks)
     Console.WriteLine($"{check.Name,-10} {check.State}");
 Console.WriteLine($"允许合并：{mergeable}（review 还在 Pending，把整条 PR 挡住）");
@@ -405,12 +415,19 @@ static T Sum<T>(ReadOnlySpan<T> values) where T : INumber<T>
 2. 独立实现 \`readonly record struct Sku\`：工厂拒绝空白、超过 16 字符以及 \`[A-Z0-9-]\` 之外的字符；再写泛型方法 \`static T Sum<T>(ReadOnlySpan<T>) where T : INumber<T>\`，分别用 int、decimal、BigInteger 调用，体会泛型数学的能力与边界。
 3. 生产场景：为订单域实现封闭的 \`OrderStatus\` 状态机（Pending→Paid→Shipped/Cancelled，\`Pay()\`/\`Cancel()\` 拒绝非法迁移），查询未命中返回 \`Maybe<T>\`、业务拒绝返回 \`Result<T,TError>\`；用单元测试断言“已取消不能再支付”，并在 ADR 里约定哪些规则用 Result、哪些编程错误仍抛异常。
 `,
-    code: `var price = Money.Create(99.90m, "cny");
+    code: `// ============================================================
+// 值对象 Money：工厂是唯一入口，禁止 new Money(-1, "cny") 绕过不变量。
+// decimal 表示金额；double 的 0.1+0.2 误差会在对账时变成事故。
+// readonly record struct：按值复制、按字段相等，适合小而不变的领域类型。
+// ============================================================
+
+var price = Money.Create(99.90m, "cny");   // 小写币种会规范化成 CNY
 var shipping = Money.Create(10m, "CNY");
-Console.WriteLine(price.Add(shipping));
+Console.WriteLine(price.Add(shipping));    // 同币种才能加
 
 try
 {
+    // 跨币种必须走汇率服务，不能静默相加
     Console.WriteLine(price.Add(Money.Create(5m, "USD")));
 }
 catch (InvalidOperationException ex)
@@ -422,6 +439,7 @@ public readonly record struct Money
 {
     public decimal Amount { get; }
     public string Currency { get; }
+    // 私有构造：外部只能走 Create，保证舍入和币种规范化
     private Money(decimal amount, string currency) =>
         (Amount, Currency) = (amount, currency);
 
@@ -429,6 +447,7 @@ public readonly record struct Money
     {
         if (amount < 0) throw new ArgumentOutOfRangeException(nameof(amount));
         if (string.IsNullOrWhiteSpace(currency)) throw new ArgumentException("币种不能为空");
+        // 教学简化：拒绝负数。真实退款应使用带符号的 Adjustment，而不是绕过工厂。
         return new Money(decimal.Round(amount, 2), currency.Trim().ToUpperInvariant());
     }
 
@@ -535,10 +554,17 @@ var safe = new Regex(
 2. 独立实现注入 \`TimeProvider\` 的 \`RefundPolicy\`（14 天退款窗口），用 \`FakeTimeProvider\` 写“刚好第 14 天”的拨钟边界测试；再实现按文本元素计数的 \`Truncate(string text, int maxRunes)\`，保证 emoji 与组合音标不被截断成乱码。
 3. 生产场景：把毕业项目的时刻字段统一为 \`DateTimeOffset\` + ISO 8601（OpenAPI 标 \`format: date-time\`），标识符比较改用 \`StringComparer.Ordinal\`；用 \`[GeneratedRegex]\` 加 \`RegexOptions.NonBacktracking\` 重写用户名/Sku 校验并设置 \`matchTimeout\`；在 CI 的 Linux 容器里跑 tr-TR 大小写与夏令时切换日的 Theory 测试。
 `,
-    code: `using System.Globalization;
+    code: `// ============================================================
+// 时间与文本的三个生产雷区：
+//   1. 存 DateTimeOffset / UTC，展示时再转到用户时区
+//   2. string.Length 是 UTF-16 码元，不是“人看到的字符数”
+//   3. 用户输入正则必须带超时，防止灾难性回溯打满 CPU
+// ============================================================
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
+// 解析时用 InvariantCulture，避免服务器区域把日期格式解错
 var instant = DateTimeOffset.Parse(
     "2026-09-11T02:00:00Z",
     CultureInfo.InvariantCulture);
@@ -546,9 +572,10 @@ TimeZoneInfo shanghai = TimeZoneInfo.FindSystemTimeZoneById("Asia/Shanghai");
 Console.WriteLine(TimeZoneInfo.ConvertTime(instant, shanghai));
 
 string text = "A😀é";
-Console.WriteLine($"UTF-16 Length={text.Length}");
+Console.WriteLine($"UTF-16 Length={text.Length}");           // 表情是代理对，Length 会大于“看起来的字数”
 Console.WriteLine($"Unicode scalars={text.EnumerateRunes().Count()}");
 
+// CultureInvariant：土耳其语区域下 IgnoreCase 不会把 i/I 搞乱
 var safe = new Regex(
     @"^[a-z0-9._-]{3,32}$",
     RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
@@ -649,7 +676,9 @@ Native AOT 下，运行时封送、运行时 \`DllImport\` 搜索、反射调 na
 
 `,
     code: `// ============================================================
-    // Native Interop：安全解析二进制协议 + 显式内存布局 + 非指针技巧
+// Native Interop：安全解析二进制协议 + 显式内存布局 + 非指针技巧。
+// 网络字节序是大端；本机 x64 通常是小端——读错端序，数字会对但值全错。
+// BinaryPrimitives / MemoryMarshal 覆盖 90% 场景，不到边界再写 unsafe。
 // ============================================================
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
@@ -662,6 +691,7 @@ byte[] packet =
 ];
 
 ReadOnlySpan<byte> data = packet;
+// [..4] 是范围运算符（C# 8）：从 0 取到不含 4；Slice 更适合「偏移 + 长度」。
 int id = BinaryPrimitives.ReadInt32BigEndian(data[..4]);
 ushort amount = BinaryPrimitives.ReadUInt16BigEndian(data.Slice(4, 2));
 
@@ -1166,6 +1196,7 @@ Redis 超时或宕机时“全部回源”会压垮数据库。要有：回源�
 // ============================================================
 
 // ---------- 1. TTL + jitter ----------
+// 固定种子：教学输出可重复。生产必须用不可预测随机，否则整集群同时抖动到同一偏移。
 var random = new Random(2026);
 TimeSpan baseTtl = TimeSpan.FromMinutes(10);
 
@@ -1212,6 +1243,8 @@ Console.WriteLine("  反例 user42_orders：无分隔结构，既不能扫描也
 sealed class StampedeCache
 {
     private readonly Dictionary<string, string> _store = new();
+    // 教学简化：一把全局锁。生产要按 key 分锁，否则无关热点会互相排队。
+    // SemaphoreSlim 只保护本进程；多副本还要 Redis SET NX EX 或 HybridCache。
     private readonly SemaphoreSlim _gate = new(1, 1);   // 同键只有一个回源者
 
     public async Task<string> GetOrLoadAsync(string key, Func<Task<string>> loadFromDb)
@@ -1351,17 +1384,22 @@ Schema 演进：只加可选字段；改含义就升 \`schemaVersion\` 并双读
 
 
 `,
-    code: `// Inbox 去重：模拟 at-least-once 消息被重复投递
+    code: `// ============================================================
+// Inbox 去重：消息系统默认至少一次投递，重复是天气不是异常。
+// HashSet.Add 返回 false 表示已处理过——消费者必须幂等。
+// 生产里 Inbox 是带过期时间的数据库表，不是进程内集合。
+// ============================================================
 var inbox = new HashSet<Guid>();
-var messageId = Guid.NewGuid();
+var messageId = Guid.NewGuid(); // 同一业务消息应携带稳定 MessageId
 var deliveries = new[]
 {
     new Message(messageId, "OrderPaid"),
-    new Message(messageId, "OrderPaid"),
+    new Message(messageId, "OrderPaid"), // 第二次投递：必须跳过副作用
 };
 
 foreach (var message in deliveries)
 {
+    // Add 失败 = 已见过该 Id。先记 Inbox 再处理，或同一事务提交，避免“处理了但没记下”。
     if (!inbox.Add(message.Id))
     {
         Console.WriteLine($"skip duplicate {message.Id}");
@@ -1649,9 +1687,13 @@ S3 兼容存储（AWS S3、MinIO、Azure Blob 的块语义略有不同）核心�
 
 
 `,
-    code: `using System.Security.Cryptography;
+    code: `// ============================================================
+// 大文件哈希必须走 Stream，禁止一次性 ReadAllBytes。
+// SHA256 这里用于完整性校验 / 分桶，不是密码存储（密码用专用 KDF）。
+// await using：异步释放流，避免文件句柄拖到 finally 才关。
+// ============================================================
+using System.Security.Cryptography;
 
-// 流式计算哈希：内存占用与文件大小无关
 byte[] data = Enumerable.Range(0, 10_000)
     .Select(static value => (byte)(value % 256))
     .ToArray();
@@ -1664,7 +1706,7 @@ static async Task<string> ComputeSha256Async(Stream stream)
 {
     using var sha = SHA256.Create();
     byte[] digest = await sha.ComputeHashAsync(stream);
-    return Convert.ToHexString(digest);
+    return Convert.ToHexString(digest); // 十六进制便于日志与对账；不要当加密密钥
 }
 `,
     lang: "cs",
@@ -2113,21 +2155,26 @@ IaC 验收：PR 必贴 plan；state 加密加锁；生产 apply 仅流水线；�
 
 
 `,
-    code: `// 根据变更风险决定发布门禁
+    code: `// ============================================================
+// 发布门禁按风险加权，而不是“看起来是小改动就可以自动发”。
+// 破坏性迁移、公开 API 不兼容、安全敏感必须抬升审批与演练。
+// switch 表达式把分数映射成可执行策略，避免口头传统。
+// ============================================================
 var change = new Change(
-    DatabaseDestructive: true,
+    DatabaseDestructive: true,   // 删列 / 改类型：需要 expand-contract 和维护窗口
     PublicApiBreaking: false,
     SecuritySensitive: true);
 
 int risk = (change.DatabaseDestructive ? 3 : 0)
          + (change.PublicApiBreaking ? 3 : 0)
          + (change.SecuritySensitive ? 2 : 0);
+// 权重是团队政策，不是宇宙常数：资金/PII 相关可以把安全项提到 5，让它单独越阈。
 
 string gate = risk switch
 {
-    >= 5 => "双人审批 + 演练 + 维护窗口",
+    >= 5 => "双人审批 + 演练 + 维护窗口", // 关系模式（C# 9）：从上到下匹配第一条
     >= 2 => "人工审批 + canary",
-    _ => "自动发布",
+    _ => "自动发布",                     // 0 分才允许全自动；「看起来是 typo」也要过这条表
 };
 Console.WriteLine(gate);
 
@@ -2247,7 +2294,12 @@ Little's Law：\`L = λW\`（系统中请求数 ≈ 到达率 × 平均逗留时
 `,
     code: `using System.Diagnostics;
 
-// 教学计时不是严谨基准；生产请用 BenchmarkDotNet
+// ============================================================
+// 教学计时不是严谨基准：Debug 模式、GC、JIT 都会污染 Stopwatch。
+// 生产请用 BenchmarkDotNet（Release、多迭代、消费结果防优化掉）。
+// checksum 必须被打印，否则编译器可能删掉整个循环。
+// AsSpan + 切片避免再分配子字符串。
+// ============================================================
 const int iterations = 100_000;
 var stopwatch = Stopwatch.StartNew();
 long checksum = 0;
@@ -2552,9 +2604,14 @@ RPO=0 几乎意味着同步复制和双活，成本高且有脑裂风险。RPO=5
 
 
 `,
-    code: `var plan = new RecoveryPlan(
+    code: `// ============================================================
+// 备份存在 ≠ 能恢复。RPO 看数据最多丢多久，RTO 看多久能回来。
+// 没做过恢复演练的备份，评审时应视为不存在。
+// 时刻一律用 DateTimeOffset.UtcNow，避免服务器本地时区把新鲜度算错。
+// ============================================================
+var plan = new RecoveryPlan(
     Rpo: TimeSpan.FromMinutes(5),
-    Rto: TimeSpan.FromMinutes(30),
+    Rto: TimeSpan.FromMinutes(30), // 本 demo 只打印 RPO；RTO 要靠演练秒表，不是字段自己变绿
     LastBackup: DateTimeOffset.UtcNow.AddMinutes(-3),
     RestoreTestPassed: true);
 
@@ -2678,7 +2735,11 @@ SourceLink 失败常见原因：CI 没设 \`ContinuousIntegrationBuild\`、源�
 
 
 `,
-    code: `// 兼容演进：保留旧入口，委托给新实现并给出迁移信息
+    code: `// ============================================================
+// 公共库兼容：旧成员先标 Obsolete，委托给新实现，下个大版本再删。
+// 新入口必须带 CancellationToken；旧入口没有也不要偷偷吞掉取消。
+// 消息写清替代 API 和移除版本，IDE 才能把迁移路径显示给调用方。
+// ============================================================
 var client = new OrdersClient();
 Console.WriteLine(await client.GetAsync("A-100"));
 
@@ -2787,7 +2848,12 @@ Kestrel / YARP 的限制与应用限制要对齐，否则反代已 413，应用�
 
 
 `,
-    code: `// 纯 C# 模拟中间件：进入顺序与退出顺序相反
+    code: `// ============================================================
+// 中间件是洋葱：先注册的最外层，进入正序、离开逆序。
+// 因此异常处理必须最先包上，认证必须在授权之前。
+// Reverse 再包裹：最后一次赋值的 next 是管道入口。
+// capturedNext 避免闭包捕获正在被改写的 next 变量。
+// ============================================================
 var pipeline = Build(
     "exception-handler",
     "authentication",
@@ -2806,11 +2872,11 @@ static Func<RequestContext, Task> Build(params string[] names)
 
     foreach (string name in names.Reverse())
     {
-        var capturedNext = next;
+        var capturedNext = next; // 必须拷贝：后面会改 next，闭包若抓变量本身会看到最终值
         next = async context =>
         {
             Console.WriteLine($"enter {name}");
-            await capturedNext(context);
+            await capturedNext(context); // 先外后内进入；await 返回后是先内后外离开
             Console.WriteLine($"exit  {name}");
         };
     }
@@ -3303,12 +3369,16 @@ var request = new UpdateRequest("Paid", ExpectedVersion: 2);
 
 if (request.ExpectedVersion != stored.Version)
 {
+    // 客户端拿着过期版本来写：返回 409，让它重新 GET 再带新版本提交。
+    // 不要「读最新再覆盖」——那会把别人刚写的 Paid 悄悄打回 Pending。
     Console.WriteLine($"409 conflict: expected={request.ExpectedVersion}, actual={stored.Version}");
     Console.WriteLine("  ↑ DbUpdateConcurrencyException 的等价物：读后有人先改了");
 }
 else
 {
     stored = stored with { Status = request.Status, Version = stored.Version + 1 };
+    // with：复制一份新 record。数据库里对应 UPDATE ... SET version = version+1 WHERE version = @expected
+    // with：复制一份新 record。数据库里对应 UPDATE ... SET version = version+1 WHERE version = @expected
     Console.WriteLine(stored);
 }
 
@@ -3486,7 +3556,12 @@ WAF 替换配置时小心把生产中间件摘光。测试认证处理程序应�
 
 
 `,
-    code: `// 一个轻量异步测试运行器；真实 API 测试使用 xUnit + WAF + Testcontainers
+    code: `// ============================================================
+// 测试要返回 Task，禁止 .Result / .Wait() 造成死锁假象。
+// EqualityComparer<T>.Default 正确处理可空与 IEquatable。
+// 本 demo 只演示“失败即抛”；生产用 xUnit + WebApplicationFactory
+// + Testcontainers，断言 201/401/409，而不是只测快乐路径。
+// ============================================================
 var tests = new[]
 {
     new TestCase("created returns 201", () => AssertEqual(201, 201)),
@@ -3808,14 +3883,18 @@ infra/                  Terraform 或 Bicep，含环境变量而非密钥
 
 
 `,
-    code: `// 毕业门禁：任何 BLOCK 都必须解决或获得有期限的风险批准
+    code: `// ============================================================
+// 毕业/发布门禁：BLOCK 不能靠“演示能跑”蒙混。
+// 回滚演练、备份恢复经常是最后才补、事故时最先被问到的两项。
+// 任一 false 都不得进入灰度；豁免必须有截止日期和批准人。
+// ============================================================
 var gates = new[]
 {
     new Gate("unit + integration tests", true),
     new Gate("authorization tests", true),
     new Gate("migration rehearsed", true),
     new Gate("load target met", true),
-    new Gate("rollback rehearsed", false),
+    new Gate("rollback rehearsed", false), // 常见缺口：只会发，不会退
     new Gate("restore tested", false),
 };
 
@@ -3929,10 +4008,16 @@ export const csharp5Conclusion = {
 
 
 `,
-  code: `Console.WriteLine("学习完成不是终点：");
+  code: `// ============================================================
+// 结语 demo：教程结束 = 第一次持续交付循环的发令枪。
+// 集合表达式 [] 是 C# 12 语法；循环打印两圈，强调能力靠重复而不是读完。
+// ============================================================
+Console.WriteLine("学习完成不是终点：");
 
 string[] loop =
 [
+    // 集合表达式（C# 12）：目标类型是 string[] 时，[] 就是数组初始化。
+    // 换成 List<string> loop = [ ... ] 语法相同，底层集合不同。
     "设计可验证的变更",
     "编写代码与测试",
     "小批量发布",
@@ -3942,6 +4027,7 @@ string[] loop =
 
 for (int iteration = 1; iteration <= 2; iteration++)
 {
+    // 打两圈：提醒「读完 ≠ 会了」。生产节奏是同一套步骤每周重复，而不是一次性仪式。
     Console.WriteLine($"\\n持续交付循环 {iteration}");
     foreach (string step in loop)
         Console.WriteLine($"  → {step}");

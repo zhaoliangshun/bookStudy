@@ -248,103 +248,103 @@ C# 9 之后更推荐用**关系模式** \`>= 90\` 直接写，但 \`when\` 在�
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「控制流」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// ========================================
-// 第十二章 控制流 —— 成绩等级评定程序
-// 演示：if-else、switch、switch 表达式、
-//       for、foreach、while、break/continue、when
-// ========================================
+    code: `// 第十三章 控制流 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 用成绩评级串起 if/else、经典 switch、switch 表达式、
+// for/foreach/while/do、break/continue。条件必须是 bool，不能写 if (score)。
+// 版本：switch 表达式、or/and/关系模式是 C# 8–9；when 从 C# 7 起可用。
+// 陷阱：经典 switch 禁止隐式贯穿；foreach 变量是拷贝；continue 跳过本轮而非终止。
 using System;
 using System.Collections.Generic;
 
-// ---------- 1. if-else 链：基础评级 ----------
+// ---------- 1. if-else：自上而下，先命中先走 ----------
 char GradeByIf(int score)
 {
-    if (score < 0 || score > 100)              // 输入合法性校验
-        return '?';                            // 非法返回 ?
-    else if (score >= 90) return 'A';          // 90+ 为 A
-    else if (score >= 80) return 'B';          // 80+ 为 B
-    else if (score >= 70) return 'C';          // 70+ 为 C
-    else if (score >= 60) return 'D';          // 60+ 为 D
-    else return 'F';                           // 不及格
+    if (score < 0 || score > 100)              // 必须 bool；C/C++ 那套 if (x) 在这里非法
+        return '?';                            // 非法分数单独符号，避免混进 F
+    else if (score >= 90) return 'A';          // 顺序很重要：先 90 再 80，反过来会全进 B
+    else if (score >= 80) return 'B';
+    else if (score >= 70) return 'C';
+    else if (score >= 60) return 'D';
+    else return 'F';
 }
 
-// ---------- 2. 经典 switch 语句 ----------
+// ---------- 2. 经典 switch：每个 case 必须 break/return/throw ----------
 string CommentBySwitch(char grade)
 {
-    switch (grade)                             // 根据 grade 分支
+    switch (grade)                             // 匹配的是值，不是范围（范围请用表达式 + 关系模式）
     {
-        case 'A':                              // 优秀
+        case 'A':                              // 空 case 连续才允许贯穿到下一个
             return "表现非常优秀，继续保持！";
-        case 'B':                              // 良好
+        case 'B':
             return "表现良好，仍有提升空间。";
-        case 'C':                              // 中等
+        case 'C':
             return "成绩中等，需要更加努力。";
-        case 'D':                              // 及格
+        case 'D':
             return "刚好及格，警告！";
-        case 'F':                              // 不及格
+        case 'F':
             return "不及格，请认真复习。";
-        default:                               // 其他情况
+        default:                               // 建议始终写，吞掉意外输入
             return "未知等级";
     }
 }
 
-// ---------- 3. switch 表达式（C# 8+）+ when 关键字 ----------
+// ---------- 3. switch 表达式（C# 8）：必须穷尽，用 _ 兜底 ----------
 string GradeBySwitchExpr(int score) => score switch
 {
-    < 0 or > 100 => "无效分数",                // 逻辑模式 or + 关系模式
-    >= 90 => "A",                              // 关系模式
-    >= 80 and < 90 => "B",                     // 逻辑模式 and
-    int s when s >= 70 => "C",                 // when 子句演示
+    < 0 or > 100 => "无效分数",                // C# 9 关系 + or；从上到下，没有 fall-through
+    >= 90 => "A",
+    >= 80 and < 90 => "B",                     // and 收窄区间，避免和上一行重叠
+    int s when s >= 70 => "C",                 // when 可写任意条件，但关系模式更短
     int s when s >= 60 => "D",
-    _ => "F"                                   // 弃元，等价 default
+    _ => "F"                                   // 弃元 = default；对 object 几乎总要有
 };
 
-// ---------- 4. for 循环 + break + continue ----------
+// ---------- 4. for + continue 跳过本轮，break 离开循环 ----------
 void PrintPassScores(int[] scores)
 {
     Console.WriteLine("---- 及格分数列表 ----");
-    for (int i = 0; i < scores.Length; i++)    // 经典 for
+    for (int i = 0; i < scores.Length; i++)    // 三段都可省略；条件必须是 bool
     {
         int s = scores[i];
-        if (s < 0) continue;                   // 跳过负数（脏数据）
-        if (s == 999) break;                   // 遇到 999 提前终止
+        if (s < 0) continue;                   // 脏数据：进入下一轮，i 仍会递增
+        if (s == 999) break;                   // 哨兵：后面的 40 不会被处理
         if (s >= 60)
             Console.WriteLine($"  第{i + 1}个：{s} ✓");
     }
 }
 
-// ---------- 5. foreach 遍历 ----------
+// ---------- 5. foreach：只读遍历，改元素请用 for ----------
 void PrintAllGrades(int[] scores)
 {
     Console.WriteLine("---- 全部成绩 ----");
-    int passCount = 0, failCount = 0, invalidCount = 0;   // 统计计数器
-    foreach (int s in scores)                  // 只读遍历
+    int passCount = 0, failCount = 0, invalidCount = 0;   // 同类型才可一行声明多个
+    foreach (int s in scores)                  // s 是拷贝；数组不会被这个循环改结构
     {
-        char g = GradeByIf(s);                 // 复用上面的方法
+        char g = GradeByIf(s);
         Console.WriteLine($"  分数 {s,3} => 等级 {g}");
-        if (g == '?') invalidCount++;          // 非法分数单独统计，不能混进及格/不及格
+        if (g == '?') invalidCount++;          // 非法不能算进不及格，否则统计撒谎
         else if (g == 'F') failCount++;
         else passCount++;
     }
     Console.WriteLine($"  统计：及格 {passCount} 人，不及格 {failCount} 人，非法 {invalidCount} 人");
 }
 
-// ---------- 6. while 循环：找到第一个不及格的人 ----------
+// ---------- 6. while：先判断；可能一次都不进 ----------
 int? FirstFailIndex(int[] scores)
 {
     int i = 0;
-    while (i < scores.Length)                  // 先判断后执行
+    while (i < scores.Length)
     {
-        if (scores[i] < 60) return i;         // 找到就返回索引
+        if (scores[i] < 60) return i;         // 找到立刻返回；后面的不及格不再看
         i++;
     }
-    return null;                               // 全部及格
+    return null;                               // 用 int? 表达「没有」，别用 -1 魔法数
 }
 
-// ---------- 7. do-while：至少问一次 ----------
+// ---------- 7. do-while：至少执行一次，适合「先读再判」 ----------
 void AskUntilValid(string[] simulated)
 {
-    // 沙箱没有交互输入，用预先准备的序列模拟 do-while
+    // 沙箱没有 Console.ReadLine，用序列模拟；真实代码里要防无限循环
     int k = 0;
     string? input;
     do
@@ -356,7 +356,7 @@ void AskUntilValid(string[] simulated)
 }
 
 // ---------- 主流程 ----------
-int[] scores = { 95, 82, 73, 64, 55, -1, 88, 999, 40 };
+int[] scores = { 95, 82, 73, 64, 55, -1, 88, 999, 40 };  // 含非法与哨兵，专门喂给 break/continue
 
 Console.WriteLine("== 1. if-else 单个评级 ==");
 Console.WriteLine($"95 -> {GradeByIf(95)}");
@@ -382,7 +382,7 @@ Console.WriteLine(idx is null ? "  全部及格" : $"  第 {idx + 1} 个不及�
 
 Console.WriteLine("\\n== 7. 三元运算符 + 嵌套 ==");
 int avg = 75;
-string label = avg >= 90 ? "优" : avg >= 60 ? "良" : "差";
+string label = avg >= 90 ? "优" : avg >= 60 ? "良" : "差";  // 超过两层请改 switch 表达式
 Console.WriteLine($"  平均分 {avg} -> {label}");
 
 Console.WriteLine("\\n本程序演示完毕！");
@@ -559,14 +559,15 @@ string Describe(Color c) => c switch
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「枚举类型」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// ========================================
-// 第十三章 枚举类型 —— 完整演示
-// 普通枚举、Flags 位枚举、字符串互转、
-// Enum.GetValues、HasFlag、switch 表达式
-// ========================================
+    code: `// 第十四章 枚举 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 覆盖命名常量、底层整型、Parse/TryParse、GetValues、
+// [Flags] 位组合、HasFlag、switch 穷尽匹配。
+// 陷阱：未声明的整型仍能强制转进枚举；IsDefined 对 Flags 组合值常为 false。
+// 版本：Enum.GetValues<T> 泛型重载是 .NET 5+；HasFlag 易读但热路径会装箱。
 
 using System;
 
+// ---------- 1. switch 表达式：给枚举加成员时编译器会提醒未覆盖 ----------
 string DescribeWeekDay(WeekDay d) => d switch
 {
     WeekDay.Monday => "周一：开始工作",
@@ -576,40 +577,43 @@ string DescribeWeekDay(WeekDay d) => d switch
     WeekDay.Friday => "周五：即将解放",
     WeekDay.Saturday => "周六：休息日",
     WeekDay.Sunday => "周日：充电日",
-    _ => "未知"                                  // 兜底
+    _ => "未知"                                  // 强制转换来的非法值会落到这里
 };
 
+// ---------- 2. 普通枚举：强制转换不校验 ----------
 Console.WriteLine("==== 1. 普通枚举基础 ====");
 
 WeekDay today = WeekDay.Wednesday;
 
-Console.WriteLine($"今天：{today}");
+Console.WriteLine($"今天：{today}");  // ToString 默认打成员名，不是数字
 
 Console.WriteLine($"整数值：{(int)today}");
 
-WeekDay fromInt = (WeekDay)5;
+WeekDay fromInt = (WeekDay)5;  // 强制转换不校验；5 刚好是 Friday，999 也能转进去
 
 Console.WriteLine($"5 -> {fromInt}");
 
+// ---------- 3. Parse 会抛；TryParse / IsDefined 的边界 ----------
 Console.WriteLine("\\n==== 2. 字符串 <-> 枚举 ====");
 
 string name = today.ToString();
 
 Console.WriteLine($"ToString: {name}");
 
-WeekDay parsed = (WeekDay)Enum.Parse(typeof(WeekDay), "Friday");
+WeekDay parsed = (WeekDay)Enum.Parse(typeof(WeekDay), "Friday");  // 失败抛异常，输入场景慎用
 
 Console.WriteLine($"Parse 'Friday': {parsed}");
 
-if (Enum.TryParse<WeekDay>("sunday", ignoreCase: true, out WeekDay result))
+if (Enum.TryParse<WeekDay>("sunday", ignoreCase: true, out WeekDay result))  // 失败不抛
     Console.WriteLine($"TryParse 'sunday'(忽略大小写): {result}");
 else
     Console.WriteLine("解析失败");
 
-Console.WriteLine($"999 合法吗？{Enum.IsDefined(typeof(WeekDay), 999)}");
+Console.WriteLine($"999 合法吗？{Enum.IsDefined(typeof(WeekDay), 999)}");  // 只问「有没有这个命名成员」
 
-Console.WriteLine($"3 合法吗？{Enum.IsDefined(typeof(WeekDay), 3)}");
+Console.WriteLine($"3 合法吗？{Enum.IsDefined(typeof(WeekDay), 3)}");  // Wednesday=3，true；Flags 组合值常 false
 
+// ---------- 4. 遍历成员：优先泛型 GetValues<T> ----------
 Console.WriteLine("\\n==== 3. Enum.GetNames / GetValues ====");
 
 Console.WriteLine("WeekDay 所有成员名：");
@@ -619,41 +623,44 @@ foreach (string n in Enum.GetNames(typeof(WeekDay)))
 
 Console.WriteLine("Priority 所有成员（名 + 值）：");
 
-foreach (Priority p in Enum.GetValues<Priority>())  // 泛型版本，无需 typeof
+foreach (Priority p in Enum.GetValues<Priority>())  // .NET 5+ 泛型，少一次装箱
     Console.WriteLine($"  {p} = {(byte)p}");
 
+// ---------- 5. 指定底层类型：互转宽度要对 ----------
 Console.WriteLine("\\n==== 4. byte 底层类型 ====");
 
 Priority pri = Priority.High;
 
-byte priValue = (byte)pri;
+byte priValue = (byte)pri;  // 底层不是 int 时，互转要写对宽度
 
 Console.WriteLine($"{pri} 底层值 = {priValue}");
 
+// ---------- 6. Flags：2 的幂 + None=0 ----------
 Console.WriteLine("\\n==== 5. Flags 位枚举 ====");
 
-FileAccess myAccess = FileAccess.Read | FileAccess.Write;
+FileAccess myAccess = FileAccess.Read | FileAccess.Write;  // 按位或组合；值必须是 2 的幂
 
-Console.WriteLine($"Read | Write = {myAccess}");
+Console.WriteLine($"Read | Write = {myAccess}");  // [Flags] 让 ToString 打出 "Read, Write" 而不是 3
 
 Console.WriteLine($"整数值 = {(int)myAccess}");
 
-Console.WriteLine($"包含 Read? {myAccess.HasFlag(FileAccess.Read)}");
+Console.WriteLine($"包含 Read? {myAccess.HasFlag(FileAccess.Read)}");  // 易读；热路径用 (x & flag) == flag
 
 Console.WriteLine($"包含 Execute? {myAccess.HasFlag(FileAccess.Execute)}");
 
-FileAccess onlyRead = myAccess & ~FileAccess.Write;
+FileAccess onlyRead = myAccess & ~FileAccess.Write;  // 清掉某一位
 
 Console.WriteLine($"移除 Write 后：{onlyRead}");
 
-FileAccess toggled = myAccess ^ FileAccess.Execute;
+FileAccess toggled = myAccess ^ FileAccess.Execute;  // 异或：有则去、无则加
 
 Console.WriteLine($"切换 Execute 后：{toggled}");
 
 FileAccess empty = FileAccess.None;
 
-Console.WriteLine($"None == 0? {(int)empty == 0}");
+Console.WriteLine($"None == 0? {(int)empty == 0}");  // Flags 必须有 None=0；HasFlag(None) 对任何值都是 true
 
+// ---------- 7. switch 穷尽 + 过滤 Flags 单值 ----------
 Console.WriteLine("\\n==== 6. switch 表达式 ====");
 
 foreach (WeekDay d in new[] { WeekDay.Monday, WeekDay.Saturday, WeekDay.Sunday })
@@ -664,19 +671,19 @@ Console.WriteLine("\\n==== 7. 遍历 Flags 枚举所有单值 ====");
 Console.WriteLine("FileAccess 单值列表：");
 
 foreach (FileAccess f in Enum.GetValues<FileAccess>())
-    if (f != FileAccess.None && !f.ToString().Contains(","))  // 只输出单值
+    if (f != FileAccess.None && !f.ToString().Contains(","))  // 组合值的 ToString 带逗号；正式代码用位运算过滤
         Console.WriteLine($"  {f} = {(int)f}");
 
 Console.WriteLine("\\n枚举演示完毕！");
 
-// ============ 类型声明（必须放在所有顶级语句之后） ============
+// ---------- 类型声明（必须放在所有顶级语句之后） ----------
 
-enum WeekDay { Monday = 1, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday }
+enum WeekDay { Monday = 1, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday }  // 未写的依次 +1；0 没有成员
 
-enum Priority : byte { Low = 1, Normal = 2, High = 3, Critical = 4 }
+enum Priority : byte { Low = 1, Normal = 2, High = 3, Critical = 4 }  // 指定底层省空间；不要从 0 以外的「有效业务值」当 default
 
 [Flags]
-enum FileAccess { None = 0, Read = 1, Write = 2, Execute = 4 }
+enum FileAccess { None = 0, Read = 1, Write = 2, Execute = 4 }  // 持久化只追加、不改旧数字
 `,
     lang: 'cs',
   },
@@ -858,43 +865,44 @@ public record Person(string Name, int Age);   // 有类型名，可做参数类�
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「元组与解构」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// ========================================
-// 第十四章 元组与解构 —— 完整演示
-// 元组创建、解构、多返回值、Deconstruct、
-// 弃元、比较、与 out 对比
-// ========================================
+    code: `// 第十五章 元组与解构 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 覆盖 ValueTuple 字面量、元素命名（编译期糖）、多返回值、
+// Deconstruct、弃元、== 比较、foreach 解构。
+// 陷阱：名字运行时是 Item1/Item2；公开 API 和 JSON 不要用元组。
+// 版本：ValueTuple 语法 C# 7；元组 == / != 是 C# 9。
 
 using System;
 
 using System.Collections.Generic;
 
+// ---------- 1. 字面量与命名：名字是编译期糖 ----------
 void TupleBasics()
 {
     Console.WriteLine("== 1. 元组字面量 ==");
-    var t = (1, "张三");                       // 推断为 (int, string)
-    Console.WriteLine($"  Item1 = {t.Item1}"); // 默认名字 Item1
+    var t = (1, "张三");                       // 推断为 ValueTuple<int,string>，值类型
+    Console.WriteLine($"  Item1 = {t.Item1}"); // 没写名字时只能 ItemN
     Console.WriteLine($"  Item2 = {t.Item2}");
 
-    // 自定义元素名
+    // 自定义名只存在于编译期，反射/序列化仍是 Item1
     var p = (Age: 25, Name: "李四");
     Console.WriteLine($"  Age = {p.Age}, Name = {p.Name}");
-    Console.WriteLine($"  Item1 仍可用：{p.Item1}"); // Item1 == Age
+    Console.WriteLine($"  Item1 仍可用：{p.Item1}"); // Item1 == Age，两套名字同一字段
 
-    // 类型签名中命名
+    // 类型签名中命名，调用方也能用 Age/Name
     (int Age, string Name) person = (30, "王五");
     Console.WriteLine($"  {person.Name}, {person.Age} 岁");
 }
 
 (string Name, bool Found) FindUser(int id)
 {
-    if (id == 1) return ("张三", true);        // 命中
+    if (id == 1) return ("张三", true);        // 多返回值，比一串 out 清晰
     if (id == 2) return ("李四", true);
-    return ("", false);                        // 未找到
+    return ("", false);                        // 失败时约定空串+false，别只看 Name
 }
 
 (bool Ok, int Value) TryParseInt(string s)
 {
-    if (int.TryParse(s, out int v)) return (true, v);
+    if (int.TryParse(s, out int v)) return (true, v);  // 内部仍可用经典 Try 模式
     return (false, 0);
 }
 
@@ -903,28 +911,31 @@ void PrintPerson((string Name, int Age) p)
     Console.WriteLine($"  {p.Name}, {p.Age} 岁");
 }
 
+// ---------- 6. 元组 == 逐字段（C# 9） ----------
 void TupleComparison()
 {
     Console.WriteLine("== 6. 元组比较 ==");
     var a = (1, "x");
     var b = (1, "x");
     var c = (2, "x");
-    Console.WriteLine($"  (1,'x') == (1,'x') ? {a == b}");   // True
+    Console.WriteLine($"  (1,'x') == (1,'x') ? {a == b}");   // C# 9 起逐字段 ==；string 比内容
     Console.WriteLine($"  (1,'x') == (2,'x') ? {a == c}");   // False
 }
 
 TupleBasics();
 
+// ---------- 2. 多返回值与弃元 ----------
 Console.WriteLine("\\n== 2. 多返回值 ==");
 
-var (name, found) = FindUser(2);
+var (name, found) = FindUser(2);  // 解构赋值，一次拆开
 
 Console.WriteLine($"  id=2 -> name={name}, found={found}");
 
-var (_, notFound) = FindUser(99);
+var (_, notFound) = FindUser(99);  // _ 弃元：只要第二个
 
 Console.WriteLine($"  id=99 -> found={notFound}");
 
+// ---------- 3. 用元组替代一串 out ----------
 Console.WriteLine("\\n== 3. 替代 out ==");
 
 var (ok, val) = TryParseInt("42");
@@ -933,21 +944,23 @@ Console.WriteLine($"  '42' -> ok={ok}, val={val}");
 
 var (ok2, val2) = TryParseInt("abc");
 
-Console.WriteLine($"  'abc' -> ok={ok2}, val={val2}");
+Console.WriteLine($"  'abc' -> ok={ok2}, val={val2}");  // 失败时 Value=0，必须先看 Ok
 
+// ---------- 4. 元组作参数：名字按形参签名对齐 ----------
 Console.WriteLine("\\n== 4. 元组作参数 ==");
 
-PrintPerson(("赵六", 28));
+PrintPerson(("赵六", 28));  // 字面量实参，名字按形参签名对齐
 
+// ---------- 5. 自定义 Deconstruct ----------
 Console.WriteLine("\\n== 5. 自定义 Deconstruct ==");
 
 Point pt = new Point(3, 4);
 
-var (px, py) = pt;
+var (px, py) = pt;  // 编译器找 Deconstruct(out, out)
 
 Console.WriteLine($"  Point -> ({px}, {py})");
 
-Range r = new Range(10, 100);
+Range r = new Range(10, 100);  // 注意：与 System.Range（C# 8 索引范围）同名，这里是演示用 class
 
 var (min, max) = r;
 
@@ -955,6 +968,7 @@ Console.WriteLine($"  Range -> [{min}, {max}]");
 
 TupleComparison();
 
+// ---------- 7. 内部列表可用元组；跨边界请用 record ----------
 Console.WriteLine("\\n== 7. 元组列表（替代临时类型） ==");
 
 List<(string Name, int Score)> list = new()
@@ -964,12 +978,12 @@ List<(string Name, int Score)> list = new()
     ("王五", 60)
 };
 
-foreach (var (n, s) in list)                   // foreach 中直接解构
+foreach (var (n, s) in list)                   // foreach 直接解构；跨程序集请换成 record
     Console.WriteLine($"  {n}: {s}");
 
 Console.WriteLine("\\n元组演示完毕！");
 
-// ============ 类型声明（必须放在所有顶级语句之后） ============
+// ---------- 类型声明（必须放在所有顶级语句之后） ----------
 
 class Point
 {
@@ -977,7 +991,7 @@ class Point
     public int Y { get; set; }
     public Point(int x, int y) { X = x; Y = y; }
 
-    // 提供 Deconstruct 即可被解构
+    // 约定名字 Deconstruct + out 参数，即可被 var (x,y) = obj 调用
     public void Deconstruct(out int x, out int y)
     {
         x = X;
@@ -1204,80 +1218,85 @@ if (o is var x)              // 总是 true，x 接住 o（包括 null）
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「模式匹配」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// ========================================
-// 第十五章 模式匹配 —— 完整演示
-// 类型模式、属性模式、位置模式、when、
-// 关系模式、逻辑模式、列表模式
-// ========================================
+    code: `// 第十六章 模式匹配 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 覆盖 is 类型模式、switch 表达式、属性/位置/关系/逻辑/列表模式。
+// 版本：is 类型 C# 7；switch 表达式/属性/位置 C# 8；关系与 and/or/not C# 9；列表 C# 11。
+// 陷阱：从上到下先命中先生效；var 模式接受 null；object 必须写 _ 才能穷尽。
 
 using System;
 
 using System.Collections.Generic;
 
+// ---------- 1. is 类型模式：判断与绑定一次完成 ----------
 void TypePatternIs()
 {
     Console.WriteLine("== 1. is 类型模式 ==");
     object o = "hello C#";
-    if (o is string s)                        // 类型检查 + 绑定
+    if (o is string s)                        // 判断 + 绑定；s 作用域只在 if 内
         Console.WriteLine($"  是字符串，长度 {s.Length}");
     else
         Console.WriteLine("  不是字符串");
 
     object n = 42;
-    if (n is int i && i > 0)                  // 类型 + 条件组合
+    if (n is int i && i > 0)                  // 短路：不是 int 就不会读 i
         Console.WriteLine($"  正整数：{i}");
 }
 
+// ---------- 2. switch 表达式 + 类型 / null / 弃元 ----------
 string DescribeType(object o) => o switch
 {
-    int i => $"整数：{i}",                     // 类型 + 绑定
-    string s => $"字符串：{s}",                // 类型 + 绑定
+    int i => $"整数：{i}",                     // 装箱的 int 也能拆出来
+    string s => $"字符串：{s}",
     bool b => $"布尔：{b}",
     double d => $"双精度：{d:F2}",
-    null => "null！",                          // 匹配 null
-    _ => "未知类型"                            // 弃元兜底
+    null => "null！",                          // 必须单独写，否则 null 进 _
+    _ => "未知类型"                            // 接口/object 编译器不知道还有哪些实现
 };
 
+// ---------- 3. 属性模式：按对象形状分支 ----------
 string DescribePerson(Person p) => p switch
 {
-    null => "空对象",                          // 防御 null
-    { Name: "Admin" } => "管理员",             // 属性匹配
+    null => "空对象",                          // 引用模式先挡 null，避免解引用
+    { Name: "Admin" } => "管理员",             // 属性模式：只看形状
     { Age: < 18 } => "未成年",                 // 属性 + 关系
     { Age: >= 60 } => "老年",
-    { Age: >= 18, City: "北京" } => "北京成年人",  // 多属性
-    { City: null } => "无城市信息",            // 属性为 null
+    { Age: >= 18, City: "北京" } => "北京成年人",  // 多属性是 and
+    { City: null } => "无城市信息",
     _ => "普通人"
 };
 
+// ---------- 4. 位置模式依赖 Deconstruct；when 写额外条件 ----------
 string WherePoint(Point p) => p switch
 {
-    (0, 0) => "原点",                          // 字面位置
-    (0, _) => "Y 轴",                          // _ 弃元
+    (0, 0) => "原点",                          // 位置模式依赖 Deconstruct
+    (0, _) => "Y 轴",                          // _ 丢弃不需要的分量
     (_, 0) => "X 轴",
-    (var x, var y) when x == y => "对角线",    // when 子句
-    (var x, var y) => $"普通点 ({x},{y})"      // var 绑定
+    (var x, var y) when x == y => "对角线",    // when 写关系模式表达不了的条件
+    (var x, var y) => $"普通点 ({x},{y})"      // var 总匹配；具体模式必须写在前面
 };
 
+// ---------- 5. 关系与逻辑模式（C# 9） ----------
 string Grade(int score) => score switch
 {
-    < 0 or > 100 => "无效分数",                // or 逻辑模式
+    < 0 or > 100 => "无效分数",                // or 连接两个关系
     >= 90 => "A",
-    >= 80 and < 90 => "B",                     // and 逻辑模式
+    >= 80 and < 90 => "B",                     // and 收窄；顺序仍是上到下
     >= 70 and < 80 => "C",
     >= 60 and < 70 => "D",
-    not 0 => "F (非零)",                       // not 逻辑模式
+    not 0 => "F (非零)",                       // not 在 0 之前会把 0 以外全吃掉
     0 => "零分"
 };
 
-bool IsVowel(char c) => c is 'a' or 'e' or 'i' or 'o' or 'u';
+bool IsVowel(char c) => c is 'a' or 'e' or 'i' or 'o' or 'u';  // 常量 or；大小写要自己补
 
+// ---------- 6. 列表模式（C# 11）：匹配长度与切片 ----------
 string DescribeArray(int[] arr) => arr switch
 {
-    [] => "空数组",                            // 空模式
-    [var single] => $"单元素：{single}",       // 1 个元素
-    [var a, var b] => $"两元素：{a}, {b}",     // 2 个
+    [] => "空数组",                            // C# 11 列表模式
+    [var single] => $"单元素：{single}",
+    [var a, var b] => $"两元素：{a}, {b}",
     [var first, _, _, var last] => $"4 元素：首={first} 尾={last}",
-    [var first, .. var middle, var last] => $"首={first} 中间{middle.Length}个 尾={last}",
+    [var first, .. var middle, var last] => $"首={first} 中间{middle.Length}个 尾={last}",  // .. 切片可绑定
     _ => "其他"
 };
 
@@ -1297,7 +1316,7 @@ var people = new[]
     new Person { Name = "老王", Age = 65 },
     new Person { Name = "张三", Age = 25, City = "北京" },
     new Person { Name = "李四", Age = 30, City = null },
-    null!
+    null!  // 故意喂 null，看第一支 case
 };
 
 foreach (var p in people)
@@ -1339,7 +1358,7 @@ string label = person switch
 {
     { Name: "Admin" } => "管理员账号",
     { Age: < 18, City: not null } => "未成年（已知城市）",
-    { Age: >= 18, City: "上海" or "北京" } => "一线城市成年人",
+    { Age: >= 18, City: "上海" or "北京" } => "一线城市成年人",  // 属性里再套 or
     _ => "其他"
 };
 
@@ -1347,7 +1366,7 @@ Console.WriteLine($"  Alice -> {label}");
 
 Console.WriteLine("\\n模式匹配演示完毕！");
 
-// ============ 类型声明（必须放在所有顶级语句之后） ============
+// ---------- 类型声明（必须放在所有顶级语句之后） ----------
 
 class Person
 {
@@ -1366,7 +1385,7 @@ class Point
     public int X { get; set; }
     public int Y { get; set; }
     public Point(int x, int y) { X = x; Y = y; }
-    public void Deconstruct(out int x, out int y) { x = X; y = Y; }
+    public void Deconstruct(out int x, out int y) { x = X; y = Y; }  // 位置模式 (x, y) 靠它
 }
 `,
     lang: 'cs',
@@ -1559,69 +1578,71 @@ class UserDto
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「可空值类型」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// ========================================
-// 第十六章 可空值类型 —— 完整演示
-// int? 操作、?? / ??=、提升运算符、
-// 可空 bool、装箱、JSON/DB 场景
-// ========================================
+    code: `// 第十七章 可空值类型 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 覆盖 int?、HasValue/Value、?? / ??=、提升运算符、bool? 三值、装箱、JSON 缺失字段。
+// 陷阱：.Value 无值时抛；提升运算任一 null 则结果 null；插值打印 null 是空串。
+// 版本：??= 是 C# 8。int? 就是 Nullable<int>。
 
 using System;
 using System.Diagnostics.CodeAnalysis;
 
 using System.Text.Json;
 
+// ---------- 1. HasValue / Value / GetValueOrDefault ----------
 void Basics()
 {
     Console.WriteLine("== 1. 声明与取值 ==");
-    int? a = null;                            // 可空 int，初始为 null
-    int? b = 42;                              // 有值 42
+    int? a = null;                            // Nullable<int>：多一个 HasValue 标志
+    int? b = 42;                              // 有值时 Value 才安全
 
     Console.WriteLine($"  a.HasValue = {a.HasValue}");  // False
     Console.WriteLine($"  b.HasValue = {b.HasValue}");  // True
-    Console.WriteLine($"  b.Value = {b.Value}");        // 42
+    Console.WriteLine($"  b.Value = {b.Value}");        // 无值时抛 InvalidOperationException
 
     // 错误示范（被注释）：
-    // Console.WriteLine(a.Value);  // ❌ 会抛 InvalidOperationException
+    // Console.WriteLine(a.Value);  // 会抛 InvalidOperationException
 
-    // 安全取值
-    int safeA = a.GetValueOrDefault();        // 默认 0
-    int safeA2 = a.GetValueOrDefault(-1);     // 自定义默认 -1
-    int safeB = b.GetValueOrDefault(-1);      // 42
+    // GetValueOrDefault 不抛；无参得到 T 的 default（int 是 0，可能和真 0 分不清）
+    int safeA = a.GetValueOrDefault();
+    int safeA2 = a.GetValueOrDefault(-1);     // 业务上更常给一个哨兵
+    int safeB = b.GetValueOrDefault(-1);      // 有值则返回 42
     Console.WriteLine($"  a 默认值：{safeA} / {safeA2}");
     Console.WriteLine($"  b 默认值：{safeB}");
 }
 
+// ---------- 2. ?? 只认 null ----------
 void NullCoalescing()
 {
     Console.WriteLine("\\n== 2. ?? 运算符 ==");
     int? age = null;
-    int actualAge = age ?? 18;                // age 为 null，取 18
+    int actualAge = age ?? 18;                // 只认 null，0 不会触发
     Console.WriteLine($"  age ?? 18 = {actualAge}");
 
     int? score = 90;
-    int actualScore = score ?? 60;            // score 有值，取 90
+    int actualScore = score ?? 60;            // 有值走左边
     Console.WriteLine($"  score ?? 60 = {actualScore}");
 
-    // 链式 ??
+    // 链式：第一个非 null 胜出；也能用于 string?
     string? name = null;
     string? displayName = null;
     string final = name ?? displayName ?? "匿名";
     Console.WriteLine($"  链式 ?? = {final}");
 }
 
+// ---------- 3. ??= 惰性赋值（C# 8） ----------
 void NullCoalescingAssignment()
 {
     Console.WriteLine("\\n== 3. ??= 复合赋值 ==");
     int? value = null;
-    value ??= 100;                            // null 时赋 100
+    value ??= 100;                            // 仅当 null 才写；左侧只求值一次
     Console.WriteLine($"  首次 ??= 后：{value}");  // 100
-    value ??= 200;                            // 已有值，不变
+    value ??= 200;                            // 已有值，右边不跑
     Console.WriteLine($"  二次 ??= 后：{value}");  // 100
 
-    // 惰性初始化模式
+    // 惰性初始化：第二次 ??= 不会再调用工厂
     string? cache = null;
-    cache ??= ExpensiveCompute();             // 首次调用计算
-    cache ??= ExpensiveCompute();             // 二次不调用
+    cache ??= ExpensiveCompute();
+    cache ??= ExpensiveCompute();
     Console.WriteLine($"  缓存：{cache}");
 }
 
@@ -1631,40 +1652,41 @@ string ExpensiveCompute()
     return "CachedData";
 }
 
+// ---------- 4. 提升运算符：一侧 null，算术结果 null ----------
 void LiftedOperators()
 {
     Console.WriteLine("\\n== 4. 提升运算符 ==");
     int? a = 10, b = 3;
-    Console.WriteLine($"  {a} + {b} = {a + b}");   // 13
-    Console.WriteLine($"  {a} - {b} = {a - b}");   // 7
-    Console.WriteLine($"  {a} * {b} = {a * b}");   // 30
+    Console.WriteLine($"  {a} + {b} = {a + b}");   // 两边都有值才运算
+    Console.WriteLine($"  {a} - {b} = {a - b}");
+    Console.WriteLine($"  {a} * {b} = {a * b}");
 
     int? x = null, y = 5;
-    // 注意：可空算术结果为 null 时，字符串插值会输出【空字符串】而不是 "null"
+    // 可空算术结果为 null 时，插值输出空串而不是 "null"
     Console.WriteLine($"  null + 5 = {x + y ?? -1}（用 ?? 才能看出是 null）");
     Console.WriteLine($"  null * 5 = {(x * y)?.ToString() ?? "null"}");
-    Console.WriteLine($"  null < 5 ? {(x < y)}");   // False（比较 null 不抛异常）
+    Console.WriteLine($"  null < 5 ? {(x < y)}");   // 提升关系：任一 null → false（== null 除外）
 
-    // 比较运算：null 与任何数比较都是 false
     int? m = null, n = 10;
-    Console.WriteLine($"  null > 10 ? {m > n}");    // False
-    Console.WriteLine($"  null <= 10 ? {m <= n}");  // False
+    Console.WriteLine($"  null > 10 ? {m > n}");    // False，不是 SQL 那种 UNKNOWN
+    Console.WriteLine($"  null <= 10 ? {m <= n}");  // 同样 False
 }
 
+// ---------- 5. bool? 三值逻辑；if 不能直接吃 ----------
 void NullableBool()
 {
     Console.WriteLine("\\n== 5. 可空 bool ==");
     bool? t = true, f = false, n = null;
 
-    Console.WriteLine($"  null & true = {n & t}");   // 空字符串（结果是 null，插值打印为空）
-    Console.WriteLine($"  null | true = {n | t}");   // true
-    Console.WriteLine($"  null & false = {n & f}");  // false
-    Console.WriteLine($"  null | false = {n | f}");  // 空字符串（结果是 null）
-    Console.WriteLine($"  !null = {!n}");            // 空字符串（结果是 null）
+    Console.WriteLine($"  null & true = {n & t}");   // 三值：& 遇 null 常为 null（插值打空）
+    Console.WriteLine($"  null | true = {n | t}");   // true：或只要一侧 true 就能定
+    Console.WriteLine($"  null & false = {n & f}");  // false：与只要一侧 false 就能定
+    Console.WriteLine($"  null | false = {n | f}");  // null
+    Console.WriteLine($"  !null = {!n}");            // null
 
-    // if 中不能直接用 bool?，必须 == true
+    // if 条件必须是 bool，不能直接写 if (flag)
     bool? flag = null;
-    if (flag == true)                          // 显式判断
+    if (flag == true)
         Console.WriteLine("  flag 为 true");
     else if (flag == false)
         Console.WriteLine("  flag 为 false");
@@ -1672,28 +1694,29 @@ void NullableBool()
         Console.WriteLine("  flag 为 null（未知）");
 }
 
+// ---------- 6. 可空装箱：有值装成 T，无值装成真正的 null ----------
 void Boxing()
 {
     Console.WriteLine("\\n== 6. 装箱 ==");
     int? withValue = 99;
     int? withoutValue = null;
 
-    object o1 = withValue;                     // 装箱为 int
-    object o2 = withoutValue;                  // 装箱为 null
+    object o1 = withValue;                     // 有值：盒子里是 Int32，不是 Nullable<int>
+    object o2 = withoutValue;                  // 无值：得到真正的 null，不是空盒子
 
     Console.WriteLine($"  有值装箱类型：{o1?.GetType().Name}");  // Int32
     Console.WriteLine($"  无值装箱是否 null：{o2 == null}");      // True
 
-    // 拆箱回可空
-    int? back = (int?)o1;
+    int? back = (int?)o1;  // 拆回可空；o1 is int 也为 true
     Console.WriteLine($"  拆箱回来：{back}");
 }
 
+// ---------- 7. JSON 缺字段保持 null，不要用 0 表示「没填」 ----------
 void JsonScenario()
 {
     Console.WriteLine("\\n== 7. JSON 反序列化 ==");
     string json1 = "{\\"Name\\":\\"张三\\",\\"Age\\":25,\\"LastLogin\\":\\"2024-01-01\\"}";
-    string json2 = "{\\"Name\\":\\"李四\\"}";  // 缺少 Age 和 LastLogin
+    string json2 = "{\\"Name\\":\\"李四\\"}";  // 缺字段 → 可空属性保持 null，不会当 0
 
     UserDto u1 = JsonSerializer.Deserialize<UserDto>(json1)!;
     UserDto u2 = JsonSerializer.Deserialize<UserDto>(json2)!;
@@ -1723,8 +1746,8 @@ Console.WriteLine("\\n可空值类型演示完毕！");
 class UserDto
 {
     public string Name { get; set; } = "";
-    public int? Age { get; set; }              // 可空，JSON 缺失时为 null
-    public DateTime? LastLogin { get; set; }   // 可空，从未登录为 null
+    public int? Age { get; set; }              // DB/JSON NULL 用 T?，不要用 0 表示缺失
+    public DateTime? LastLogin { get; set; }   // 从未登录是 null，不是 DateTime.MinValue
 }
 `,
     lang: 'cs',
@@ -1913,13 +1936,11 @@ class UserDto
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「可空引用类型」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// ========================================
-// 第十七章 可空引用类型 —— 完整演示
-// 文件级启用 NRT、警告、! 运算符、
-// ArgumentNullException.ThrowIfNull、
-// MemberNotNull、JSON 场景
-// ========================================
-#nullable enable                                // 文件级启用 NRT
+    code: `// 第十八章 可空引用类型 —— 可在 .NET 8 / C# 12 控制台直接运行
+// NRT 是编译期注解：string 与 string? 运行时仍是同一个引用类型，IL 里没有「非空指针」。
+// 启用后警告帮你找 NRE；! 只是闭嘴，不会在运行期插入检查。
+// 版本：NRT 是 C# 8；ThrowIfNull 是 .NET 6。JSON 反序列化仍可能给你 null，注解挡不住。
+#nullable enable                                // 本文件启用；项目级也可在 csproj 写 <Nullable>enable</Nullable>
 
 using System;
 
@@ -1929,79 +1950,81 @@ using System.Diagnostics.CodeAnalysis;
 
 using System.Text.Json;
 
+// ---------- 1. string vs string?：只是注解，运行时同一类型 ----------
 void Basics()
 {
     Console.WriteLine("== 1. string vs string? ==");
 
-    string name = "张三";                       // 非空引用类型
-    string? maybeName = null;                   // 可空引用类型
+    string name = "张三";                       // 注解：调用方不该传 null；编译器会警告 name = null
+    string? maybeName = null;                   // 注解：允许 null，用之前要 ?. 或 is { } 检查
 
     Console.WriteLine($"  name = {name}");
     Console.WriteLine($"  maybeName = {maybeName?.ToString() ?? "null"}");
 
-    // 编译器警告演示（注释保留）：
-    // string bad = null;        // ⚠️ CS8600：无法将 null 转换为非空
-    // int len = maybeName.Length; // ⚠️ CS8602：可能为 null
+    // 下面两行若取消注释，编译器会警告，运行时第二行会 NRE
+    // string bad = null;        // CS8600：无法将 null 转换为非空
+    // int len = maybeName.Length; // CS8602：解引用可能为 null
 
-    // 正确做法：先检查再用
+    // 流分析：!= null 之后 maybeName 被收窄为 string
     if (maybeName != null)
     {
-        int len = maybeName.Length;            // ✅ 编译器已确认非空
+        int len = maybeName.Length;            // 此处不再警告
         Console.WriteLine($"  长度 = {len}");
     }
 }
 
+// ---------- 2. ! 只消警告，不插运行时检查 ----------
 void NullSuppression()
 {
     Console.WriteLine("\\n== 2. ! 运算符 ==");
     string? input = GetMaybeNull();
 
-    // 使用 ! 抑制警告（你确信不为 null）
-    string forced = input!;                    // 编译器不再警告
+    string forced = input!;                    // 你向编译器担保；真 null 仍 NRE
     Console.WriteLine($"  使用 ! 后：{forced}");
 
-    // 但更安全的做法仍是显式检查
-    if (input is not null)
+    if (input is not null)  // C# 9；比 != null 更能挡住重载 == 的类型
     {
         Console.WriteLine($"  显式检查后长度：{input.Length}");
     }
 }
 
-string? GetMaybeNull() => "实际有值";
+string? GetMaybeNull() => "实际有值";  // 签名说可空，实现这次碰巧非空——调用方仍须检查
 
 Basics();
 
 NullSuppression();
 
+// ---------- 3. 公共入口：注解不够，还要 ThrowIfNull ----------
 Console.WriteLine("\\n== 3. ArgumentNullException.ThrowIfNull ==");
 
 var svc = new UserService("Server=db;");
 
 svc.ProcessUser("张三", "zhangsan@example.com");
 
-svc.ProcessUser("李四", null);
+svc.ProcessUser("李四", null);  // email 是 string?，合法；name 不能为 null
 
 try
 {
-    // 传入 null 触发异常
-    var bad = new UserService(null!);          // ! 抑制警告，但运行时仍抛异常
+    var bad = new UserService(null!);          // ! 让编译通过；ThrowIfNull 仍会在运行时拦住
 }
 catch (ArgumentNullException ex)
 {
     Console.WriteLine($"  捕获异常：{ex.GetType().Name} - 参数 {ex.ParamName}");
 }
 
+// ---------- 4. MemberNotNull：辅助方法赋值也要告诉分析器 ----------
 Console.WriteLine("\\n== 4. MemberNotNull ==");
 
-var cfg = new ConfigLoader();
+var cfg = new ConfigLoader();  // 构造函数调 Initialize，靠特性告诉分析器字段已赋值
 
+// ---------- 5. NotNullWhen / MaybeNull：签名与运行时不一致时用特性 ----------
 Console.WriteLine("\\n== 5. NotNullWhen / MaybeNull ==");
 
 var repo = new Repository();
 
 if (repo.TryGet(1, out string? foundName))
 {
-    // 这里 foundName 被推断为 string（非空），因为 [NotNullWhen(true)]
+    // true 分支里 foundName 被 [NotNullWhen(true)] 收窄成非空
     Console.WriteLine($"  找到：{foundName}, 长度 {foundName.Length}");
 }
 else
@@ -2013,13 +2036,14 @@ string? maybeName = repo.FindName(2);
 
 Console.WriteLine($"  FindName(2) = {maybeName?.ToString() ?? "null"}");
 
+// ---------- 6. JSON：反序列化绕过构造函数，注解挡不住 ----------
 Console.WriteLine("\\n== 6. JSON 反序列化 ==");
 
 string json1 = "{\\"Name\\":\\"张三\\",\\"Email\\":\\"a@b.com\\",\\"Age\\":25}";
 
-string json2 = "{\\"Name\\":\\"李四\\",\\"Age\\":30}";
+string json2 = "{\\"Name\\":\\"李四\\",\\"Age\\":30}";  // 缺 Email → null，缺 Name 则用 = "" 初始化器
 
-UserDto u1 = JsonSerializer.Deserialize<UserDto>(json1)!;
+UserDto u1 = JsonSerializer.Deserialize<UserDto>(json1)!;  // Deserialize 返回 T?，! 是你的担保
 
 UserDto u2 = JsonSerializer.Deserialize<UserDto>(json2)!;
 
@@ -2027,15 +2051,16 @@ Console.WriteLine($"  u1: {u1.Name}, {u1.Email ?? "无邮箱"}, {u1.Age}");
 
 Console.WriteLine($"  u2: {u2.Name}, {u2.Email?.ToString() ?? "无邮箱"}, {u2.Age}");
 
-Console.WriteLine($"  u1.Name 是 null? {u1.Name is null}");
+Console.WriteLine($"  u1.Name 是 null? {u1.Name is null}");  // 初始化器挡了缺字段，挡不住 JSON 显式 null
 
+// ---------- 7. 分析器不是证明器 ----------
 Console.WriteLine("\\n== 7. 警告 vs 注解 ==");
 
 Console.WriteLine("  启用 NRT 后，上述写法在编译期就会被标记。");
 
 Console.WriteLine("\\n可空引用类型演示完毕！");
 
-// ============ 类型声明（必须放在所有顶级语句之后） ============
+// ---------- 类型声明（必须放在所有顶级语句之后） ----------
 
 class UserService
 {
@@ -2043,15 +2068,14 @@ class UserService
 
     public UserService(string connectionString)
     {
-        // .NET 6+ 简洁写法
-        ArgumentNullException.ThrowIfNull(connectionString);
+        ArgumentNullException.ThrowIfNull(connectionString);  // .NET 6+；公共入口不要只靠注解
         _connectionString = connectionString;
     }
 
     public void ProcessUser(string name, string? email)
     {
-        ArgumentNullException.ThrowIfNull(name);    // 必填检查
-        // email 可空，不检查
+        ArgumentNullException.ThrowIfNull(name);    // 必填：注解 + 运行时双保险
+        // email 可空，用 ?? 展示即可
 
         Console.WriteLine($"  处理用户：{name}, 邮箱：{email ?? "未提供"}");
     }
@@ -2059,45 +2083,43 @@ class UserService
 
 class ConfigLoader
 {
-    private string _config = null!;            // null! 表示"先置 null，后续一定初始化"
+    private string _config = null!;            // 对分析器说「构造结束前会赋值」；并发/反射仍可能空
 
     public ConfigLoader()
     {
-        Initialize();                          // 调用初始化方法
+        Initialize();
         Console.WriteLine($"  配置已加载：{_config.Length} 字符");
     }
 
-    [MemberNotNull(nameof(_config))]           // 告诉编译器：调用后 _config 非空
+    [MemberNotNull(nameof(_config))]           // 没有这个特性，构造函数会报「未赋值」
     private void Initialize()
     {
-        _config = "server=localhost;db=test";  // 真实场景从文件读取
+        _config = "server=localhost;db=test";
     }
 }
 
 class Repository
 {
-    // TryGet 模式：返回 true 时 value 保证非空
     public bool TryGet(int id, [NotNullWhen(true)] out string? value)
     {
         if (id == 1) { value = "张三"; return true; }
-        value = null;                          // 失败时 value 为 null
+        value = null;                          // false 时允许 null；调用方必须先看返回值
         return false;
     }
 
-    // Find 模式：返回类型标注非空，但实际可能 null
     [return: MaybeNull]
-    public string FindName(int id)
+    public string FindName(int id)  // 签名写 string 方便泛型，MaybeNull 承认其实可能空
     {
         if (id == 1) return "张三";
-        return null!;                          // 实际返回 null
+        return null!;                          // 无 MaybeNull 时这里会警告
     }
 }
 
 class UserDto
 {
-    public string Name { get; set; } = "";     // 必填，初始化器防止 null
+    public string Name { get; set; } = "";     // 必填字段给初始化器；更严可用 C# 11 required
     public string? Email { get; set; }         // 可选
-    public int Age { get; set; }               // 必填
+    public int Age { get; set; }               // 值类型缺字段得 0，和「没填」分不清时请用 int?
 }
 `,
     lang: 'cs',

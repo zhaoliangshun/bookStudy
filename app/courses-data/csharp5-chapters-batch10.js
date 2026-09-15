@@ -176,14 +176,20 @@ Unix / macOS 上 .NET 6+ 可用 \`File.SetUnixFileMode\` / \`GetUnixFileMode\` �
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「文件与目录」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 —— 文件与目录 API 全套演示
+    code: `// ===========================================================
+// 第五十二章 文件与目录 API —— 可运行演示
+// 核心：Path 只处理字符串；FileInfo 缓存元数据；EnumerateFiles 延迟
+// 坑：WriteAllText 覆盖；GetFiles 一次加载全部；Delete(recursive) 不可恢复
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
+
 using System;
 using System.IO;
 using System.Text;
 
-// === 1. Path 类：路径字符串处理（不访问文件系统）===
+// ---------- 1. Path：纯字符串运算，不碰磁盘；Combine 遇绝对路径会被截断 ----------
 string tempRoot = Path.Combine(Path.GetTempPath(), "csharp5-ch51-demo");  // 跨平台拼接
-string subDir = Path.Join(tempRoot, "logs", "2026");  // Join 不会被绝对路径截断
+string subDir = Path.Join(tempRoot, "logs", "2026");  // Join 不会被绝对路径截断（与 Combine 的关键差别）
 string sampleFile = Path.Combine(subDir, "note.txt");
 
 Console.WriteLine($"临时根目录: {tempRoot}");
@@ -197,7 +203,7 @@ Console.WriteLine($"平台分隔符: '{Path.DirectorySeparatorChar}'");
 
 try
 {
-    // === 2. Directory 类：目录操作 ===
+    // ---------- 2. Directory.CreateDirectory：父目录不存在也会一并创建 ----------
     if (!Directory.Exists(subDir))
     {
         // CreateDirectory 递归创建所有不存在的父目录
@@ -205,8 +211,8 @@ try
         Console.WriteLine($"\\n已创建目录: {created.FullName}");
     }
 
-    // === 3. File 类：一次性文本读写 ===
-    File.WriteAllText(sampleFile, "第一行内容\\n", Encoding.UTF8);          // 覆盖写入
+    // ---------- 3. File 一次性 API：小文件方便；大文件会把整份读进内存 ----------
+    File.WriteAllText(sampleFile, "第一行内容\\n", Encoding.UTF8);          // 覆盖写入；同名文件原内容直接没了
     File.AppendAllText(sampleFile, "第二行内容\\n");                         // 追加
     File.AppendAllLines(sampleFile, new[] { "第三行", "第四行" });           // 追加多行
 
@@ -227,15 +233,15 @@ try
 
     // Copy / Move / Delete
     string copyPath = Path.Combine(subDir, "note-copy.txt");
-    File.Copy(sampleFile, copyPath, overwrite: true);   // 第二参数允许覆盖
+    File.Copy(sampleFile, copyPath, overwrite: true);   // 第二参数允许覆盖；false 且目标存在会抛
     Console.WriteLine($"复制后 copy 存在? {File.Exists(copyPath)}");
 
-    // === 4. FileInfo 类：实例方法 + 缓存元数据 ===
+    // ---------- 4. FileInfo：Length/时间戳会缓存，文件被改后要 Refresh ----------
     FileInfo fi = new FileInfo(sampleFile);
     Console.WriteLine($"\\n--- FileInfo 元数据 ---");
     Console.WriteLine($"文件名: {fi.Name}");
     Console.WriteLine($"完整路径: {fi.FullName}");
-    Console.WriteLine($"大小: {fi.Length} 字节");
+    Console.WriteLine($"大小: {fi.Length} 字节");  // 缓存值；外部改文件后不 Refresh 会过期
     Console.WriteLine($"创建时间: {fi.CreationTime:O}");
     Console.WriteLine($"最后修改: {fi.LastWriteTime:O}");
     Console.WriteLine($"只读? {fi.IsReadOnly}");
@@ -246,7 +252,7 @@ try
     FileInfo fiCopy = fi.CopyTo(Path.Combine(subDir, "from-fileinfo.txt"), overwrite: true);
     Console.WriteLine($"FileInfo.CopyTo: {fiCopy.Exists}");
 
-    // === 5. DirectoryInfo 类 ===
+    // ---------- 5. GetFiles 一次物化全部；EnumerateFiles 才是延迟枚举 ----------
     DirectoryInfo parentDir = new DirectoryInfo(tempRoot);
     Console.WriteLine($"\\n--- DirectoryInfo ---");
     Console.WriteLine($"目录名: {parentDir.Name}");
@@ -256,7 +262,7 @@ try
 
     // GetFiles：返回当前目录及子目录所有文件
     Console.WriteLine("\\n子文件列表（递归）:");
-    foreach (FileInfo f in parentDir.GetFiles("*", SearchOption.AllDirectories))
+    foreach (FileInfo f in parentDir.GetFiles("*", SearchOption.AllDirectories))  // 大目录会先分配整个数组
     {
         Console.WriteLine($"  {f.FullName} ({f.Length} B)");
     }
@@ -271,13 +277,13 @@ try
     // EnumerateFiles：延迟枚举，大目录更省内存
     Console.WriteLine("EnumerateFiles（延迟枚举）:");
     int fileCount = 0;
-    foreach (FileInfo f in parentDir.EnumerateFiles("*", SearchOption.AllDirectories))
+    foreach (FileInfo f in parentDir.EnumerateFiles("*", SearchOption.AllDirectories))  // 边走边产出；可提前 break
     {
         fileCount++;
     }
     Console.WriteLine($"  共 {fileCount} 个文件");
 
-    // === 6. 设置文件属性 ===
+    // ---------- 6. 属性位运算：只读文件 Delete 前必须先清 ReadOnly ----------
     fi.Attributes |= FileAttributes.ReadOnly;  // 设为只读
     Console.WriteLine($"\\n设只读后 Attributes: {fi.Attributes}");
     fi.Attributes &= ~FileAttributes.ReadOnly; // 取消只读
@@ -288,7 +294,7 @@ finally
     // 清理：递归删除整个临时目录树
     if (Directory.Exists(tempRoot))
     {
-        Directory.Delete(tempRoot, recursive: true);
+        Directory.Delete(tempRoot, recursive: true);  // recursive:false 且非空会抛；此操作不可恢复
         Console.WriteLine($"\\n已清理临时目录: {tempRoot}");
     }
 }`,
@@ -469,7 +475,13 @@ using FileStream fs = new FileStream(...);
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「流与读写器」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 —— 流与读写器全套演示
+    code: `// ===========================================================
+// 第五十三章 流与读写器 —— 可运行演示
+// 核心：using 释放流；leaveOpen 决定包装器是否关掉底层流
+// 坑：忘 Flush/Dispose 丢缓冲；BinaryReader 必须按写入顺序读
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
+
 using System;
 using System.IO;
 using System.Text;
@@ -479,8 +491,7 @@ string binFile = Path.Combine(Path.GetTempPath(), "csharp5-ch52-demo.bin");
 
 try
 {
-    // === 1. FileStream + StreamWriter：按行写入 ===
-    // 构造参数：路径、FileMode、FileAccess、FileShare、缓冲大小、FileOptions
+    // ---------- 1. FileStream + StreamWriter：using 释放；leaveOpen 决定是否关掉底层流 ----------
     using FileStream fs = new FileStream(
         tempFile,
         FileMode.Create,              // 创建（已存在则覆盖）
@@ -497,16 +508,16 @@ try
         sw.WriteLine("第一行：流写入测试");
         sw.WriteLine("第二行：C# 12 顶级语句");
         sw.WriteLine($"第三行：写入时间 {DateTime.Now:O}");
-        sw.Flush();  // 把缓冲区数据主动刷到底层流
+        sw.Flush();  // 把缓冲区数据主动刷到底层流；Dispose 也会 Flush，但提前关文件前必须刷
     }
-    fs.Dispose();  // 显式关闭 FileStream（leaveOpen 时需要手动关）
+    fs.Dispose();  // leaveOpen:true 时 Writer 不会关 FileStream，这里必须自己关，否则句柄泄漏
 
-    // === 2. StreamReader：按行读取 ===
+    // ---------- 2. 嵌套 using：先声明的后 Dispose，Reader 关掉会连带关掉 FileStream ----------
     using (FileStream fsRead = new FileStream(tempFile, FileMode.Open, FileAccess.Read, FileShare.Read))
     using (StreamReader sr = new StreamReader(fsRead, Encoding.UTF8))
     {
         Console.WriteLine("--- StreamReader 逐行读取 ---");
-        while (sr.Peek() >= 0)  // Peek 返回下一字符但不消费，-1 表示结束
+        while (sr.Peek() >= 0)  // Peek 返回下一字符但不消费，-1 表示结束；已 Dispose 的流再 Peek 会抛
         {
             string? line = sr.ReadLine();
             Console.WriteLine($"  {line}");
@@ -519,7 +530,7 @@ try
         Console.WriteLine($"Length: {fsRead.Length}, Position: {fsRead.Position}");
     }
 
-    // === 3. Stream 基础操作：ReadByte / WriteByte / Seek / CopyTo ===
+    // ---------- 3. Seek/Position：同一条流读写指针共用，读完不 Seek 再写会从末尾追加 ----------
     using (FileStream fs2 = new FileStream(tempFile, FileMode.Open, FileAccess.ReadWrite))
     {
         Console.WriteLine("\\n--- Stream 字节操作 ---");
@@ -537,7 +548,7 @@ try
         // CopyTo：把当前流复制到另一个流
         using MemoryStream ms = new MemoryStream();
         fs2.Position = 0;
-        fs2.CopyTo(ms);  // 同步复制
+        fs2.CopyTo(ms);  // 同步复制；会从当前 Position 读到末尾，不是从 0
         Console.WriteLine($"CopyTo 后内存流长度: {ms.Length}");
 
         // CopyToAsync：异步复制（推荐用于 IO 密集场景）
@@ -547,14 +558,14 @@ try
         Console.WriteLine($"CopyToAsync 后内存流长度: {ms2.Length}");
     }
 
-    // === 4. BinaryWriter / BinaryReader：二进制读写 ===
+    // ---------- 4. BinaryWriter/Reader：必须按完全相同的类型顺序读写，错一位全部错位 ----------
     using (FileStream bfs = new FileStream(binFile, FileMode.Create, FileAccess.Write))
     using (BinaryWriter bw = new BinaryWriter(bfs, Encoding.UTF8))
     {
         bw.Write(42);                              // Int32：4 字节
         bw.Write(3.14);                            // Double：8 字节
         bw.Write(true);                            // Boolean：1 字节
-        bw.Write("你好 BinaryWriter");             // 长度前缀字符串
+        bw.Write("你好 BinaryWriter");             // 长度前缀字符串；对面必须 ReadString，不能当原始字节读
         bw.Write(new byte[] { 1, 2, 3, 4, 5 });    // 字节数组
         bw.Flush();
     }
@@ -572,12 +583,12 @@ try
         Console.WriteLine($"string={s}, bytes=[{string.Join(",", arr)}]");
     }
 
-    // === 5. MemoryStream：内存流 ===
+    // ---------- 5. MemoryStream：写完必须把 Position 归零才能从头读；ToArray 总是拷贝 ----------
     using (MemoryStream ms = new MemoryStream())
     {
         byte[] data = Encoding.UTF8.GetBytes("Hello MemoryStream");
         ms.Write(data, 0, data.Length);
-        ms.Position = 0;  // 写完读取前归零指针
+        ms.Position = 0;  // 写完读取前归零指针；漏这一步 Read 立刻得到 0 字节
 
         byte[] readBuf = new byte[ms.Length];
         ms.Read(readBuf, 0, readBuf.Length);
@@ -588,7 +599,7 @@ try
         Console.WriteLine($"ToArray 长度: {allBytes.Length}");
     }
 
-    // === 6. StringReader / StringWriter：字符串作为流 ===
+    // ---------- 6. StringReader/Writer：对字符串的 TextReader 适配，Dispose 几乎无 IO 副作用 ----------
     string multiLine = "姓名:张三\\n年龄:28\\n城市:北京";
     using StringReader stringReader = new StringReader(multiLine);
     Console.WriteLine("\\n--- StringReader ---");
@@ -603,8 +614,7 @@ try
     stringWriter.WriteLine("支持格式化: {0:N2}", 12345.6789);
     Console.WriteLine($"\\nStringWriter 输出:\\n{stringWriter}");
 
-    // === 7. FileShare 演示：共享读写 ===
-    // 第一个进程以 FileShare.ReadWrite 打开，允许其他进程同时读写
+    // ---------- 7. FileShare：独占打开时别人 Copy/Delete 会失败，生产要选对共享模式 ----------
     using (FileStream sharedFs = new FileStream(
         tempFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
     {
@@ -825,7 +835,13 @@ public abstract class Animal { }
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「JSON 序列化」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 —— System.Text.Json 全套演示
+    code: `// ===========================================================
+// 第五十四章 System.Text.Json —— 可运行演示
+// 核心：JsonSerializerOptions 应缓存复用；JsonDocument 必须 Dispose
+// 坑：默认大小写敏感；循环引用要 ReferenceHandler；源生成才 AOT 友好
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
+
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
@@ -847,24 +863,24 @@ User user = new User
     CreatedAt = new DateTime(2026, 7, 19),
 };
 
-// === 1. JsonSerializerOptions 基础配置 ===
+// ---------- 1. Options：每次 new 都有开销，生产应 static 缓存同一份 ----------
 JsonSerializerOptions options = new JsonSerializerOptions
 {
-    WriteIndented = true,                                    // 美化缩进
-    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,       // camelCase
-    PropertyNameCaseInsensitive = true,                      // 反序列化大小写不敏感
+    WriteIndented = true,                                    // 美化缩进；日志可读，热路径 API 应关掉
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,       // 输出 camelCase；与 JS 前端约定对齐
+    PropertyNameCaseInsensitive = true,                      // 反序列化大小写不敏感；默认是敏感的
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,  // null 不输出
     AllowTrailingCommas = true,
-    ReadCommentHandling = JsonCommentHandling.Skip,
+    ReadCommentHandling = JsonCommentHandling.Skip,          // 默认真 JSON 不允许注释，遇到 // 会抛
 };
-options.Converters.Add(new DateOnlyConverter());  // 注册自定义 converter
+options.Converters.Add(new DateOnlyConverter());  // 注册自定义 converter；Options 在序列化开始后视为冻结
 
-// === 2. 序列化 ===
+// ---------- 2. Serialize：JsonIgnore 的字段不会出现；未配置的 Options 默认 PascalCase ----------
 string json = JsonSerializer.Serialize(user, options);
 Console.WriteLine("--- 序列化结果 ---");
 Console.WriteLine(json);
 
-// === 3. 反序列化（含数字从字符串读取）===
+// ---------- 3. Deserialize：缺字段保持 CLR 默认值；数字字符串要靠 JsonNumberHandling ----------
 string jsonInput = """
 {
   "id": 2002,
@@ -876,12 +892,12 @@ string jsonInput = """
   "createdAt": "2026-08-01"
 }
 """;
-User? user2 = JsonSerializer.Deserialize<User>(jsonInput, options);
+User? user2 = JsonSerializer.Deserialize<User>(jsonInput, options);  // 失败返回/抛取决于输入；不要忽略 null
 Console.WriteLine("\\n--- 反序列化结果 ---");
 Console.WriteLine($"Id={user2?.Id}, Name={user2?.Name}, Age={user2?.Age}");
 Console.WriteLine($"City={user2?.Home.City}, ZipCode={user2?.Home.ZipCode}");
 
-// === 4. Source Generator 路径（AOT 友好，性能最高）===
+// ---------- 4. 源生成：编译期元数据，AOT/trimming 下反射路径会缺成员 ----------
 string jsonSG = JsonSerializer.Serialize(user, AppJsonContext.Default.User);
 Console.WriteLine("\\n--- Source Generator 序列化 ---");
 Console.WriteLine(jsonSG);
@@ -889,7 +905,7 @@ Console.WriteLine(jsonSG);
 User? userSG = JsonSerializer.Deserialize(jsonSG, AppJsonContext.Default.User);
 Console.WriteLine($"SG 反序列化: {userSG?.Name}");
 
-// === 5. JsonNode：动态访问 JSON（无需预定义类型）===
+// ---------- 5. JsonNode：可变 DOM；改树可以，但比 JsonDocument 更占内存 ----------
 Console.WriteLine("\\n--- JsonNode 动态访问 ---");
 JsonNode node = JsonNode.Parse(jsonInput)!;
 Console.WriteLine($"name = {node?["name"]?.AsValue()}");
@@ -907,7 +923,7 @@ JsonObject dynObj = new JsonObject
 dynObj["discount"] = 0.8;
 Console.WriteLine($"动态 JSON: {dynObj.ToJsonString()}");
 
-// === 6. JsonDocument：只读解析（比 JsonNode 更省内存）===
+// ---------- 6. JsonDocument：租用缓冲，必须 using；Dispose 后再碰 JsonElement 是未定义行为 ----------
 Console.WriteLine("\\n--- JsonDocument 只读解析 ---");
 using (JsonDocument doc = JsonDocument.Parse(jsonInput))
 {
@@ -920,13 +936,13 @@ using (JsonDocument doc = JsonDocument.Parse(jsonInput))
         Console.WriteLine($"  - {tag.GetString()}");
     }
     // TryGetProperty：避免抛异常
-    if (root.TryGetProperty("missing", out JsonElement missing))
+    if (root.TryGetProperty("missing", out JsonElement missing))  // GetProperty 缺失会抛，热路径用 Try
         Console.WriteLine($"missing exists: {missing}");
     else
         Console.WriteLine("missing 字段不存在");
 }
 
-// === 7. Utf8JsonWriter：低级 API，最高性能 ===
+// ---------- 7. Utf8JsonWriter：漏 WriteEnd*/Flush 得到残缺 JSON；using 结束会 Flush ----------
 Console.WriteLine("\\n--- Utf8JsonWriter 低级 API ---");
 using MemoryStream ms = new MemoryStream();
 using Utf8JsonWriter writer = new Utf8JsonWriter(ms, new JsonWriterOptions { Indented = true });
@@ -940,9 +956,9 @@ writer.WriteEndArray();
 writer.WriteNull("deprecated");
 writer.WriteEndObject();
 writer.Flush();
-Console.WriteLine(Encoding.UTF8.GetString(ms.ToArray()));
+Console.WriteLine(Encoding.UTF8.GetString(ms.ToArray()));  // 立刻 ToArray 必须先 Flush，否则可能读到空缓冲
 
-// === 8. 循环引用处理 ===
+// ---------- 8. 循环引用：默认直接抛；IgnoreCycles 把环写成 null，Preserve 才保留 $id ----------
 Console.WriteLine("\\n--- 循环引用处理 ---");
 Node a = new Node { Name = "A" };
 Node b = new Node { Name = "B" };
@@ -950,7 +966,7 @@ a.Next = b;
 b.Next = a;  // 循环
 JsonSerializerOptions cycleOpts = new JsonSerializerOptions
 {
-    ReferenceHandler = ReferenceHandler.IgnoreCycles,  // 检测到循环输出 null
+    ReferenceHandler = ReferenceHandler.IgnoreCycles,  // 检测到循环输出 null；不要和 Preserve 搞混
     WriteIndented = true,
 };
 string cycleJson = JsonSerializer.Serialize(a, cycleOpts);
@@ -965,7 +981,7 @@ public class User
     [JsonPropertyName("email")]  // JSON 字段名小写
     public string Email { get; set; } = "";
 
-    [JsonIgnore]  // 序列化时忽略
+    [JsonIgnore]  // 序列化时忽略；反序列化时输入里有该字段也会丢掉
     public string Password { get; set; } = "";
 
     [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
@@ -989,7 +1005,7 @@ public class DateOnlyConverter : JsonConverter<DateTime>
 {
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
-        return DateTime.Parse(reader.GetString()!);  // 解析 "yyyy-MM-dd"
+        return DateTime.Parse(reader.GetString()!);  // 解析日期；生产应指定 Culture 并处理 null/格式错误
     }
 
     public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
@@ -1205,7 +1221,13 @@ JSON 对比请看 JSON 章，本章不要把 XML 文件交给 \`JsonSerializer\`
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「XML 与 CSV 处理」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 —— XML 与 CSV 处理全套演示
+    code: `// ===========================================================
+// 第五十五章 XML 与 CSV —— 可运行演示
+// 核心：LINQ to XML 延迟查询；XmlReader 流式；Csv Split 不处理引号
+// 坑：XmlSerializer 首次反射很贵；数字解析必须用 InvariantCulture
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
+
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -1221,7 +1243,7 @@ string csvFile = Path.Combine(Path.GetTempPath(), "csharp5-ch54-demo.csv");
 
 try
 {
-    // === 1. XDocument：函数式构建 XML（推荐方式）===
+    // ---------- 1. XDocument：整棵树进内存；超大 XML 请改用 XmlReader 流式 ----------
     XDocument doc = new XDocument(
         new XDeclaration("1.0", "utf-8", "yes"),
         new XElement("Library",
@@ -1250,7 +1272,7 @@ try
     doc.Save(xmlFile);
     Console.WriteLine($"XML 已保存: {xmlFile}");
 
-    // === 2. XDocument 查询（LINQ to XML）===
+    // ---------- 2. Descendants：延迟查询；每次 foreach 都会再扫整棵树 ----------
     XDocument loaded = XDocument.Load(xmlFile);
     Console.WriteLine("\\n--- 所有书籍 ---");
     foreach (var book in loaded.Descendants("Book"))
@@ -1259,7 +1281,7 @@ try
     }
 
     // LINQ 查询：价格大于 100 的书
-    var expensive = from b in loaded.Descendants("Book")
+    var expensive = from b in loaded.Descendants("Book")  // 延迟；下面 foreach 才 Parse
                     where decimal.Parse(b.Element("Price")!.Value) > 100
                     select new
                     {
@@ -1270,7 +1292,7 @@ try
     foreach (var b in expensive)
         Console.WriteLine($"  {b.Title}: ¥{b.Price}");
 
-    // === 3. XPath 查询（适合复杂路径）===
+    // ---------- 3. XPath：复杂路径方便，但不如 LINQ 类型安全 ----------
     Console.WriteLine("\\n--- XPath 查询 ---");
     var xpathResults = loaded.XPathSelectElements("/Library/Book[Price>100]");
     foreach (var b in xpathResults)
@@ -1279,12 +1301,12 @@ try
     var allTitles = loaded.XPathSelectElements("//Title");
     Console.WriteLine($"XPath //Title 共 {allTitles.Count()} 个");
 
-    // === 4. XDocument.Parse：从字符串解析 ===
+    // ---------- 4. Parse：从字符串建树，失败抛 XmlException ----------
     string xmlString = """<Person><Name>赵六</Name><Age>40</Age><City>广州</City></Person>""";
     XElement person = XElement.Parse(xmlString);
     Console.WriteLine($"\\nParse 结果: {person.Element("Name")?.Value}, {person.Element("Age")?.Value}岁");
 
-    // === 5. XDocument 修改 ===
+    // ---------- 5. 修改树：SetAttributeValue(null) 是删属性，不是写成空字符串 ----------
     XElement firstBook = loaded.Descendants("Book").First();
     firstBook.Element("Price")!.Value = "109.0";        // 修改值
     firstBook.Add(new XElement("Stock", 50));            // 添加子节点
@@ -1293,7 +1315,7 @@ try
     Console.WriteLine("\\n--- 修改后第一本书 ---");
     Console.WriteLine(firstBook.ToString());
 
-    // === 6. XmlReader：流式读取（高性能、低内存）===
+    // ---------- 6. XmlReader：流式、低内存；ReadElementContentAsString 会前进节点，别再 Read 一次 ----------
     Console.WriteLine("\\n--- XmlReader 流式读取 ---");
     using (XmlReader reader = XmlReader.Create(xmlFile))
     {
@@ -1316,7 +1338,7 @@ try
         }
     }
 
-    // === 7. XmlWriter：流式写入 ===
+    // ---------- 7. XmlWriter：WriteStart/End 必须成对，漏 End 得到残缺文档 ----------
     string xmlWriterFile = Path.Combine(Path.GetTempPath(), "csharp5-ch54-writer.xml");
     XmlWriterSettings ws = new XmlWriterSettings
     {
@@ -1338,7 +1360,7 @@ try
     Console.WriteLine($"\\nXmlWriter 写入完成");
     File.Delete(xmlWriterFile);
 
-    // === 8. XmlSerializer：对象 ↔ XML ===
+    // ---------- 8. XmlSerializer：首次对某类型反射很贵，应缓存实例；[XmlIgnore] 字段不会出现 ----------
     var product = new Product
     {
         Id = 1,
@@ -1347,7 +1369,7 @@ try
         Price = 299.0m,
         Secret = "should-not-serialize"
     };
-    var serializer = new XmlSerializer(typeof(Product));
+    var serializer = new XmlSerializer(typeof(Product));  // 生产里按 Type 缓存，不要每次请求 new
     string xmlSerFile = Path.Combine(Path.GetTempPath(), "csharp5-ch54-ser.xml");
     using (FileStream fs = File.Create(xmlSerFile))
     {
@@ -1363,7 +1385,7 @@ try
     }
     File.Delete(xmlSerFile);
 
-    // === 9. CSV 读写：纯原生方案 ===
+    // ---------- 9. CSV：Split 不处理引号转义；小数必须 InvariantCulture，否则逗号地区会炸 ----------
     var students = new List<Student>
     {
         new(1, "张三", 90.5),
@@ -1376,7 +1398,7 @@ try
     foreach (var s in students)
     {
         // 注意：含逗号/引号的字段需要加引号转义，这里演示简单场景
-        lines.Add($"{s.Id},{s.Name},{s.Score.ToString(CultureInfo.InvariantCulture)}");
+        lines.Add($"{s.Id},{s.Name},{s.Score.ToString(CultureInfo.InvariantCulture)}");  // 避免 90,5 被当成两列
     }
     File.WriteAllLines(csvFile, lines);
     Console.WriteLine($"\\n--- CSV 已写入: {csvFile} ---");
@@ -1415,7 +1437,7 @@ public class Product
 
     public decimal Price { get; set; }
 
-    [XmlIgnore]  // 序列化时忽略
+    [XmlIgnore]  // 序列化时忽略；和 JsonIgnore 一样，反射元数据，不是运行时开关
     public string Secret { get; set; } = "";
 }
 
@@ -1619,7 +1641,13 @@ Windows 上只有 \`FileOptions.Asynchronous\`（或 \`FileStreamOptions.Options
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「高性能 IO 与管道」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 —— 高性能 IO 与管道演示
+    code: `// ===========================================================
+// 第五十六章 高性能 IO 与管道 —— 可运行演示
+// 核心：ArrayPool 租还；RandomAccess 按偏移读，但不是零拷贝
+// 坑：FileOptions.Asynchronous 才是真异步；归还池后禁止再碰缓冲区
+// 适用：.NET 8 / C# 12 顶级语句
+// ===========================================================
+
 using System;
 using System.Buffers;
 using System.IO;
@@ -1635,8 +1663,7 @@ string tempFile = Path.Combine(Path.GetTempPath(), "csharp5-ch55-demo.bin");
 
 try
 {
-    // === 1. 准备测试文件：写入约 1MB 数据 ===
-    // 用 ArrayPool 租用缓冲区，避免 GC 压力
+    // ---------- 1. ArrayPool：Rent 可能大于请求长度；Return 后绝对不能再写这块缓冲 ----------
     using (FileStream fs = File.Create(tempFile))
     {
         byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);  // 租用 4KB
@@ -1653,30 +1680,30 @@ try
         finally
         {
             // 必须归还，否则内存泄漏
-            ArrayPool<byte>.Shared.Return(buffer);
+            ArrayPool<byte>.Shared.Return(buffer);  // 归还后禁止再写 buffer；池可能立刻把这块租给别人
         }
     }
     Console.WriteLine($"测试文件: {tempFile}");
     Console.WriteLine($"文件大小: {new FileInfo(tempFile).Length / 1024} KB");
 
-    // === 2. ArrayPool + Span 异步读取 ===
+    // ---------- 2. ArrayPool + Span：ReadAsync 必须配合 FileOptions.Asynchronous，否则是假异步 ----------
     await ReadWithArrayPoolAsync(tempFile);
 
-    // === 3. RandomAccess API（.NET 6+，按偏移读取且不共享流位置）===
+    // ---------- 3. RandomAccess：按偏移读、不共享 Position，但数据仍拷进用户缓冲，不是零拷贝 ----------
     await ReadWithRandomAccessAsync(tempFile);
 
-    // === 4. 管道式生产者/消费者（教学对照 System.IO.Pipelines） ===
+    // ---------- 4. Channel 管道：对照 Pipelines 的写端/读端/Complete，这里每块仍会 Copy ----------
     await UsePipeAsync(tempFile);
 
-    // === 5. File.ReadAllBytesAsync：简单异步读 ===
+    // ---------- 5. ReadAllBytesAsync：整文件进托管堆，大文件会 OOM，只适合小文件 ----------
     byte[] allBytes = await File.ReadAllBytesAsync(tempFile);
     Console.WriteLine($"\\n--- ReadAllBytesAsync ---");
     Console.WriteLine($"读取 {allBytes.Length} 字节");
 
-    // === 6. Parallel.ForEach 并行处理大文件块 ===
+    // ---------- 6. 并行切块：RandomAccess 无共享 Position，多线程才能各读各的偏移 ----------
     await ProcessLargeFileInParallelAsync(tempFile);
 
-    // === 7. 内存映射文件 MemoryMappedFile ===
+    // ---------- 7. 内存映射：操作系统页缓存映射，随机访问大文件才划算 ----------
     UseMemoryMappedFile(tempFile);
 }
 finally
@@ -1701,7 +1728,7 @@ async Task ReadWithArrayPoolAsync(string path)
         int totalRead = 0;
         int read;
         // 循环读取直到 EOF
-        while ((read = await fs.ReadAsync(buffer.AsMemory(0, 8192))) > 0)
+        while ((read = await fs.ReadAsync(buffer.AsMemory(0, 8192))) > 0)  // 只用租到长度的前 8192；Rent 可能更长
         {
             totalRead += read;
         }
@@ -1728,12 +1755,13 @@ async Task ReadWithRandomAccessAsync(string path)
     byte[] buffer = ArrayPool<byte>.Shared.Rent(4096);
     try
     {
-        // 从指定偏移读入用户缓冲区；文件位置不前移，但数据仍会复制到该缓冲区
+        // RandomAccess 不是零拷贝：内核仍把文件数据复制进你提供的 buffer
+        // 优点是按绝对偏移读、没有 FileStream.Position 竞态，适合多线程切块
         long offset = 0;
         int totalRead = 0;
         while (offset < fileLength)
         {
-            int read = await RandomAccess.ReadAsync(handle, buffer.AsMemory(0, 4096), offset);
+            int read = await RandomAccess.ReadAsync(handle, buffer.AsMemory(0, 4096), offset);  // 拷贝进 buffer，不是映射指针
             if (read == 0) break;
             totalRead += read;
             offset += read;
@@ -1770,10 +1798,10 @@ async Task UsePipeAsync(string path)
             while ((read = await fs.ReadAsync(buffer.AsMemory(0, 4096))) > 0)
             {
                 var chunk = new byte[read];
-                Array.Copy(buffer, 0, chunk, 0, read);
+                Array.Copy(buffer, 0, chunk, 0, read);  // 必须拷走：归还池后原 buffer 会被别人覆盖
                 await channel.Writer.WriteAsync(chunk);
             }
-            channel.Writer.Complete();
+            channel.Writer.Complete();  // 漏 Complete 则下面 ReadAllAsync 永远等
         }
         catch (Exception ex)
         {
@@ -1815,7 +1843,7 @@ async Task ProcessLargeFileInParallelAsync(string path)
         try
         {
             // 同步读取（Parallel 已经并行）
-            RandomAccess.Read(handle, buffer.AsSpan(0, size), offset);
+            RandomAccess.Read(handle, buffer.AsSpan(0, size), offset);  // 同步拷贝该偏移的一块；仍不是零拷贝
             // 线程安全累加
             Interlocked.Add(ref totalProcessed, size);
         }
@@ -1837,7 +1865,7 @@ void UseMemoryMappedFile(string path)
         path, FileMode.Open, mapName: null, capacity: 0,
         MemoryMappedFileAccess.Read);
     // 创建只读视图，访问前 1024 字节
-    using MemoryMappedViewAccessor accessor = mmf.CreateViewAccessor(offset: 0, size: 1024, access: MemoryMappedFileAccess.Read);
+    using MemoryMappedViewAccessor accessor = mmf.CreateViewAccessor(offset: 0, size: 1024, access: MemoryMappedFileAccess.Read);  // 视图也要 Dispose
     // 读取第 0 字节的值
     accessor.Read(0, out byte firstByte);
     Console.WriteLine($"  首字节: 0x{firstByte:X2}");

@@ -196,21 +196,19 @@ services.AddHttpClient<PaymentClient>(c =>
 2. 合上示例，用「HTTP 客户端」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第六十九章 HTTP 客户端 —— demo
+// 第六十九章 HTTP 客户端 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
-// 演示 HttpClient 的常见用法，包括：
-//   1. 单例 HttpClient（推荐方式）
-//   2. JSON 请求与响应
-//   3. 自定义 HttpRequestMessage 设置 Header
-//   4. 超时与 CancellationToken
-//   5. Mock 数据避免真实网络请求（沙箱无外网）
+// 每次 new HttpClient() 会耗尽套接字（TIME_WAIT）；进程级 static 单例能修好这个，但 DNS 变更不会刷新。
+// 生产用 IHttpClientFactory：复用 SocketsHttpHandler，并周期性轮换连接，兼顾端口与 DNS。
+// HttpClient.Timeout 是整次请求的总预算；重试链必须再减「已经花掉的时间」，否则总等待 = 次数 × 超时。
+// CancellationToken 从上游传入并与 Timeout 组合成剩余预算，不要每个内部调用再 new 一个互不相干的 CTS。
 // ============================================================
 
 using System.Net.Http.Json;  // 引入 ReadFromJsonAsync / JsonContent 扩展
 using System.Text.Json.Serialization;
 
-// 全局单例 HttpClient（重要：不要每次 new）
-// 沙箱中只演示 API 用法，不真实访问外网
+// 教学用进程内单例。比「每次 new」好，但仍不如 IHttpClientFactory：
+// static 单例的连接可能活过 DNS TTL，上游切 IP 后会持续打到旧地址。
 var client = new HttpClient
 {
     BaseAddress = new Uri("https://api.example.com"),  // 假设的 API 地址
@@ -270,6 +268,8 @@ Console.WriteLine($"X-Request-Id：{request.Headers.GetValues("X-Request-Id").Fi
 // ------------------------------------------------------------
 Console.WriteLine("\\n=== Demo 4：CancellationToken 控制超时 ===");
 
+// 演示独立 CTS。生产应：var remaining = budget - alreadyElapsed; cts.CancelAfter(remaining)
+// 并把上游 RequestAborted 链进来（CreateLinkedTokenSource），避免上游已取消本地还在重试。
 using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
 
 try
@@ -288,7 +288,7 @@ catch (OperationCanceledException)
 // ------------------------------------------------------------
 Console.WriteLine("\\n=== Demo 5：模拟 IHttpClientFactory ===");
 
-// 真实场景：services.AddHttpClient("github", c => c.BaseAddress = new Uri("..."));
+// 生产注册：builder.Services.AddHttpClient("github", ...).AddStandardResilienceHandler(); 由工厂管理 Handler 寿命。;
 // 这里用一个工厂方法模拟
 var httpClientFactory = new SimpleHttpClientFactory();
 var githubClient = httpClientFactory.CreateClient("github");
@@ -352,8 +352,9 @@ public class SimpleHttpClientFactory
         },
     };
 
-    // 教学用：只演示「按名字套配置」。真实 IHttpClientFactory 会复用 SocketsHttpHandler，
-    // 并管理 DNS/连接寿命。这里每次 new HttpClient()，不能照搬到生产。
+    // 教学用：只演示「按名字套配置」。
+    // 真实 IHttpClientFactory 复用 SocketsHttpHandler、处理 DNS 轮换与处置。
+    // 这里每次 new，照搬回 ASP.NET 会重新制造套接字耗尽。
     public HttpClient CreateClient(string name)
     {
         var client = new HttpClient();
@@ -542,13 +543,11 @@ await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
 2. 合上示例，用「Socket 与 TCP」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第七十章 Socket 与 TCP —— demo
+// 第七十章 Socket 与 TCP —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
-// 在同一进程内启动 TCP Echo Server + Client，演示：
-//   1. TcpListener 启动监听
-//   2. TcpClient 连接服务端
-//   3. NetworkStream 双向读写
-//   4. 客户端发送消息，服务端原样返回（Echo）
+// TCP 是字节流不是消息流：一次 Read 可能只拿到半包，生产必须按长度前缀/分隔符组帧。
+// ReuseAddress 避开 TIME_WAIT 占端口，但不能靠它掩盖「上次进程没关掉监听」。
+// ReadAsync 返回 0 表示对端关了写端；当成「再读一次」会空转。写之前检查 Connected 不够，要处理重置。
 // ============================================================
 
 using System.Net;
@@ -570,6 +569,7 @@ listener.Server.SetSocketOption(
     true);
 
 listener.Start();
+// 只 Accept 一次是教学简化。生产 Accept 循环必须能被 shutdown token 取消，否则优雅停机会卡在这里。
 Console.WriteLine($"[Server] 监听 {ip}:{Port}，等待客户端连接...");
 
 // 启动一个后台 Task 接受并处理一个连接
@@ -587,6 +587,7 @@ var serverTask = Task.Run(async () =>
             // 接收客户端消息
             var buffer = new byte[1024];
             var bytesRead = await stream.ReadAsync(buffer);
+            // demo 假设一次读完。真实协议：bytesRead==0 是 FIN；>0 但不到一帧就得继续拼。
             var message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
             Console.WriteLine($"[Server] 收到消息：{message}");
 
@@ -784,12 +785,11 @@ DNS 再补一句：不要用 \`Dns.GetHostEntry\` 的阻塞同步重载堵线程
 2. 合上示例，用「UDP 与 IPC」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第七十一章 UDP 与 IPC —— demo
+// 第七十一章 UDP 与 IPC —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
-// 演示：
-//   1. UdpClient UDP 通信
-//   2. NamedPipeServerStream + NamedPipeClientStream 进程内通信
-//   3. MemoryMappedFile 共享内存
+// UDP 无连接、不保证顺序与到达：报文协议必须自带序号/校验，超时靠应用层重传。
+// 匿名管道适合父子进程；跨机器请用 TCP/gRPC。命名管道在 Unix 上受路径长度限制。
+// MemoryMappedFile 的 mapName 在 macOS 不可用，跨平台用文件后备；访问器不会自动同步，要自己定协议。
 // ============================================================
 
 using System.IO.Pipes;
@@ -810,7 +810,7 @@ var receiverEp = new IPEndPoint(IPAddress.Loopback, 0);
 // 后台 Task 接收
 var udpReceiveTask = Task.Run(async () =>
 {
-    var result = await udpReceiver.ReceiveAsync();
+    var result = await udpReceiver.ReceiveAsync(); // 无超时版本会永远等。生产用 CancelAfter 包一层剩余预算。
     var message = Encoding.UTF8.GetString(result.Buffer);
     Console.WriteLine($"[UDP 接收] 来自 {result.RemoteEndPoint}：{message}");
 });
@@ -850,7 +850,7 @@ Console.WriteLine("\\n=== Demo 3：内存映射文件 ===");
 var mmfFile = Path.Combine(Path.GetTempPath(), $"csharp5-mmf-anon-{Guid.NewGuid()}.dat");
 try
 {
-    // CreateNew(name) 依赖命名共享内存，macOS 不支持；改用文件后备（跨平台）
+    // 命名共享内存是 Windows 特色。跨平台用文件后备，并在进程退出时删文件，避免 /tmp 泄漏。
     using var mmf = MemoryMappedFile.CreateFromFile(mmfFile, FileMode.Create, mapName: null, capacity: 1024);
 
     using var accessor = mmf.CreateViewAccessor();
@@ -1073,13 +1073,11 @@ SignalR 默认仍优先 WebSocket；它是更高层的应用模型，不是另�
 2. 合上示例，用「WebSocket 与 gRPC 简介」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第七十二章 WebSocket 与 gRPC 简介 —— demo
+// 第七十二章 WebSocket 与 gRPC 简介 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
-// 由于沙箱无外网也不能起 Web Server，本 demo 用 mock + 伪代码演示：
-//   1. ClientWebSocket 的标准用法
-//   2. WebSocket 消息收发循环
-//   3. Mock gRPC 调用模式
-//   4. SignalR Hub 调用模式演示
+// WebSocket 是全双工帧：Receive 必须循环直到 EndOfMessage，大消息会被切成多帧。
+// 心跳（ping/pong）检测半开连接；只靠 TCP 半开可能几分钟才被系统发现。
+// gRPC 默认 HTTP/2 + protobuf，deadline 是整条 RPC 的剩余预算，要沿着调用链往下传。
 // ============================================================
 
 using System.Net.WebSockets;
@@ -1159,7 +1157,7 @@ async Task RunHeartbeatDemo()
     using var heartbeatCts = new CancellationTokenSource();
     var lastPong = DateTime.UtcNow;
 
-    // 心跳 Task：每 3 秒发 ping
+    // 心跳间隔要小于负载均衡 idle 超时。连续丢 pong 才断开；单次抖动不该杀连接。
     var heartbeatTask = Task.Run(async () =>
     {
         while (!heartbeatCts.Token.IsCancellationRequested)
@@ -1228,7 +1226,7 @@ public record HelloReply { public string Message { get; init; } = ""; }
 // Mock gRPC 客户端（演示调用模式）
 public class MockGreeterClient
 {
-    // Unary：单请求单响应
+    // Unary 仍要传 Deadline/CancellationToken。服务端超时后客户端还在等，就是「剩余预算没往下传」。
     public Task<HelloReply> SayHelloAsync(HelloRequest request)
     {
         var reply = new HelloReply { Message = $"Hello, {request.Name}！" };
@@ -1463,16 +1461,12 @@ Hosted service 默认是 **Singleton**。里面需要 \`DbContext\` 时用 \`ISe
 2. 合上示例，用「依赖注入与配置」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第七十三章 依赖注入与配置 —— demo
+// 第七十三章 依赖注入与配置 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
-// 用 ServiceCollection + ConfigurationBuilder 构建完整的迷你 DI 容器
-// 注册三层：IUserRepository → UserService → UserController
-// 演示：
-//   1. 三种生命周期（Transient/Scoped/Singleton）
-//   2. 构造函数注入
-//   3. IEnumerable<T> 注册多个实现
-//   4. Options 模式读取配置
-//   5. Scope 概念
+// Singleton 进程唯一、Scoped 每请求一份、Transient 每次解析都 new。
+// 捕获依赖：Singleton 构造函数注入 Scoped（如 DbContext）会把「这一次请求」的数据钉在进程里。
+// 生产打开 ValidateScopes / ValidateOnBuild，让这种注册在启动时爆炸，而不是在第三个请求串数据。
+// IOptions 快照在启动时绑定；要热更新用 IOptionsMonitor。连接串走环境变量/密钥库，不要提交进仓库。
 // ============================================================
 
 using System.Reflection;
@@ -1512,14 +1506,14 @@ var services = new ServiceCollection();
 services.Configure<JwtOptions>(config.GetSection("Jwt"));
 services.Configure<AppOptions>(config.GetSection("App"));
 
-// 注册基础设施（Singleton 全应用单例）
+// 无请求状态的时钟/日志可以 Singleton。把 IUserRepository 注册成 Singleton 就会跨请求串缓存。
 services.AddSingleton<IClock, SystemClock>();
 services.AddSingleton<ILogService, ConsoleLogService>();
 
-// 注册仓储（Scoped：每个 Scope 一个实例，模拟 Web 请求范围）
+// Web 里一个 HTTP 请求 = 一个 Scope。DbContext 必须 Scoped，否则跟踪缓存会串请求。
 services.AddScoped<IUserRepository, InMemoryUserRepository>();
 
-// 注册业务服务（Transient：每次获取都 new）
+// Transient 适合无状态应用服务。若它依赖 Scoped，解析必须从 Scope 里发生，不能从根容器 Get。
 services.AddTransient<UserService>();
 
 // 注册多个 INotifier（演示 IEnumerable<T>）
@@ -1548,7 +1542,8 @@ var svc1 = sp.GetRequiredService<UserService>();
 var svc2 = sp.GetRequiredService<UserService>();
 Console.WriteLine($"Transient: {!ReferenceEquals(svc1, svc2)}");
 
-// Scoped：同一 Scope 内相同，不同 Scope 不同
+// 根容器 GetRequiredService<Scoped> 在开发环境会抛（captive / 根 Scope 泄漏）。
+// 永远从 IServiceScope.ServiceProvider 解析 Scoped。
 using var scope1 = sp.CreateScope();
 using var scope2 = sp.CreateScope();
 var repo1A = scope1.ServiceProvider.GetRequiredService<IUserRepository>();
@@ -1579,6 +1574,7 @@ await controller.NotifyUserAsync(1, "您的账号即将过期");
 // ------------------------------------------------------------
 Console.WriteLine("\\n=== 5. Options 模式 ===");
 
+// IOptions<T>.Value 是启动快照。密钥轮换后仍读到旧值——运行时变化请用 IOptionsMonitor。
 var jwtOptions = sp.GetRequiredService<IOptions<JwtOptions>>().Value;
 Console.WriteLine($"JWT Issuer：{jwtOptions.Issuer}");
 Console.WriteLine($"JWT ExpireMinutes：{jwtOptions.ExpireMinutes}");
@@ -2125,18 +2121,12 @@ xUnit **默认并行**跑不同测试类。共享静态字段、临时文件名�
 2. 合上示例，用「单元测试」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第七十四章 单元测试 —— demo
+// 第七十四章 单元测试 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
-// 沙箱无 xUnit/Moq 包，所以用一个简易测试运行器（自定义）演示
-// 测试组织方式，相当于"手写的迷你 xUnit"。
-// 实际项目用 dotnet test 命令运行 xUnit 测试。
-//
-// 演示：
-//   1. Calculator 类（被测代码）
-//   2. UserService 类（依赖 IUserRepository）
-//   3. 简易测试运行器（类似 [Fact]）
-//   4. 简易 Mock（模拟 Moq）
-//   5. AAA 模式示范
+// AAA：Arrange 准备、Act 调用、Assert 只断言一件事。测试名写「给定/当/则」。
+// 时间不要读 DateTime.UtcNow：注入 TimeProvider（.NET 8）才能把「14 天后过期」写成确定性用例。
+// 属性测试 / 随机数据必须固定 seed，否则 CI 红了无法复现；把 seed 打进失败消息。
+// Fake 仓储比 Mock 一切更稳；Verify 调用次数只留给「必须打一次外部系统」的边界。
 // ============================================================
 
 // ------------------------------------------------------------
@@ -2304,8 +2294,7 @@ public class CalculatorTests
         // [Fact] 无参数测试
         await TestRunner.Fact("Add_2_Plus_3_Returns_5", () =>
         {
-            // AAA 模式
-            // Arrange
+            // AAA：Arrange 只准备协作对象，不要在这里执行被测逻辑。
             var calc = new Calculator();
             // Act
             var result = calc.Add(2, 3);
@@ -2313,7 +2302,7 @@ public class CalculatorTests
             if (result != 5) throw new Exception($"期望 5，实际 {result}");
         });
 
-        // [Theory] 参数化测试
+        // Theory 把边界钉死在表里。随机输入请：var rng = new Random(seed: 42); 失败时打印 seed。
         var addTestData = new[]
         {
             (1, 2, 3),
@@ -2664,17 +2653,12 @@ app.MapGet("/hello", (ILogger<Program> logger) =>
 2. 合上示例，用「ASP.NET Core 简介」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第七十五章 ASP.NET Core 简介 —— demo
+// 第七十五章 ASP.NET Core 简介 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
-// 沙箱是控制台，无法启动 Web Server（Kestrel），所以用控制台
-// 模拟 ASP.NET Core Minimal API 的路由调度模式，演示 API 设计思想。
-//
-// 演示：
-//   1. 路由注册（MapGet / MapPost / MapPut / MapDelete）
-//   2. 路由参数解析
-//   3. IResult / Results 模式
-//   4. 中间件链
-//   5. DI 容器
+// 沙箱起不了 Kestrel，用控制台模拟路由/中间件/DI 的形状，逻辑对齐 Minimal API。
+// 中间件顺序就是产品行为：鉴权必须在业务之前，异常处理必须包住整条管道。
+// 端点从 RequestServices（Scope）解析，不要缓存 Scoped 服务到 Singleton 中间件字段。
+// 参数约束 {id:int} 在模型绑定之前拦截垃圾输入，比 handler 里 int.Parse 更早、更便宜。
 // ============================================================
 
 // ------------------------------------------------------------
@@ -2684,9 +2668,10 @@ Console.WriteLine("=== 1. 构建模拟 Web 应用 ===");
 
 var builder = MiniWebApp.CreateBuilder();
 builder.Services.AddSingleton<IUserRepository, InMemoryUserRepository>();
+// 内存仓储做 Singleton 只适合 demo。生产里仓储/DbContext 必须 Scoped，否则跟踪缓存会跨请求串数据。
 // UserService 需要构造函数注入，简易容器的 AddTransient<T>() 要求无参 new()；本 demo 路由只注入仓储。
 
-// 注册中间件（顺序敏感，模拟真实 ASP.NET Core 中间件管线）
+// 注册中间件（顺序敏感：异常处理最外层，鉴权必须在业务路由之前）。
 builder.Use(async (ctx, next) =>
 {
     Console.WriteLine($"  [MW1] 请求进入：{ctx.Method} {ctx.Path}");
@@ -2720,7 +2705,8 @@ app.MapGet("/users", (IUserRepository repo) =>
     return Results.Ok(users);
 });
 
-// GET /users/{id}
+// {id:int} 在绑定前拦截非数字，比 handler 里 int.Parse 更早失败。
+// repo 从当前请求 Scope 注入；若中间件把 Scoped 存进 Singleton 字段，就是捕获依赖。
 app.MapGet("/users/{id:int}", (int id, IUserRepository repo) =>
 {
     var user = repo.Find(id);
@@ -3331,19 +3317,11 @@ public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 2. 合上示例，用「EF Core 数据访问」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第七十六章 EF Core 数据访问 —— demo
+// 第七十六章 EF Core 数据访问 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
-// 本地运行器不安装 EF Core provider，所以用 List 模拟「调用形状」。
-// Add 进入挂起集合，SaveChanges 才提交；Include 按外键填充导航。
-// 仍不具备 SQL 翻译、跟踪快照、约束和重试策略。生产必须用真实 provider + 集成测试。
-//
-// 演示：
-//   1. Entity 类（Data Annotations 配置）
-//   2. DbContext 定义
-//   3. Fluent API 配置
-//   4. CRUD 操作
-//   5. Include 关联加载
-//   6. 事务
+// 这是调用形状的 List 模拟：无 SQL 翻译、无跟踪快照、无并发令牌。生产必须走真实 provider。
+// SaveChanges 一次提交一个工作单元；循环里 SaveChanges 等于 N 次往返。Include 防 N+1，投影防过度跟踪。
+// DbContext 非线程安全、必须 Scoped。异步方法全部用 *Async，同步占用线程池会在高并发下饿死。
 // ============================================================
 
 // ------------------------------------------------------------
@@ -3375,7 +3353,7 @@ Console.WriteLine("\\n--- Create ---");
 db.Users.Add(new User { Id = 1, Name = "张三", Email = "zhangsan@example.com" });
 db.Users.Add(new User { Id = 2, Name = "李四", Email = "lisi@example.com" });
 db.Users.Add(new User { Id = 3, Name = "王五", Email = "wangwu@example.com" });
-await db.SaveChangesAsync();
+await db.SaveChangesAsync(); // Add 只进跟踪器；循环里每次 SaveChanges 就是一次往返，要攒批次。
 Console.WriteLine($"已添加 {db.Users.Count} 个用户");
 
 // 添加订单（关联到用户）
@@ -3937,18 +3915,11 @@ ITaskRepository           →  持久化细节（JSON / EF / 内存）
 2. 合上示例，用「综合项目实战」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第七十七章 综合项目实战：迷你任务管理系统
+// 第七十七章 综合项目实战 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
-// 完整实现一个控制台任务管理系统，综合运用：
-//   - record / enum / 模式匹配
-//   - async/await + Task
-//   - LINQ
-//   - System.Text.Json 序列化
-//   - File IO
-//   - 依赖注入（手工实现避免依赖外部包）
-//   - Repository 模式
-//   - 异常处理
-//   - 命令行参数解析
+// 把前面的 record、async、LINQ、JSON、DI、仓储拼成一个可跑的任务管理控制台。
+// 领域状态用 enum + 模式匹配收敛非法迁移；持久化失败要留给调用方，不要在仓储里吞掉。
+// JSON 文件当库只适合教学：无事务、无并发控制。生产换 EF Core + 真正的工作单元。
 // ============================================================
 
 using System.Text.Json;
@@ -4506,18 +4477,11 @@ C# 是一门设计精良的语言，融合了静态类型的严谨与动态语�
 2. 合上示例，用「结语与学习路线」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 结语：全书总结示例代码
+// 结语 —— 全书语法拼装演示（net8.0 / C# 12 顶级语句）
 // ------------------------------------------------------------
-// 综合演示前面学过的多个特性：
-//   - record 类型
-//   - 模式匹配（switch 表达式、属性模式）
-//   - async/await
-//   - LINQ（Select、Where、GroupBy、OrderBy）
-//   - System.Text.Json
-//   - File IO
-//   - 集合表达式 [1, 2, 3]
-//   - 顶级语句
-//   - 异常处理
+// 这里不是新 API，而是把 record、模式匹配、LINQ、async、JSON 放进同一份可运行程序。
+// 能跑通说明：顶级语句文件可以同时拥有局部函数、类型定义和异步入口。
+// 生产里这些能力要分层：领域模型不引用 JsonSerializer，IO 不进 LINQ 查询表达式。
 // ============================================================
 
 using System.Text.Json;
@@ -4653,7 +4617,7 @@ async Task ProcessEmployeesAsync(List<Employee> employees)
     Console.WriteLine($"开始处理 {employees.Count} 名员工...");
     var tasks = employees.Select(async emp =>
     {
-        await Task.Delay(50);  // 模拟 IO 操作
+        await Task.Delay(50);  // 真 IO 才值得 WhenAll；CPU 循环套 Task.Delay 只会制造调度噪声
         return $"{emp.Name} ({emp.Level})";
     });
 

@@ -208,91 +208,80 @@ head = 7;                            // 等于改 nums[0]
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「变量与常量」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// 第六章 变量与常量 —— 可在 .NET 8 控制台应用直接运行
-// 顶级语句：直接写代码，不需要 class Program / Main
+    code: `// 第六章 变量与常量 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 讲清：显式类型 vs var、块作用域、const 与 readonly 的赋值时机、
+// default 与字段默认值。var 是编译期推断，不是 dynamic。
+// 陷阱：const 跨程序集会被内联进调用方；readonly 运行时读取。
+// 顶级语句（C# 9+）：可执行代码在前，类型声明必须放在文件末尾。
 
-// ============================================================
-// 1. 显式类型 vs 隐式类型 var
-// ============================================================
-int age = 28;                       // 显式声明 int 类型变量
-double price = 19.99;               // 显式声明 double 类型变量
-bool isAdmin = true;                // 显式声明 bool 类型变量
-string username = "xiaoming";       // 显式声明 string 类型变量
+// ---------- 1. 显式类型 vs var ----------
+int age = 28;                       // 显式写出类型，API 边界、公开字段更清晰
+double price = 19.99;               // 字面量带小数点才是 double；写 19 会变成 int
+bool isAdmin = true;                // 条件只能是 bool，不能像 C 那样用整数当真假
+string username = "xiaoming";       // string 是引用类型，但字面量会进入驻留池
 
-var count = 100;                    // var 让编译器推断为 int
-var rate = 0.85;                    // 推断为 double
-var name = "Tom";                   // 推断为 string
-var tags = new List<string> { "c#", "dotnet" }; // 推断为 List<string>
+var count = 100;                    // var 必须当场初始化；推断结果写进 IL，运行期不会变
+var rate = 0.85;                    // 0.85 默认 double，不是 float / decimal
+var name = "Tom";                   // 右侧类型一眼能看出来时，用 var 减少噪音
+var tags = new List<string> { "c#", "dotnet" }; // 泛型名很长时 var 几乎是刚需
 
 Console.WriteLine($"显式类型：age={age}, price={price}, isAdmin={isAdmin}");
 Console.WriteLine($"隐式类型：count={count}, rate={rate}, name={name}");
 Console.WriteLine($"tags 类型：{tags.GetType().Name}，元素数：{tags.Count}");
 
-// ============================================================
-// 2. 变量命名规则演示
-// ============================================================
-int orderCount = 5;                 // camelCase 是局部变量推荐风格
-int _tempValue = 10;                // 下划线开头也合法
-string 中文变量名 = "中文名也合法";   // C# 支持 Unicode 标识符（不推荐日常使用）
-string @class = "用 @ 转义关键字";   // @ 前缀可以避开关键字冲突
+// ---------- 2. 命名规则与关键字转义 ----------
+int orderCount = 5;                 // 局部变量社区惯例：camelCase，见名知意
+int _tempValue = 10;                // 下划线开头合法；字段常用 _camel 区分局部变量
+string 中文变量名 = "中文名也合法";   // Unicode 标识符能通过编译，团队协作几乎不用
+string @class = "用 @ 转义关键字";   // @ 只改标识符，不改运行时名字；反射看到的仍是 class
 
 Console.WriteLine($"orderCount={orderCount}, _tempValue={_tempValue}");
 Console.WriteLine($"中文变量名={中文变量名}, @class={@class}");
 
-// ============================================================
-// 3. 变量作用域演示
-// ============================================================
-int outer = 100;                    // 方法作用域变量
+// ---------- 3. 作用域：出了块就消失 ----------
+int outer = 100;                    // 顶级语句里的局部变量，作用域是整个入口文件
 {
-    int inner = 50;                 // 块作用域变量
+    int inner = 50;                 // 花括号自成一块：inner 出块即不可见
     Console.WriteLine($"块内访问 outer={outer}, inner={inner}");
 }
-// Console.WriteLine(inner);        // ❌ 取消注释会编译错误：inner 已超出作用域
+// Console.WriteLine(inner);        // 取消注释会 CS0103：inner 不在当前上下文
 Console.WriteLine($"块外只能访问 outer={outer}");
 
 for (int i = 0; i < 3; i++)
 {
-    int loopVar = i * 10;           // 每次循环都是新的 loopVar
+    int loopVar = i * 10;           // for 的 i 和循环体内变量都只活在循环块里
     Console.WriteLine($"  循环内 i={i}, loopVar={loopVar}");
 }
-// Console.WriteLine(i);            // ❌ i 也只在 for 块内有效
+// Console.WriteLine(i);            // 同样 CS0103：i 不能泄漏到循环外
 
-// ============================================================
-// 4. const 常量演示
-// ============================================================
-const double Pi = 3.14159265358979;     // 编译期常量，必须声明时初始化
-const string AppName = "MyApp";         // 字符串常量
-const int MaxRetry = 3;                 // 整型常量
-const double Diameter = Pi * 2;         // 可以用其他 const 进行运算
+// ---------- 4. const：编译期就钉死 ----------
+const double Pi = 3.14159265358979;     // 必须是编译期常量表达式，DateTime.Now 不行
+const string AppName = "MyApp";         // string 字面量可以做 const；new string(...) 不行
+const int MaxRetry = 3;                 // 隐式 static，用类型名访问，不占实例字段
+const double Diameter = Pi * 2;         // 可用其他 const 组合；改 Pi 后调用方程序集要重编才更新
 
 Console.WriteLine($"Pi={Pi}, AppName={AppName}, MaxRetry={MaxRetry}, Diameter={Diameter}");
-// Pi = 3.14;                          // ❌ const 不能重新赋值
+// Pi = 3.14;                          // const 禁止再赋值，编译期直接拒绝
 
-// ============================================================
-// 5. readonly 只读字段演示（需配合类型声明）
-// ============================================================
+// ---------- 5. readonly：运行期赋值一次 ----------
 var config = new AppConfig("production");
-config.ShowInfo();                      // 查看只读字段值
-// config.Env = "test";                // ❌ readonly 字段构造完成后不能修改
+config.ShowInfo();                      // Created 用 DateTime.Now，每个实例可以不同
+// config.Env = "test";                // 构造完成后 readonly 字段不能改（引用本身不能换）
 
-// ============================================================
-// 6. var 的陷阱演示
-// ============================================================
-var x1 = 5;                          // 注意：推断为 int，不是 double！
-double x2 = 5;                       // 显式写 double 才是 5.0
+// ---------- 6. var 的常见误判 ----------
+var x1 = 5;                          // 整数无后缀 → int；后面再赋 5.5 会编译失败
+double x2 = 5;                       // 显式 double 才会按浮点存；后缀 D/F/M 也能钉死类型
 Console.WriteLine($"var x1=5 的类型是 {x1.GetType().Name}");  // Int32
 Console.WriteLine($"double x2=5 的类型是 {x2.GetType().Name}"); // Double
 
-// var data = LoadSomething();       // ❌ 不推荐：读者不知道 data 是什么类型
+// var data = LoadSomething();       // 右侧类型不明显时不要 var，读者（和半年后的你）会迷路
 
-// ============================================================
-// 7. 变量默认值与 default 关键字
-// ============================================================
-int defaultInt = default;            // default 关键字获取默认值：0
-bool defaultBool = default;          // false
-string defaultStr = default;         // null
-DateTime defaultDate = default;      // 0001-01-01 00:00:00
-double defaultDouble = default(int); // 显式写 default(T)，这里得到 0 转为 double
+// ---------- 7. default：值类型清零，引用变成 null ----------
+int defaultInt = default;            // C# 7.1 起可省略 <T>；int 得 0，不是「未赋值」
+bool defaultBool = default;          // false。C# 的 if 不能拿 0/1 当真假
+string defaultStr = default;         // 引用类型 default 是 null，后面解引用会 NRE
+DateTime defaultDate = default;      // DateTime 最小值 0001-01-01，不是 Unix 纪元
+double defaultDouble = default(int); // default(T) 先得到 0，再隐式转成 double
 
 Console.WriteLine($"default(int) = {defaultInt}");
 Console.WriteLine($"default(bool) = {defaultBool}");
@@ -300,26 +289,22 @@ Console.WriteLine($"default(string) = {(defaultStr is null ? "null" : defaultStr
 Console.WriteLine($"default(DateTime) = {defaultDate:yyyy-MM-dd HH:mm:ss}");
 Console.WriteLine($"default(int) as double = {defaultDouble}");
 
-// ============================================================
-// 8. 字段默认值演示
-// ============================================================
+// ---------- 8. 字段默认值：局部变量没有这个待遇 ----------
 var demo = new DefaultDemo();
-demo.ShowDefaults();                 // 查看类字段的默认值
+demo.ShowDefaults();                 // 字段会自动清零/置 null；局部变量必须先赋值才能读
 
-// ============================================================
-// 类型声明放在文件末尾（顶级语句规范）
-// ============================================================
+// ---------- 类型声明（顶级语句之后） ----------
 
-// AppConfig：演示 readonly 字段
+// AppConfig：对比 readonly（实例可不同）与 const（全程序集同一份）
 class AppConfig
 {
-    public readonly string Env;                  // 只读字段：声明时未赋值
-    public readonly DateTime Created = DateTime.Now; // 只读字段：声明时赋值
-    public const string Version = "1.0.0";       // const 常量：编译期确定
+    public readonly string Env;                  // 可在声明或构造函数里赋值，之后不能换引用
+    public readonly DateTime Created = DateTime.Now; // 运行期求值；const 绝对写不出 Now
+    public const string Version = "1.0.0";       // 编译期内联；改版本号后依赖方要重新编译
 
     public AppConfig(string env)
     {
-        Env = env;                               // 在构造函数中给 readonly 赋值
+        Env = env;                               // readonly 的第二次合法赋值窗口：仅构造函数
     }
 
     public void ShowInfo()
@@ -330,14 +315,14 @@ class AppConfig
     }
 }
 
-// DefaultDemo：演示字段默认值
+// DefaultDemo：字段未写初始值时，运行时仍是类型的 default
 class DefaultDemo
 {
-    private int _count;           // 字段未显式赋值，默认 0
-    private bool _flag;           // 默认 false
-    private string _name;         // 默认 null
-    private DateTime _createTime; // 默认 0001-01-01
-    private List<int> _items;     // 引用类型默认 null
+    private int _count;           // 0。局部 int 未赋值则不能读，字段可以
+    private bool _flag;           // false
+    private string _name;         // null（启用 NRT 时编译器会警告，应用 = "" 或 string?）
+    private DateTime _createTime; // 0001-01-01，容易被误当成「没设置过」
+    private List<int> _items;     // 引用默认 null，不是空集合；直接 Add 会 NRE
 
     public void ShowDefaults()
     {
@@ -519,20 +504,21 @@ Guid id = Guid.NewGuid();
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「内置类型详解」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// 第七章 内置类型详解 —— 可在 .NET 8 控制台应用直接运行
+    code: `// 第七章 内置类型详解 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 覆盖 8 种整型、浮点精度、char/bool、object 装箱、dynamic、
+// 字面量后缀、数字分隔符与进制、溢出环绕 vs checked。
+// 陷阱：double 不能做金额；默认 unchecked 溢出会绕回；dynamic 把错误推迟到运行期。
 using System.Globalization;
 
-// ============================================================
-// 1. 整型家族：8 种整型逐一演示
-// ============================================================
-sbyte sb = -128;                // 8 位带符号：-128 ~ 127
-byte b = 255;                   // 8 位无符号：0 ~ 255
-short s = -32768;               // 16 位带符号
-ushort us = 65535;              // 16 位无符号
-int i = 2147483647;             // 32 位带符号（最常用）
-uint ui = 4294967295U;          // 32 位无符号，需 U 后缀
-long l = 9223372036854775807L;  // 64 位带符号，需 L 后缀
-ulong ul = 18446744073709551615UL; // 64 位无符号，需 UL 后缀
+// ---------- 1. 整型家族：选对宽度和符号 ----------
+sbyte sb = -128;                // 8 位有符号下界刚好是 -128；再减 1 会溢出
+byte b = 255;                   // 无符号没有负数；和 sbyte 不能随便互转
+short s = -32768;               // 字面量默认是 int，这里发生一次范围内的隐式窄化
+ushort us = 65535;              // 网络端口、颜色分量常用 16 位无符号
+int i = 2147483647;             // 日常计数首选；超过 Int32 要用 long 或 BigInteger
+uint ui = 4294967295U;          // 无 U 后缀时，超 int 范围的十进制字面量会报错
+long l = 9223372036854775807L;  // L 钉死 64 位；文件大小、时间戳常用
+ulong ul = 18446744073709551615UL; // UL：无符号 64 位上界；和 long 互转要检查范围
 
 Console.WriteLine("===== 整型家族 =====");
 Console.WriteLine($"sbyte  : {sb} ~ {sbyte.MaxValue}");
@@ -544,62 +530,54 @@ Console.WriteLine($"uint   : {ui} ~ {uint.MaxValue:N0}");
 Console.WriteLine($"long   : {l} ~ {long.MaxValue:N0}");
 Console.WriteLine($"ulong  : {ul} ~ {ulong.MaxValue:N0}");
 
-// ============================================================
-// 2. 浮点类型：float / double / decimal
-// ============================================================
-float f = 3.14F;                // 单精度，需 F 后缀，7 位有效数字
-double d = 3.14159265358979;    // 双精度，默认浮点类型
-decimal money = 199.99M;        // 高精度，需 M 后缀，财务场景必用
+// ---------- 2. 浮点：科学计算用 double，钱用 decimal ----------
+float f = 3.14F;                // 缺 F 会当成 double，再赋给 float 要显式转换
+double d = 3.14159265358979;    // 无后缀浮点字面量默认 double（IEEE 754）
+decimal money = 199.99M;        // 十进制 128 位；加减乘对金额精确，仍要小心除法舍入
 
 Console.WriteLine("\\n===== 浮点类型 =====");
 Console.WriteLine($"float   : {f}（7 位有效数字）");
 Console.WriteLine($"double  : {d}（15-16 位有效数字）");
 Console.WriteLine($"decimal : {money}（28-29 位有效数字，金额必用）");
 
-// 演示 double 的精度陷阱
-double a = 0.1 + 0.2;           // double 计算可能产生微小误差
-decimal c = 0.1m + 0.2m;        // decimal 精确计算
+// 二进制浮点无法精确表示 0.1；财务、单价、税率禁止用 double 累加
+double a = 0.1 + 0.2;           // 常见结果是 0.3000...04，== 0.3 为 false
+decimal c = 0.1m + 0.2m;        // decimal 按十进制存，0.1m + 0.2m 就是 0.3
 Console.WriteLine($"double 0.1 + 0.2 = {a}（注意末尾的 4）");
 Console.WriteLine($"decimal 0.1m + 0.2m = {c}（精确）");
 
-// ============================================================
-// 3. 字符 char 与布尔 bool
-// ============================================================
-char ch = 'A';                  // 单个 Unicode 字符，单引号
-char ch2 = '\\u4e2d';            // Unicode 转义：'中'
-char ch3 = '\\t';                // 转义字符：制表符
-bool isAdmin = true;            // 布尔值 true
-bool isLogin = false;           // 布尔值 false
+// ---------- 3. char 是 16 位 UTF-16 码元，bool 只有 true/false ----------
+char ch = 'A';                  // 单引号；双引号那是 string
+char ch2 = '\\u4e2d';            // \\u 后跟 4 位十六进制；代理对汉字要两个 char
+char ch3 = '\\t';                // 转义是编译期字符，不是两个字符的字符串
+bool isAdmin = true;            // if (isAdmin) 合法；if (1) 在 C# 非法
+bool isLogin = false;           // default(bool) 就是 false
 
 Console.WriteLine("\\n===== char 与 bool =====");
 Console.WriteLine($"char 'A' = {ch}, 数字 = {(int)ch}");
 Console.WriteLine($"char '\\\\u4e2d' = {ch2}");
 Console.WriteLine($"bool isAdmin = {isAdmin}, isLogin = {isLogin}");
 
-// ============================================================
-// 4. object 与 dynamic 简介
-// ============================================================
-object obj1 = 42;               // 装箱：int → object
-object obj2 = "hello";          // string 也是 object
+// ---------- 4. object 装箱 vs dynamic 推迟绑定 ----------
+object obj1 = 42;               // 装箱：堆上多一个盒子，拆箱必须还原成 int 不能直接 long
+object obj2 = "hello";          // string 本就是引用，赋给 object 不装箱
 Console.WriteLine("\\n===== object =====");
 Console.WriteLine($"obj1 = {obj1}, 类型 = {obj1.GetType().Name}");
 Console.WriteLine($"obj2 = {obj2}, 类型 = {obj2.GetType().Name}");
 
-// dynamic：运行期才解析类型（慎用）
+// dynamic（C# 4）：编译器几乎不检查成员；拼错 ToUpper 要等到运行才炸
 dynamic dyn = 100;
-Console.WriteLine($"dynamic + 5 = {dyn + 5}");  // 编译期不检查
+Console.WriteLine($"dynamic + 5 = {dyn + 5}");  // 运行期走动态绑定，热路径很贵
 dyn = "now string";
 Console.WriteLine($"dynamic 变成 string: {dyn.ToUpper()}");
 
-// ============================================================
-// 5. 字面量后缀演示
-// ============================================================
-long big = 100L;                // L 后缀：long
-uint positive = 100U;           // U 后缀：uint
-ulong huge = 100UL;             // UL 后缀：ulong
-float pi = 3.14F;               // F 后缀：float
-double e = 2.71D;               // D 后缀：double（可省略）
-decimal price = 9.99M;          // M 后缀：decimal（money 的 M）
+// ---------- 5. 字面量后缀：没有后缀时编译器按规则猜 ----------
+long big = 100L;                // 整数默认 int；超出 int 范围才自动升 long
+uint positive = 100U;           // U/u；和 int 混合运算会把 int 提升到 uint 要小心负数
+ulong huge = 100UL;             // UL 顺序可写成 LU
+float pi = 3.14F;               // 缺 F 是 double，赋给 float 要强转
+double e = 2.71D;               // D 可省略；科学计数 1e3 也是 double
+decimal price = 9.99M;          // 金额漏写 M 会先变成 double 再转 decimal，精度已经丢了
 
 Console.WriteLine("\\n===== 字面量后缀 =====");
 Console.WriteLine($"100L  → {big.GetType().Name} = {big}");
@@ -609,14 +587,12 @@ Console.WriteLine($"3.14F → {pi.GetType().Name} = {pi}");
 Console.WriteLine($"2.71D → {e.GetType().Name} = {e}");
 Console.WriteLine($"9.99M → {price.GetType().Name} = {price}");
 
-// ============================================================
-// 6. 数字分隔符 _ 与不同进制
-// ============================================================
-int million = 1_000_000;        // 下划线仅为可读性，等价 1000000
+// ---------- 6. 数字分隔符与进制（C# 7+） ----------
+int million = 1_000_000;        // 下划线不进数值，只为可读；不能打头/打尾
 long creditCard = 6225_8888_9999_0000L; // 模拟卡号，更易读
-int hex = 0xFF;                 // 十六进制：255
-int bin = 0b1111_1111;          // 二进制：255
-int rgb = 0xFF_88_44;           // 颜色值，分隔字节
+int hex = 0xFF;                 // 大小写均可；常用于掩码、颜色
+int bin = 0b1111_1111;          // 0b 二进制；分隔符可按 4/8 位分组
+int rgb = 0xFF_88_44;           // 按字节切开，比 0xFF8844 好校对
 
 Console.WriteLine("\\n===== 数字分隔符与进制 =====");
 Console.WriteLine($"1_000_000 = {million:N0}");
@@ -625,52 +601,45 @@ Console.WriteLine($"0xFF = {hex}");
 Console.WriteLine($"0b1111_1111 = {bin}");
 Console.WriteLine($"0xFF_88_44 = {rgb}（颜色 RGB）");
 
-// ============================================================
-// 7. 科学计数法
-// ============================================================
-double avogadro = 6.022e23;     // 阿伏伽德罗常数
-double electronMass = 9.109e-31; // 电子质量（kg）
+// ---------- 7. 科学计数法：e 表示 ×10^n ----------
+double avogadro = 6.022e23;     // 极大/极小值用 e，避免手写一长串 0
+double electronMass = 9.109e-31; // 负指数；打印建议用 E 格式而不是默认 G
 Console.WriteLine("\\n===== 科学计数法 =====");
 Console.WriteLine($"阿伏伽德罗常数 = {avogadro:E}");
 Console.WriteLine($"电子质量 = {electronMass:E3} kg");
 
-// ============================================================
-// 8. MinValue / MaxValue / sizeof
-// ============================================================
+// ---------- 8. MinValue / MaxValue / sizeof ----------
 Console.WriteLine("\\n===== MinValue / MaxValue / sizeof =====");
 Console.WriteLine($"int    范围：{int.MinValue} ~ {int.MaxValue}，sizeof = {sizeof(int)} 字节");
 Console.WriteLine($"long   范围：{long.MinValue} ~ {long.MaxValue}，sizeof = {sizeof(long)} 字节");
 Console.WriteLine($"double 范围：{double.MinValue:E} ~ {double.MaxValue:E}，sizeof = {sizeof(double)} 字节");
 Console.WriteLine($"decimal 范围：{decimal.MinValue} ~ {decimal.MaxValue}，sizeof = {sizeof(decimal)} 字节");
 Console.WriteLine($"char   范围：{(int)char.MinValue} ~ {(int)char.MaxValue}，sizeof = {sizeof(char)} 字节");
+// sizeof 在安全代码里只允许内置非托管类型；自定义 struct 要进 unsafe
 
-// ============================================================
-// 9. BitConverter 工具演示
-// ============================================================
+// ---------- 9. BitConverter：本机字节序，跨机器要约定 ----------
 Console.WriteLine("\\n===== BitConverter =====");
 int number = 123456;
-byte[] bytes = BitConverter.GetBytes(number);    // int → 4 字节小端序
+byte[] bytes = BitConverter.GetBytes(number);    // 多数桌面是小端；网络协议常用大端
 Console.WriteLine($"int {number} 的字节序列：{BitConverter.ToString(bytes)}");
-int restored = BitConverter.ToInt32(bytes, 0);  // 字节 → int
+int restored = BitConverter.ToInt32(bytes, 0);  // startIndex 必须对齐；长度不够会抛
 Console.WriteLine($"从字节还原 int = {restored}");
 
 double dNum = 3.14;
 byte[] dBytes = BitConverter.GetBytes(dNum);
 Console.WriteLine($"double {dNum} 的字节序列：{BitConverter.ToString(dBytes)}");
 
-// ============================================================
-// 10. 整型溢出演示（不抛异常，环绕）
-// ============================================================
+// ---------- 10. 溢出：默认绕回，checked 才抛 ----------
 Console.WriteLine("\\n===== 溢出环绕演示 =====");
 int maxInt = int.MaxValue;
-int overflow = maxInt + 1;      // 不开 checked 会环绕到最小值
+int overflow = maxInt + 1;      // 默认 unchecked：绕到 MinValue，静默出错最危险
 Console.WriteLine($"int.MaxValue + 1 = {overflow}（环绕到最小值）");
 
 checked
 {
     try
     {
-        int willThrow = maxInt + 1; // checked 块内会抛 OverflowException
+        int willThrow = maxInt + 1; // 项目也可 <CheckForOverflowUnderflow>；常量溢出编译期就能拦
     }
     catch (OverflowException ex)
     {
@@ -855,13 +824,18 @@ void Use(in DateTimeOffset dto) { /* 只读 */ }
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「值类型与引用类型」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// 第八章 值类型与引用类型 —— 可在 .NET 8 控制台应用直接运行
+    code: `// 第八章 值类型与引用类型 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 对比：赋值拷贝 vs 共享引用、string 不可变、装箱拆箱类型必须一致、
+// is 模式匹配、typeof vs GetType、struct/class 传参差异。
+// 陷阱：数组赋值只拷引用；拆箱不能跨类型；ArrayList.Add(int) 每次都装箱。
+// 版本：is 类型模式 C# 7；List<T> 避免装箱从泛型引入起就是首选。
 
 using System.Diagnostics;
 
-int a = 10;
+// ---------- 1. 值类型赋值 = 拷贝数据 ----------
+int a = 10;  // 值类型：当前这份 10 在栈上（或嵌在对象里）
 
-int b = a;
+int b = a;  // 拷贝数值；此后改 b 与 a 无关
 
 b = 999;
 
@@ -869,37 +843,39 @@ Console.WriteLine($"===== 值类型拷贝 =====");
 
 Console.WriteLine($"a = {a}, b = {b}（修改 b 不影响 a）");
 
-var p1 = new Point { X = 1, Y = 2 };
+var p1 = new Point { X = 1, Y = 2 };  // struct：对象初始化器仍是值语义
 
-var p2 = p1;
+var p2 = p1;  // 整份字段拷贝，不是共享同一块内存
 
 p2.X = 100;
 
 Console.WriteLine($"Point p1.X = {p1.X}, p2.X = {p2.X}（struct 也是值类型）");
 
+// ---------- 2. 引用类型赋值 = 拷贝地址 ----------
 var u1 = new User { Name = "Tom", Age = 18 };
 
-var u2 = u1;
+var u2 = u1;  // 两个变量指向堆上同一个 User
 
-u2.Name = "Jerry";
+u2.Name = "Jerry";  // 改字段两边都看见；若写 u2 = new User() 才切断别名
 
 Console.WriteLine($"\\n===== 引用类型共享 =====");
 
 Console.WriteLine($"u1.Name = {u1.Name}, u2.Name = {u2.Name}（指向同一对象）");
 
-int[] arr1 = { 1, 2, 3 };
+int[] arr1 = { 1, 2, 3 };  // 数组是引用类型，元素本身可以是值类型
 
-int[] arr2 = arr1;
+int[] arr2 = arr1;  // 共享同一段连续内存
 
 arr2[0] = 999;
 
 Console.WriteLine($"arr1[0] = {arr1[0]}（数组是引用类型）");
 
+// ---------- 3. string：引用类型 + 不可变，所以「改」会换新对象 ----------
 string s1 = "hello";
 
-string s2 = s1;
+string s2 = s1;  // 此刻同引用；字面量还可能 intern 到同一份
 
-s2 = "world";
+s2 = "world";  // 重新绑定，s1 仍指向旧串；没有原地改字符
 
 Console.WriteLine($"\\n===== string 不可变性 =====");
 
@@ -907,15 +883,16 @@ Console.WriteLine($"s1 = {s1}, s2 = {s2}（string 修改会创建新对象）");
 
 string original = "Hello";
 
-string upper = original.ToUpper();
+string upper = original.ToUpper();  // 返回新 string；文化敏感，协议比较请用 Ordinal
 
 Console.WriteLine($"original = {original}, upper = {upper}（ToUpper 不修改原值）");
 
+// ---------- 4. 装箱进堆、拆箱必须还原成当初那一种 ----------
 int num = 42;
 
-object boxed = num;
+object boxed = num;  // 堆上多一个盒子；循环里这么写会被 profiler 看见
 
-int unboxed = (int)boxed;
+int unboxed = (int)boxed;  // 拆箱拷回栈；boxed 为 null 会 NRE
 
 Console.WriteLine($"\\n===== 装箱拆箱 =====");
 
@@ -926,7 +903,7 @@ Console.WriteLine($"boxed 类型 = {boxed.GetType().Name}（值类型被装箱�
 try
 {
     object badBox = 42;
-    long wrong = (long)badBox;  // ❌ 必须拆成原类型 int，不能直接 long
+    long wrong = (long)badBox;  // 必须先拆成 int 再转 long；直接 (long) 抛 InvalidCastException
     Console.WriteLine(wrong);
 }
 catch (InvalidCastException ex)
@@ -934,15 +911,16 @@ catch (InvalidCastException ex)
     Console.WriteLine($"拆箱类型不匹配：{ex.Message}");
 }
 
+// ---------- 5. 装箱代价：非泛型集合 vs List<T> ----------
 Console.WriteLine($"\\n===== 装箱性能对比 =====");
 
 var sw = Stopwatch.StartNew();
 
-var arrayList = new System.Collections.ArrayList();
+var arrayList = new System.Collections.ArrayList();  // 旧 API：元素是 object
 
 for (int k = 0; k < 1_000_000; k++)
 {
-    arrayList.Add(k);       // 每次 Add 都装箱（int → object）
+    arrayList.Add(k);       // 每次 int → object 装箱 + 可能扩容拷贝
 }
 
 sw.Stop();
@@ -951,11 +929,11 @@ Console.WriteLine($"ArrayList（每次装箱）100 万次：{sw.ElapsedMilliseco
 
 sw.Restart();
 
-var list = new List<int>();
+var list = new List<int>();  // 泛型：连续存 int，无盒子
 
 for (int k = 0; k < 1_000_000; k++)
 {
-    list.Add(k);            // 泛型 List<int> 无装箱
+    list.Add(k);            // 只可能扩容，不会装箱
 }
 
 sw.Stop();
@@ -964,13 +942,14 @@ Console.WriteLine($"List<int>（无装箱）100 万次：{sw.ElapsedMilliseconds
 
 Console.WriteLine("→ 高频路径务必用泛型集合！");
 
+// ---------- 6. is 模式：判断 + 绑定一次完成（C# 7+） ----------
 Console.WriteLine($"\\n===== is 关键字 =====");
 
 object[] objects = { 42, "hello", 3.14, true, new User { Name = "Anna", Age = 20 } };
 
 foreach (object o in objects)
 {
-    if (o is int intVal)                // 模式匹配：是 int 就赋值给 intVal
+    if (o is int intVal)                // 匹配成功才绑定；null is T 对 class 为 false
     {
         Console.WriteLine($"是 int：{intVal}");
     }
@@ -996,9 +975,10 @@ object maybeNull = null;
 
 Console.WriteLine($"null is string: {maybeNull is string}（null 安全判断）");
 
+// ---------- 7. typeof 编译期类型 vs GetType 运行期类型 ----------
 Console.WriteLine($"\\n===== typeof =====");
 
-Type intType = typeof(int);
+Type intType = typeof(int);  // 不需要实例；开放泛型用 typeof(List<>)
 
 Type stringType = typeof(string);
 
@@ -1017,12 +997,14 @@ Console.WriteLine($"string 是值类型？{stringType.IsValueType}");
 int x = 5;
 
 Console.WriteLine($"typeof(int) == x.GetType() ? {typeof(int) == x.GetType()}");
+// GetType() 看到的是运行时真实类型；多态时两者可能不同。null.GetType() 会 NRE
 
+// ---------- 8. 传参：struct 进方法再拷一次，class 传的是引用 ----------
 Console.WriteLine($"\\n===== struct vs class =====");
 
 var sp1 = new StructPoint { X = 10, Y = 20 };
 
-var sp2 = sp1;
+var sp2 = sp1;  // 赋值拷贝；本段后面没用 sp2，只强调「拷了」这件事
 
 ModifyStruct(sp1);
 
@@ -1032,23 +1014,23 @@ var cp1 = new ClassPoint { X = 10, Y = 20 };
 
 var cp2 = cp1;
 
-ModifyClass(cp1);
+ModifyClass(cp1);  // 形参与实参指向同一对象，改字段外面看得见
 
 Console.WriteLine($"class 传参后 cp1.X = {cp1.X}（已变）");
 
 void ModifyStruct(StructPoint p)
 {
-    p.X = 999;
+    p.X = 999;  // 改的是副本；要就地改请用 ref StructPoint
 }
 
 void ModifyClass(ClassPoint p)
 {
-    p.X = 999;
+    p.X = 999;  // 没换引用，只改堆上字段
 }
 
-// ============ 类型声明（必须放在所有顶级语句之后） ============
+// ---------- 类型声明（必须放在所有顶级语句之后） ----------
 
-struct Point
+struct Point  // 小而像「一个值」才用 struct；默认可变字段容易拷丢状态
 {
     public int X;
     public int Y;
@@ -1272,32 +1254,32 @@ var moved = pt with { X = pt.X + 1 }; // record class 从 C# 9 支持；普通 s
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「运算符」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// 第九章 运算符 —— 可在 .NET 8 控制台应用直接运行
+    code: `// 第九章 运算符 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 覆盖算术截断、短路、位标志、?? / ??= / ?.、is/as、优先级与运算符重载。
+// 陷阱：整数除法丢小数；0.1+0.2 != 0.3；& / | 对 bool 不短路；重载 == 必须成对。
+// 版本：?. 与 ?? 是 C# 6；??= 是 C# 8；is 模式匹配 C# 7。
 using System.Diagnostics;
 
-// ============================================================
-// 1. 算术运算符
-// ============================================================
+// ---------- 1. 算术：整数除法与 ++ 先后 ----------
 Console.WriteLine("===== 算术运算符 =====");
 int a = 17, b = 5;
 Console.WriteLine($"a + b = {a + b}");   // 22
 Console.WriteLine($"a - b = {a - b}");   // 12
 Console.WriteLine($"a * b = {a * b}");   // 85
-Console.WriteLine($"a / b = {a / b}");   // 3（整数除法，截断小数）
-Console.WriteLine($"a / (double)b = {a / (double)b}"); // 3.4（转浮点除法）
-Console.WriteLine($"a % b = {a % b}");   // 2（取余）
+Console.WriteLine($"a / b = {a / b}");   // 3：两个 int 相除向零截断，不是四舍五入
+Console.WriteLine($"a / (double)b = {a / (double)b}"); // 一侧升浮点后才有小数
+Console.WriteLine($"a % b = {a % b}");   // 余数符号跟被除数；除数为 0 仍抛
 
-// 自增自减：前置与后置
+// 自增自减：表达式值 vs 变量事后值，面试常考
 int n = 5;
-Console.WriteLine($"n++ = {n++}, 之后 n = {n}"); // 先用再加：5, 之后 6
-Console.WriteLine($"++n = {++n}, 之后 n = {n}"); // 先加再用：7, 之后 7
+Console.WriteLine($"n++ = {n++}, 之后 n = {n}"); // 后置：先交出旧值再 +1
+Console.WriteLine($"++n = {++n}, 之后 n = {n}"); // 前置：先 +1 再交出新值
+// unchecked 下 int.MaxValue++ 会绕到 MinValue，计数器靠近边界请 checked
 
 // 负数取余的符号
-Console.WriteLine($"-7 % 3 = {-7 % 3}"); // -1（符号跟被除数）
+Console.WriteLine($"-7 % 3 = {-7 % 3}"); // -1（与被除数同号；Python 的 % 规则不同）
 
-// ============================================================
-// 2. 关系运算符
-// ============================================================
+// ---------- 2. 关系运算：浮点不要直接 == ----------
 Console.WriteLine("\\n===== 关系运算符 =====");
 int x = 10, y = 20;
 Console.WriteLine($"x == y : {x == y}");  // False
@@ -1305,56 +1287,50 @@ Console.WriteLine($"x != y : {x != y}");  // True
 Console.WriteLine($"x > y  : {x > y}");   // False
 Console.WriteLine($"x <= y : {x <= y}");  // True
 
-// 浮点比较陷阱
+// 浮点比较陷阱：二进制无法精确表示 0.1，金额请用 decimal
 double d1 = 0.1 + 0.2;
 double d2 = 0.3;
 Console.WriteLine($"0.1 + 0.2 == 0.3 ? {d1 == d2}（精度陷阱）");
 Console.WriteLine($"近似比较：{Math.Abs(d1 - d2) < 1e-9}（推荐做法）");
 
-// 字符串相等比较（用 == 即可，C# 已重载）
+// string 的 == 已重载为内容比较；引用相等请用 object.ReferenceEquals
 string s1 = "hello", s2 = "hello";
 Console.WriteLine($"s1 == s2 : {s1 == s2}（值相等）");
 
-// ============================================================
-// 3. 逻辑运算符
-// ============================================================
+// ---------- 3. 逻辑：日常用短路，& / | 两边都跑 ----------
 Console.WriteLine("\\n===== 逻辑运算符 =====");
 bool t = true, f = false;
 Console.WriteLine($"t && f : {t && f}");   // False
 Console.WriteLine($"t || f : {t || f}");   // True
 Console.WriteLine($"!t    : {!t}");        // False
-Console.WriteLine($"t ^ f  : {t ^ f}");    // True（异或）
+Console.WriteLine($"t ^ f  : {t ^ f}");    // True：bool 异或；和位运算的 ^ 是同一个符号
 
-// 短路演示
+// 短路：左边已能定结果就不跑右边——可用来挡 null.Length
 bool CheckRight() { Console.WriteLine("  -> 右边被计算"); return true; }
 Console.WriteLine("短路或：");
 if (t || CheckRight()) { Console.WriteLine("  左边 true，右边被跳过"); }
 
 Console.WriteLine("非短路或（用单竖线）：");
-if (t | CheckRight()) { Console.WriteLine("  右边也会被计算"); }
+if (t | CheckRight()) { Console.WriteLine("  右边也会被计算"); }  // 有副作用时不要用 | / &
 
-// ============================================================
-// 4. 位运算符
-// ============================================================
+// ---------- 4. 位运算与 [Flags] ----------
 Console.WriteLine("\\n===== 位运算符 =====");
-int p = 0b1010;  // 10
+int p = 0b1010;  // 10。^ 在这里是异或；在索引里 arr[^1] 是从后数（C# 8）
 int q = 0b1100;  // 12
 Console.WriteLine($"p & q  = {p & q}  (0b{Convert.ToString(p & q, 2)})");  // 8  = 1000
 Console.WriteLine($"p | q  = {p | q}  (0b{Convert.ToString(p | q, 2)})");  // 14 = 1110
 Console.WriteLine($"p ^ q  = {p ^ q}  (0b{Convert.ToString(p ^ q, 2)})");  // 6  = 0110
-Console.WriteLine($"~p     = {~p}");                                         // -11
-Console.WriteLine($"p << 2 = {p << 2}"); // 左移 2 位 = 40（×4）
-Console.WriteLine($"p >> 1 = {p >> 1}"); // 右移 1 位 = 5（÷2）
+Console.WriteLine($"~p     = {~p}");                                         // 按位取反含符号位，得到负数
+Console.WriteLine($"p << 2 = {p << 2}"); // 左移等价 ×2^n，高位丢掉；移位量会掩码
+Console.WriteLine($"p >> 1 = {p >> 1}"); // 有符号右移补符号位；无符号用 >>>（C# 11）
 
-// 权限标志位实战
+// 权限标志：值必须是 2 的幂，才能用 | 组合、& 测试
 Permission perm = Permission.Read | Permission.Write;
 Console.WriteLine($"权限：{perm}");
 Console.WriteLine($"包含 Read？{(perm & Permission.Read) != 0}");
 Console.WriteLine($"包含 Execute？{(perm & Permission.Execute) != 0}");
 
-// ============================================================
-// 5. 赋值运算符
-// ============================================================
+// ---------- 5. 复合赋值：左侧只求值一次 ----------
 Console.WriteLine("\\n===== 赋值运算符 =====");
 int v = 10;
 v += 5;  Console.WriteLine($"v += 5  → {v}"); // 15
@@ -1367,91 +1343,80 @@ v = 0b1010;
 v <<= 2; Console.WriteLine($"v <<= 2 → {v}"); // 40
 v >>= 1; Console.WriteLine($"v >>= 1 → {v}"); // 20
 
-// ??= null 合并赋值（nullable 上下文中用 string? 声明可空变量）
+// ??=（C# 8）：只在「当前是 null」时赋值，空字符串 / 0 都不会触发
 string? name = null;
-name ??= "默认名";   // name 为 null 才赋值
+name ??= "默认名";   // 惰性填充、缓存首次写入
 Console.WriteLine($"name ??= 后 = {name}");
 name ??= "不会被覆盖";
 Console.WriteLine($"name ??= 再次 = {name}");
 
-// ============================================================
-// 6. 条件运算符 ?:
-// ============================================================
+// ---------- 6. 三元 ?: 是表达式，不是语句 ----------
 Console.WriteLine("\\n===== 条件运算符 ?: =====");
 int score = 75;
-string level = score >= 90 ? "优秀" : score >= 60 ? "及格" : "不及格";
+string level = score >= 90 ? "优秀" : score >= 60 ? "及格" : "不及格";  // 嵌套难读，超两层改 switch
 Console.WriteLine($"分数 {score} → {level}");
 
-// ============================================================
-// 7. null 合并运算符 ??
-// ============================================================
+// ---------- 7. ?? 只认 null，不认 0 / 空串 ----------
 Console.WriteLine("\\n===== null 合并运算符 ?? =====");
 string? input = null;
-string displayName = input ?? "匿名用户";    // input 为 null 用默认值
+string displayName = input ?? "匿名用户";    // 左操作数必须可空；两边类型要能统一
 Console.WriteLine($"显示名 = {displayName}");
 
 int? age = null;
-int realAge = age ?? 0;                       // 可空 int 用 ?? 提供默认值
+int realAge = age ?? 0;                       // 把 Nullable<int> 落到普通 int；?? 不把 0 当空
 Console.WriteLine($"年龄 = {realAge}");
 
-// 链式 ??
+// 链式：从左到右取第一个非 null
 string? nickname = null, realName = null;
 string fallback = "游客";
 string final = nickname ?? realName ?? fallback;
 Console.WriteLine($"链式 ?? = {final}");
 
-// ============================================================
-// 8. null 条件运算符 ?.
-// ============================================================
+// ---------- 8. ?. ：左边 null 则整条短路为 null（C# 6） ----------
 Console.WriteLine("\\n===== null 条件运算符 ?. =====");
 User? user = null;
-int? nameLen = user?.Name?.Length;            // 链式 ?.，任一为 null 则整体 null
+int? nameLen = user?.Name?.Length;            // 值类型成员经 ?. 会变成 T?；整条任一 null 即停
 Console.WriteLine($"user?.Name?.Length = {nameLen?.ToString() ?? "null"}");
 
 user = new User { Name = "Tom" };
 int? len2 = user?.Name?.Length;
 Console.WriteLine($"非空时 user?.Name?.Length = {len2}");
 
-// ?. 配合 ?? 是常见模式
+// 实战标配：?. 探路，?? 给默认
 int safeLen = user?.Name?.Length ?? 0;
 Console.WriteLine($"?. 配合 ?? = {safeLen}");
 
-// ?. 调用方法
-user?.SayHello();                             // user 非 null 才调用
+// ?. 调用方法：null 时连调用都不发生（无 NRE）
+user?.SayHello();                             // 有实例才跑
 User? nullUser = null;
-nullUser?.SayHello();                         // 不会抛异常
+nullUser?.SayHello();                         // 静默跳过；不要靠它「顺便执行副作用」
 
-// ============================================================
-// 9. typeof 与 sizeof
-// ============================================================
+// ---------- 9. typeof 编译期类型；sizeof 仅部分内置类型 ----------
 Console.WriteLine("\\n===== typeof 与 sizeof =====");
 Console.WriteLine($"typeof(int)    = {typeof(int).Name}");
 Console.WriteLine($"typeof(string) = {typeof(string).Name}");
 Console.WriteLine($"sizeof(int)    = {sizeof(int)} 字节");
 Console.WriteLine($"sizeof(long)   = {sizeof(long)} 字节");
 Console.WriteLine($"sizeof(decimal)= {sizeof(decimal)} 字节");
+// 自定义 struct 的 sizeof 要 unsafe；运行时大小还含对齐，别拿来当序列化长度
 
-// ============================================================
-// 10. is 与 as
-// ============================================================
+// ---------- 10. is 绑定成功才转型；as 失败给 null（不能用于 int） ----------
 Console.WriteLine("\\n===== is 与 as =====");
 object o1 = "hello world";
 object o2 = 42;
 object o3 = new User { Name = "Anna" };
 
-// is 模式匹配
+// is 模式（C# 7）：判断 + 赋值，s 的作用域只在 if 内
 if (o1 is string s) Console.WriteLine($"o1 是 string：{s.Length} 字符");
 if (o2 is int i)    Console.WriteLine($"o2 是 int：{i + 100}");
 
-// as 转换
+// as 只适用于引用类型和可空类型；失败不抛，返回 null
 string asStr = o1 as string;
 Console.WriteLine($"o1 as string = {asStr ?? "null"}");
-string asStr2 = o2 as string;   // 转换失败返回 null
+string asStr2 = o2 as string;   // int 装箱后 as string → null，不会 InvalidCastException
 Console.WriteLine($"o2 as string = {asStr2?.ToString() ?? "null（转换失败）"}");
 
-// ============================================================
-// 11. 运算符优先级演示
-// ============================================================
+// ---------- 11. 拿不准优先级就加括号；?? 低于 || ----------
 Console.WriteLine("\\n===== 运算符优先级 =====");
 int r1 = 2 + 3 * 4;          // 14：先乘后加
 int r2 = (2 + 3) * 4;        // 20：括号改变优先级
@@ -1462,26 +1427,22 @@ Console.WriteLine($"(2 + 3) * 4 = {r2}");
 Console.WriteLine($"1<2 && 3>4 = {r3}");
 Console.WriteLine($"1<2 || 3>4 = {r4}");
 
-// ============================================================
-// 12. 可重载运算符演示
-// ============================================================
+// ---------- 12. 重载 == 必须同时重载 !=，并覆盖 Equals/GetHashCode ----------
 Console.WriteLine("\\n===== 可重载运算符 =====");
 var v1 = new Vector(3, 4);
 var v2 = new Vector(1, 2);
-var sum = v1 + v2;            // 使用重载的 +
+var sum = v1 + v2;            // 调用 operator +；不可重载 && || ?:
 var diff = v1 - v2;           // 使用重载的 -
 Console.WriteLine($"v1 = {v1}, v2 = {v2}");
 Console.WriteLine($"v1 + v2 = {sum}");
 Console.WriteLine($"v1 - v2 = {diff}");
 Console.WriteLine($"v1 == v2 ? {v1 == v2}");
 var v3 = new Vector(3, 4);
-Console.WriteLine($"v1 == v3 ? {v1 == v3}");
+Console.WriteLine($"v1 == v3 ? {v1 == v3}");  // 按坐标比，不是引用比
 
-// ============================================================
-// 类型声明放在文件末尾
-// ============================================================
+// ---------- 类型声明放在文件末尾 ----------
 
-// 权限标志位枚举
+// 权限标志：None=0，其余必须 2 的幂，ToString 才会打印成组合名
 [Flags]
 enum Permission
 {
@@ -1491,7 +1452,7 @@ enum Permission
     Execute = 4,
 }
 
-// 演示运算符重载的 Vector
+// 值对象式 class：重载相等时要处理 null，避免无限递归
 class Vector
 {
     public double X { get; }
@@ -1499,20 +1460,20 @@ class Vector
 
     public Vector(double x, double y) { X = x; Y = y; }
 
-    // 重载 + 运算符
+    // 重载 + 必须是 public static
     public static Vector operator +(Vector a, Vector b) => new(a.X + b.X, a.Y + b.Y);
 
-    // 重载 - 运算符
+    // 重载 -
     public static Vector operator -(Vector a, Vector b) => new(a.X - b.X, a.Y - b.Y);
 
-    // 重载 == 运算符（必须同时重载 !=）
+    // == 与 != 必须成对；这里用 is 防 null 递归
     public static bool operator ==(Vector a, Vector b) =>
         a is null ? b is null : (b is not null && a.X == b.X && a.Y == b.Y);
 
     public static bool operator !=(Vector a, Vector b) => !(a == b);
 
     public override bool Equals(object obj) => obj is Vector v && this == v;
-    public override int GetHashCode() => HashCode.Combine(X, Y);
+    public override int GetHashCode() => HashCode.Combine(X, Y);  // 重载 == 后字典才能工作
     public override string ToString() => $"({X}, {Y})";
 }
 
@@ -1733,84 +1694,74 @@ string.IsNullOrWhiteSpace(s); // null 或 "" 或只有空白字符
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「字符串详解」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// 第十章 字符串详解 —— 可在 .NET 8 控制台应用直接运行
+    code: `// 第十章 字符串详解 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 覆盖不可变、创建与索引、比较文化、截取 Range、StringBuilder、
+// intern 驻留、verbatim、空判断。循环里 += 会反复分配，务必换 StringBuilder。
+// 版本：^ 与 .. 是 C# 8；EnumerateRunes 处理完整 Unicode 标量。
 using System.Diagnostics;
 using System.Text;
 
-// ============================================================
-// 1. 字符串不可变性演示
-// ============================================================
+// ---------- 1. 不可变：每次「修改」都返回新对象 ----------
 Console.WriteLine("===== string 不可变性 =====");
 string s = "hello";
-string upper = s.ToUpper();        // 返回新对象，不修改 s
+string upper = s.ToUpper();        // 新对象；默认文化敏感，比协议/路径请用 ToUpperInvariant
 Console.WriteLine($"原字符串 s = {s}");
 Console.WriteLine($"ToUpper 后 = {upper}");
 Console.WriteLine($"s 引用未变：{ReferenceEquals(s, upper) is false}");
 
-// ============================================================
-// 2. 字符串创建方式
-// ============================================================
+// ---------- 2. 多种创建方式：字面量会 intern，new string 一般不会 ----------
 Console.WriteLine("\\n===== 字符串创建 =====");
-string s1 = "hello";                              // 字面量
-string s2 = new string('a', 5);                   // "aaaaa"
-string s3 = string.Concat("a", "b", "c");         // "abc"
-string s4 = string.Join("-", new[] { 1, 2, 3 });  // "1-2-3"
-string s5 = new string(new[] { 'X', 'Y' });       // "XY"
+string s1 = "hello";                              // 字面量进入驻留池，相同字面量可能同引用
+string s2 = new string('a', 5);                   // 重复字符；长度 0 时也分配（可用 string.Empty）
+string s3 = string.Concat("a", "b", "c");         // 少量拼接；循环里不要 Concat 叠加
+string s4 = string.Join("-", new[] { 1, 2, 3 });  // 集合→字符串，null 元素会变成空段
+string s5 = new string(new[] { 'X', 'Y' });       // 从 char[]；会拷贝，改数组不影响 s5
 Console.WriteLine($"s1 = {s1}");
 Console.WriteLine($"s2 = {s2}");
 Console.WriteLine($"s3 = {s3}");
 Console.WriteLine($"s4 = {s4}");
 Console.WriteLine($"s5 = {s5}");
 
-// ============================================================
-// 3. 长度与字符索引
-// ============================================================
+// ---------- 3. Length 是 UTF-16 码元数，不是字节、也不是用户看见的「字」 ----------
 Console.WriteLine("\\n===== 长度与索引 =====");
 string txt = "Hello, 世界";
 Console.WriteLine($"txt = {txt}");
-Console.WriteLine($"txt.Length = {txt.Length}");  // 注意：字符数，不是字节数
-Console.WriteLine($"txt[0] = {txt[0]}");          // 'H'
-Console.WriteLine($"txt[^1] = {txt[^1]}");        // '界'（最后一个字符）
-Console.WriteLine($"txt[7..] = {txt[7..]}");      // "世界"（从索引 7 到末尾）
+Console.WriteLine($"txt.Length = {txt.Length}");  // 表情/代理对占 2 个 char，要用 Rune
+Console.WriteLine($"txt[0] = {txt[0]}");          // 只读索引；string 没有 setter
+Console.WriteLine($"txt[^1] = {txt[^1]}");        // C# 8：从后数，^1 是最后一个
+Console.WriteLine($"txt[7..] = {txt[7..]}");      // Range 对 string 会分配新串
 
-// ============================================================
-// 4. 字符串拼接方式对比
-// ============================================================
+// ---------- 4. 少量用 + / 插值，循环用 StringBuilder ----------
 Console.WriteLine("\\n===== 拼接方式 =====");
-string plus = "a" + "b" + "c";                          // + 拼接
-string concat = string.Concat("a", "b", "c");           // Concat
-string join = string.Join("/", "a", "b", "c");          // Join 带分隔符
-string interp = $"用户：{plus}";                          // 插值拼接
+string plus = "a" + "b" + "c";                          // 编译器常折叠常量 +；变量 + 每次新对象
+string concat = string.Concat("a", "b", "c");           // 一次分配多段
+string join = string.Join("/", "a", "b", "c");          // 带分隔符；null 项变空
+string interp = $"用户：{plus}";                          // C# 6 插值；C# 10+ 有插值处理器少分配
 Console.WriteLine($"+ 拼接 = {plus}");
 Console.WriteLine($"Concat = {concat}");
 Console.WriteLine($"Join = {join}");
 Console.WriteLine($"插值 = {interp}");
 
-// ============================================================
-// 5. 字符串比较
-// ============================================================
+// ---------- 5. 比较：协议/路径用 Ordinal，给用户看才用文化 ----------
 Console.WriteLine("\\n===== 字符串比较 =====");
 string a = "Hello", b = "hello";
-Console.WriteLine($"a == b（区分大小写）：{a == b}");        // False
+Console.WriteLine($"a == b（区分大小写）：{a == b}");        // string 的 == 比内容，Ordinal 区分大小写
 Console.WriteLine($"Equals OrdinalIgnoreCase：{string.Equals(a, b, StringComparison.OrdinalIgnoreCase)}"); // True
-Console.WriteLine($"Compare 返回：{string.Compare(a, b, StringComparison.OrdinalIgnoreCase)}"); // 0
+Console.WriteLine($"Compare 返回：{string.Compare(a, b, StringComparison.OrdinalIgnoreCase)}"); // 0 表示相等
 
-// 字符串排序演示
+// 排序默认跟当前文化走，文件名/HTTP 头不要用文化排序
 var names = new[] { "Banana", "apple", "Cherry" };
 Array.Sort(names, StringComparer.OrdinalIgnoreCase);
 Console.WriteLine($"排序后：{string.Join(", ", names)}");
 
-// ============================================================
-// 6. 大小写转换
-// ============================================================
+// ---------- 6. 大小写：默认文化，土耳其语 i/I 会踩坑 ----------
 Console.WriteLine("\\n===== 大小写转换 =====");
 string hello = "Hello";
 Console.WriteLine($"\\"{hello}\\" 大写 = {hello.ToUpper()}");
 Console.WriteLine($"\\"{hello}\\" 小写 = {hello.ToLower()}");
+// 标识符、枚举名请 ToUpperInvariant，避免 tr-TR 把 i 变成 İ
 
-// ============================================================
-// 7. 字符串查找
-// ============================================================
+// ---------- 7. 查找：IndexOf 找不到返回 -1，不是 0 ----------
 Console.WriteLine("\\n===== 字符串查找 =====");
 string sentence = "The quick brown fox jumps over the lazy dog";
 Console.WriteLine($"句子：{sentence}");
@@ -1821,23 +1772,20 @@ Console.WriteLine($"EndsWith(\\"dog\\") = {sentence.EndsWith("dog")}");
 Console.WriteLine($"IndexOf(\\"the\\") = {sentence.IndexOf("the")}（区分大小写）");
 Console.WriteLine($"IndexOf(\\"the\\", OrdinalIgnoreCase) = {sentence.IndexOf("the", StringComparison.OrdinalIgnoreCase)}");
 Console.WriteLine($"LastIndexOf(\\"the\\") = {sentence.LastIndexOf("the", StringComparison.OrdinalIgnoreCase)}");
+// 旧重载无 StringComparison 时跟当前文化走；新代码请显式传入
 
-// ============================================================
-// 8. 字符串截取
-// ============================================================
+// ---------- 8. Substring 与 Range：都分配新串，右端点不含 ----------
 Console.WriteLine("\\n===== 字符串截取 =====");
 string sub = "Hello, World";
 Console.WriteLine($"原文：{sub}");
-Console.WriteLine($"Substring(7) = {sub.Substring(7)}");          // "World"
-Console.WriteLine($"Substring(0, 5) = {sub.Substring(0, 5)}");    // "Hello"
-Console.WriteLine($"sub[7..] = {sub[7..]}");                      // "World"
-Console.WriteLine($"sub[0..5] = {sub[0..5]}");                    // "Hello"
-Console.WriteLine($"sub[^5..] = {sub[^5..]}");                    // "World"
-Console.WriteLine($"sub[^6..^1] = {sub[^6..^1]}");                // "Worl"
+Console.WriteLine($"Substring(7) = {sub.Substring(7)}");          // 从索引到末尾；越界抛
+Console.WriteLine($"Substring(0, 5) = {sub.Substring(0, 5)}");    // 第二参数是长度不是结束下标
+Console.WriteLine($"sub[7..] = {sub[7..]}");                      // C# 8 Range，语义更清晰
+Console.WriteLine($"sub[0..5] = {sub[0..5]}");                    // 含 0 不含 5
+Console.WriteLine($"sub[^5..] = {sub[^5..]}");                    // 从倒数第 5 到末尾
+Console.WriteLine($"sub[^6..^1] = {sub[^6..^1]}");                // 不含最后一个字符
 
-// ============================================================
-// 9. 分割与合并
-// ============================================================
+// ---------- 9. Split 默认保留空段；Join 的分隔符只出现在元素之间 ----------
 Console.WriteLine("\\n===== 分割与合并 =====");
 string csv = "Tom,25,Engineer,Beijing";
 string[] parts = csv.Split(',');
@@ -1845,133 +1793,115 @@ Console.WriteLine($"Split(',') = [{string.Join(" | ", parts)}]");
 
 string csv2 = "Tom,,25,,Engineer";
 string[] parts2 = csv2.Split(',', StringSplitOptions.RemoveEmptyEntries);
-Console.WriteLine($"Split(去掉空项) = [{string.Join(" | ", parts2)}]");
+Console.WriteLine($"Split(去掉空项) = [{string.Join(" | ", parts2)}]");  // 连续分隔符产生的空串被丢掉
 
 string joined = string.Join(" - ", parts);
 Console.WriteLine($"Join = {joined}");
 
-// 多分隔符
+// 多分隔符：char[] 重载；string[] 重载可切多字符分隔符
 string mixed = "a,b;c|d";
 string[] multiParts = mixed.Split(new[] { ',', ';', '|' });
 Console.WriteLine($"多分隔符 = [{string.Join(" | ", multiParts)}]");
 
-// ============================================================
-// 10. 修剪 Trim
-// ============================================================
+// ---------- 10. Trim 只剥两端，中间空白不动 ----------
 Console.WriteLine("\\n===== 修剪 Trim =====");
 string raw = "   hello world   ";
 Console.WriteLine($"原文：[{raw}]");
-Console.WriteLine($"Trim() = [{raw.Trim()}]");
+Console.WriteLine($"Trim() = [{raw.Trim()}]");  // 默认 Unicode 空白，不只是空格
 Console.WriteLine($"TrimStart() = [{raw.TrimStart()}]");
 Console.WriteLine($"TrimEnd() = [{raw.TrimEnd()}]");
-Console.WriteLine($"Trim('h','d',' ') = [{"hello world   d".Trim('h', 'd', ' ')}]");
+Console.WriteLine($"Trim('h','d',' ') = [{"hello world   d".Trim('h', 'd', ' ')}]");  // 指定字符集，从两端反复剥
 
-// ============================================================
-// 11. 替换 Replace
-// ============================================================
+// ---------- 11. Replace 替换全部出现，区分大小写、不认正则 ----------
 Console.WriteLine("\\n===== 替换 Replace =====");
-Console.WriteLine($"{"hello".Replace("l", "L")}");        // "heLLo"
-Console.WriteLine($"{"hello".Replace('e', 'E')}");        // "hEllo"
-Console.WriteLine($"{"a-b-c".Replace("-", "_")}");        // "a_b_c"
+Console.WriteLine($"{"hello".Replace("l", "L")}");        // 全部 l；要正则请用 Regex.Replace
+Console.WriteLine($"{"hello".Replace('e', 'E')}");        // char 重载，避免装箱成 string
+Console.WriteLine($"{"a-b-c".Replace("-", "_")}");        // 旧串仍在，返回新串
 
-// ============================================================
-// 12. 插入与删除
-// ============================================================
+// ---------- 12. Insert / Remove 按索引，越界抛 ArgumentOutOfRange ----------
 Console.WriteLine("\\n===== 插入与删除 =====");
-Console.WriteLine($"{"hello".Insert(2, "XX")}");          // "heXXllo"
-Console.WriteLine($"{"hello".Remove(1, 2)}");             // "hlo"
-Console.WriteLine($"{"hello".Remove(2)}");                // "he"（保留前 2 个）
+Console.WriteLine($"{"hello".Insert(2, "XX")}");          // 在索引 2 前插入
+Console.WriteLine($"{"hello".Remove(1, 2)}");             // 从 1 删长度 2
+Console.WriteLine($"{"hello".Remove(2)}");                // 单参数：从此处删到末尾
 
-// ============================================================
-// 13. StringBuilder 详解
-// ============================================================
+// ---------- 13. StringBuilder：可变缓冲，Length 是已用，Capacity 是预留 ----------
 Console.WriteLine("\\n===== StringBuilder =====");
-var sb = new StringBuilder();
-sb.Append("Hello");                            // 追加字符串
-sb.Append(' ');                                // 追加字符
-sb.AppendLine("World");                        // 追加并换行
-sb.AppendFormat("数字：{0}, 字符串：{1}", 42, "hi"); // 格式化追加
+var sb = new StringBuilder();  // 可在构造时传入 capacity，避免反复扩容拷贝
+sb.Append("Hello");                            // 追加到缓冲，不立刻产生 string
+sb.Append(' ');                                // char 重载更省
+sb.AppendLine("World");                        // 追加 Environment.NewLine
+sb.AppendFormat("数字：{0}, 字符串：{1}", 42, "hi"); // 按当前文化格式化
 sb.AppendLine();
 sb.Append("结尾");
-string result = sb.ToString();
+string result = sb.ToString();  // 这时才分配最终 string
 Console.WriteLine(result);
 Console.WriteLine($"StringBuilder 长度：{sb.Length}，容量：{sb.Capacity}");
 
-// 修改 StringBuilder 内容
+// 原地改缓冲；Replace/Insert 仍可能触发扩容
 sb.Replace("World", "C#");
 sb.Insert(0, ">> ");
 Console.WriteLine($"修改后：{sb}");
 
-// ============================================================
-// 14. StringBuilder 性能对比
-// ============================================================
+// ---------- 14. 循环 += 是 O(n^2) 分配，StringBuilder 才是线性 ----------
 Console.WriteLine("\\n===== 性能对比：+= vs StringBuilder =====");
 const int N = 100_000;
 var sw = Stopwatch.StartNew();
 string bad = "";
-for (int k = 0; k < N; k++) bad += "x";   // 每次创建新对象
+for (int k = 0; k < N; k++) bad += "x";   // 每次新 string，旧串等 GC
 sw.Stop();
 Console.WriteLine($"string += {N} 次：{sw.ElapsedMilliseconds} ms");
 
 sw.Restart();
 var sb2 = new StringBuilder();
-for (int k = 0; k < N; k++) sb2.Append('x');  // 复用缓冲区
+for (int k = 0; k < N; k++) sb2.Append('x');  // 复用一块缓冲
 string good = sb2.ToString();
 sw.Stop();
 Console.WriteLine($"StringBuilder {N} 次：{sw.ElapsedMilliseconds} ms");
 Console.WriteLine($"两者结果长度相同：{bad.Length == good.Length}");
 
-// ============================================================
-// 15. 字符串驻留 intern
-// ============================================================
+// ---------- 15. intern：字面量常驻；滥用 Intern 等于往池里钉内存 ----------
 Console.WriteLine("\\n===== 字符串驻留 =====");
 string lit1 = "interned";
 string lit2 = "interned";
-Console.WriteLine($"两个字面量同一引用：{ReferenceEquals(lit1, lit2)}"); // True
+Console.WriteLine($"两个字面量同一引用：{ReferenceEquals(lit1, lit2)}"); // 通常 True，但别用引用比内容
 
-// 运行时拼接的结果不驻留
-// ⚠️ 注意：两个字面量直接相加（"inter" + "ned"）会在编译期被
-//    常量折叠成一个驻留字面量，ReferenceEquals 会得到 True。
-//    要演示"运行时拼接不驻留"，至少要让其中一个操作数是变量。
+// 两个字面量直接 "inter" + "ned" 会在编译期折叠成一个驻留串。
+// 要演示运行时拼接不驻留，至少一侧必须是变量。
 string part = "inter";
 string concat2 = part + "ned";
 Console.WriteLine($"拼接结果同一引用：{ReferenceEquals(lit1, concat2)}"); // False
 
-// 手动驻留
+// Intern 会把串钉进池，进程结束前难回收；比较内容用 Equals
 string interned = string.Intern(concat2);
 Console.WriteLine($"Intern 后同一引用：{ReferenceEquals(lit1, interned)}");
 
-// ============================================================
-// 16. 转义字符与 verbatim 字符串
-// ============================================================
+// ---------- 16. 转义 vs verbatim：路径、正则优先 @"" ----------
 Console.WriteLine("\\n===== 转义与 verbatim =====");
-string escaped = "C:\\\\Users\\\\Tom\\\\file.txt";      // 双反斜杠转义
-string verbatim = @"C:\\Users\\Tom\\file.txt";         // verbatim 写法
+string escaped = "C:\\\\Users\\\\Tom\\\\file.txt";      // 普通串里反斜杠要双写
+string verbatim = @"C:\\Users\\Tom\\file.txt";         // @ 前缀：反斜杠按字面，换行也保留
 Console.WriteLine($"转义：{escaped}");
 Console.WriteLine($"verbatim：{verbatim}");
 Console.WriteLine($"两者相等：{escaped == verbatim}");
 
-string json = "{ \\"name\\": \\"Tom\\", \\"age\\": 18 }"; // 转义双引号
-string jsonVerbatim = @"{ ""name"": ""Tom"", ""age"": 18 }"; // verbatim 双引号写两次
+string json = "{ \\"name\\": \\"Tom\\", \\"age\\": 18 }"; // 普通串里引号要 \\
+string jsonVerbatim = @"{ ""name"": ""Tom"", ""age"": 18 }"; // verbatim 里引号写成两次
 Console.WriteLine($"JSON 转义：{json}");
 Console.WriteLine($"JSON verbatim：{jsonVerbatim}");
 
 string multi = @"
 第一行
 第二行
-第三行";
+第三行";  // 开头往往带一个换行，Trim 一下更干净
 Console.WriteLine($"多行 verbatim：\\n{multi}");
 
-// ============================================================
-// 17. 空判断三件套
-// ============================================================
+// ---------- 17. 空判断：用户输入优先 IsNullOrWhiteSpace ----------
 Console.WriteLine("\\n===== 空判断 =====");
-string[] testCases = { null, "", "   ", "\\t\\n", "hello" };
+string[] testCases = { null, "", "   ", "\\t\\n", "hello" };  // 含 null：IsNullOrEmpty 安全，不会 NRE
 foreach (string testCase in testCases)
 {
     Console.WriteLine($"[{testCase ?? "null"}] -> " +
-        $"IsNullOrEmpty={string.IsNullOrEmpty(testCase)}, " +
-        $"IsNullOrWhiteSpace={string.IsNullOrWhiteSpace(testCase)}");
+        $"IsNullOrEmpty={string.IsNullOrEmpty(testCase)}, " +  // 只认 null 与 ""
+        $"IsNullOrWhiteSpace={string.IsNullOrWhiteSpace(testCase)}");  // 空白也当空，表单校验更常用
 }`,
     lang: 'cs',
   },
@@ -2174,88 +2104,82 @@ x.ToString("F2", CultureInfo.InvariantCulture); // 永远 1234.50
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「字符串格式化与插值」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// 第十一章 字符串格式化与插值 —— 可在 .NET 8 控制台应用直接运行
+    code: `// 第十一章 字符串格式化与插值 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 覆盖插值、$ 格式说明符、string.Format、文化差异、对齐、
+// FormattableString / ICustomFormatter。货币和日期默认跟当前文化走。
+// 版本：插值 C# 6；C# 10 起插值可做 const（hole 必须是字符串常量）。
+// 陷阱：持久化/协议请用 InvariantCulture，不要把 CurrentCulture 写进文件。
 using System.Globalization;
 using System.Text;
 
-// ============================================================
-// 1. 字符串插值 $""
-// ============================================================
+// ---------- 1. 插值：表达式写在花括号里，编译器再格式化 ----------
 Console.WriteLine("===== 字符串插值 =====");
 string name = "Tom";
 int age = 18;
 double score = 92.5;
-Console.WriteLine($"我叫 {name}，今年 {age} 岁");          // 基础插值
-Console.WriteLine($"明年 {age + 1} 岁");                   // 表达式插值
+Console.WriteLine($"我叫 {name}，今年 {age} 岁");          // 花括号里是表达式；JS 插值才是美元紧贴花括号，这里不会串台
+Console.WriteLine($"明年 {age + 1} 岁");                   // 任意表达式都可以，副作用请别写在这里
 Console.WriteLine($"姓名长度：{name.Length}");             // 成员访问
 Console.WriteLine($"大写：{name.ToUpper()}");              // 方法调用
-Console.WriteLine($"成绩：{score:F1}");                    // 带格式说明符
+Console.WriteLine($"成绩：{score:F1}");                    // 冒号后是格式，不是对齐宽度
 
-// 三目运算符插值
+// 三目要加括号，否则 : 会被当成格式分隔符
 Console.WriteLine($"等级：{(score >= 90 ? "A" : "B")}");
 
-// ============================================================
-// 2. string.Format
-// ============================================================
+// ---------- 2. string.Format：模板在资源文件里时更合适 ----------
 Console.WriteLine("\\n===== string.Format =====");
 string formatted1 = string.Format("我叫 {0}，今年 {1} 岁", name, age);
 Console.WriteLine(formatted1);
 string formatted2 = string.Format("{0} + {0} = {1}", 5, 10);
-Console.WriteLine(formatted2);  // 占位符可重复使用
+Console.WriteLine(formatted2);  // 同一占位符可重复；缺参数会 FormatException
 string formatted3 = string.Format("{0,-10}{1,10}", "名字", "年龄");
-Console.WriteLine($"|{formatted3}|");  // 对齐演示
+Console.WriteLine($"|{formatted3}|");  // 逗号后是宽度：负=左对齐，正=右对齐
 
-// ============================================================
-// 3. 数字格式说明符
-// ============================================================
+// ---------- 3. 标准数字格式：C/N/P 都受当前文化影响 ----------
 Console.WriteLine("\\n===== 数字格式说明符 =====");
 double amount = 1234.5678;
 int num = 255;
 int big = 1234567;
 
 Console.WriteLine($"原值：{amount}, {num}, {big}");
-Console.WriteLine($"C  货币：       {amount:C}");          // ¥1,234.57（受文化影响）
+Console.WriteLine($"C  货币：       {amount:C}");          // 符号和千分位跟文化走，不要写进协议
 Console.WriteLine($"C2 货币2位：    {amount:C2}");
-Console.WriteLine($"D5 整数补零：   {num:D5}");            // 00255
-Console.WriteLine($"E  科学计数：   {big:E}");            // 1.234567E+006
-Console.WriteLine($"F2 定点2位：    {amount:F2}");        // 1234.57
-Console.WriteLine($"G  常规：       {amount:G}");         // 1234.5678
-Console.WriteLine($"N  千分位：     {big:N}");            // 1,234,567.00
-Console.WriteLine($"N0 千分位无小数：{big:N0}");          // 1,234,567
-Console.WriteLine($"P  百分比：     {0.85:P}");           // 85.00%
+Console.WriteLine($"D5 整数补零：   {num:D5}");            // D 只用于整数
+Console.WriteLine($"E  科学计数：   {big:E}");            // 默认 6 位小数
+Console.WriteLine($"F2 定点2位：    {amount:F2}");        // 固定小数位，四舍五入到指定位
+Console.WriteLine($"G  常规：       {amount:G}");         // 较短的默认表示
+Console.WriteLine($"N  千分位：     {big:N}");            // 与 C 类似但不带货币符
+Console.WriteLine($"N0 千分位无小数：{big:N0}");          // 日志里大整数常用
+Console.WriteLine($"P  百分比：     {0.85:P}");           // 先 ×100 再加 %
 Console.WriteLine($"P0 百分比整数： {0.85:P0}");         // 85%
-Console.WriteLine($"X  十六进制：   {num:X}");            // FF
+Console.WriteLine($"X  十六进制：   {num:X}");            // 无 0x 前缀
 Console.WriteLine($"x  小写十六进制：{num:x}");           // ff
 Console.WriteLine($"X4 十六进制补零：{num:X4}");          // 00FF
 
-// ============================================================
-// 4. 自定义数字格式
-// ============================================================
+// ---------- 4. 自定义格式：0 必出、# 可省、三段正;负;零 ----------
 Console.WriteLine("\\n===== 自定义数字格式 =====");
-Console.WriteLine($"{12345:#,##0}");                // 千分位：12,345
-Console.WriteLine($"{3.14159:0.00}");               // 保留 2 位：3.14
-Console.WriteLine($"{0.85:0%}");                    // 百分比：85%
-Console.WriteLine($"{123:00000}");                  // 补零：00123
-Console.WriteLine($"{12345.6789:#,##0.00}");        // 千分位 + 2 位：12,345.68
-Console.WriteLine($"{(-1234):#,##0;(#,##0)}");      // 负数括号：(1,234)
-Console.WriteLine($"{0:#,##0.00;(#,##0.00);零}");   // 三段式：零
+Console.WriteLine($"{12345:#,##0}");                // 千分位；# 在没有数字时不显示 0
+Console.WriteLine($"{3.14159:0.00}");               // 0 是必出位，不足补 0
+Console.WriteLine($"{0.85:0%}");                    // % 会先乘 100
+Console.WriteLine($"{123:00000}");                  // 左侧补零
+Console.WriteLine($"{12345.6789:#,##0.00}");        // 千分位 + 固定 2 位
+Console.WriteLine($"{(-1234):#,##0;(#,##0)}");      // 正;负 两段
+Console.WriteLine($"{0:#,##0.00;(#,##0.00);零}");   // 正;负;零 三段
 
-// ============================================================
-// 5. 日期时间格式化
-// ============================================================
+// ---------- 5. 日期：MM 是月、mm 是分；O/R 适合跨系统 ----------
 Console.WriteLine("\\n===== 日期时间格式化 =====");
-DateTime now = new DateTime(2024, 6, 15, 14, 30, 45);
+DateTime now = new DateTime(2024, 6, 15, 14, 30, 45);  // 无 Kind 时是 Unspecified，序列化要小心
 Console.WriteLine($"原值：{now}");
 
-// 自定义格式
+// 自定义格式：M/m、H/h 极易写反
 Console.WriteLine($"yyyy-MM-dd             = {now:yyyy-MM-dd}");
 Console.WriteLine($"yyyy/MM/dd HH:mm:ss    = {now:yyyy/MM/dd HH:mm:ss}");
 Console.WriteLine($"yyyy年MM月dd日          = {now:yyyy年MM月dd日}");
-Console.WriteLine($"HH:mm:ss.fff           = {now:HH:mm:ss.fff}"); // 含毫秒
+Console.WriteLine($"HH:mm:ss.fff           = {now:HH:mm:ss.fff}"); // HH=24 小时，hh=12 小时
 Console.WriteLine($"dddd（星期）           = {now:dddd}");
-Console.WriteLine($"MMM dd, yyyy           = {now:MMM dd, yyyy}");
+Console.WriteLine($"MMM dd, yyyy           = {now:MMM dd, yyyy}");  // 月份缩写跟文化走
 
-// 预定义格式
+// 预定义：O 带偏移/小数，R 是 GMT
 Console.WriteLine($"O (ISO 8601)   = {now:O}");
 Console.WriteLine($"R (RFC 1123)   = {now:R}");
 Console.WriteLine($"u (通用可排序)  = {now:u}");
@@ -2264,38 +2188,34 @@ Console.WriteLine($"D (长日期)      = {now:D}");
 Console.WriteLine($"T (长时间)      = {now:T}");
 Console.WriteLine($"f (完整日期时间) = {now:f}");
 
-// TimeSpan 格式化
+// TimeSpan 默认格式不含天数时较简；自拼要注意负号
 TimeSpan ts = TimeSpan.FromHours(2.5);
 Console.WriteLine($"TimeSpan 默认：{ts}");          // 02:30:00
 Console.WriteLine($"TimeSpan 自拼：{ts.Hours:D2}:{ts.Minutes:D2}:{ts.Seconds:D2}");
 
-// ============================================================
-// 6. 对齐与填充（表格输出）
-// ============================================================
+// ---------- 6. 对齐只补空格不截断；超宽原样输出 ----------
 Console.WriteLine("\\n===== 对齐与填充 =====");
 // 正数宽度：右对齐（左侧补空格）
 // 负数宽度：左对齐（右侧补空格）
 Console.WriteLine($"|{"姓名",10}|{"年龄",5}|{"分数",8}|");
 Console.WriteLine($"|{"----------",10}|{"-----",5}|{"--------",8}|");
-Console.WriteLine($"|{"Tom",10}|{18,5}|{92.5,8:F1}|");
+Console.WriteLine($"|{"Tom",10}|{18,5}|{92.5,8:F1}|");  // 宽度和对齐在格式之前：{expr,align:format}
 Console.WriteLine($"|{"Jerry",10}|{20,5}|{88.0,8:F1}|");
 Console.WriteLine($"|{"Anna",10}|{19,5}|{95.3,8:F1}|");
 
 // 左对齐演示
 Console.WriteLine($"|{"姓名",-10}|{"年龄",-5}|");
 
-// ============================================================
-// 7. $"" 与 @"" 组合（路径与正则）
-// ============================================================
+// ---------- 7. $@ 与 @$ 等价：verbatim + 插值（C# 8 起顺序随意） ----------
 Console.WriteLine("\\n===== $@ 组合 =====");
 string userName = "Tom";
-string path1 = $@"C:\\Users\\{userName}\\Documents\\file.txt";  // $@ 组合
-string path2 = @$"C:\\Users\\{userName}\\Documents\\file.txt";  // @$ 组合，等价
+string path1 = $@"C:\\Users\\{userName}\\Documents\\file.txt";  // 路径里反斜杠不用再双写
+string path2 = @$"C:\\Users\\{userName}\\Documents\\file.txt";  // @$ 与 $@ 同一套语义
 Console.WriteLine($"路径1：{path1}");
 Console.WriteLine($"路径2：{path2}");
 Console.WriteLine($"两者相等：{path1 == path2}");
 
-// 多行插值字符串
+// 多行插值：开头换行会进字符串，需要的话 Trim
 string summary = $@"
 ===== 用户摘要 =====
 姓名：{userName}
@@ -2305,9 +2225,7 @@ string summary = $@"
 ====================";
 Console.WriteLine(summary);
 
-// ============================================================
-// 8. 不同文化的格式化
-// ============================================================
+// ---------- 8. 文化：给用户看用 Current，给机器看用 Invariant ----------
 Console.WriteLine("\\n===== 不同文化 =====");
 double money = 1234567.89;
 DateTime date = new DateTime(2024, 6, 15);
@@ -2316,57 +2234,49 @@ Console.WriteLine($"默认（当前文化）：{money:C}");
 Console.WriteLine($"zh-CN：{money.ToString("C", new CultureInfo("zh-CN"))}");
 Console.WriteLine($"en-US：{money.ToString("C", new CultureInfo("en-US"))}");
 Console.WriteLine($"ja-JP：{money.ToString("C", new CultureInfo("ja-JP"))}");
-Console.WriteLine($"de-DE：{money.ToString("C", new CultureInfo("de-DE"))}");
+Console.WriteLine($"de-DE：{money.ToString("C", new CultureInfo("de-DE"))}");  // 小数点可能是逗号
 
 Console.WriteLine($"日期 zh-CN：{date.ToString("D", new CultureInfo("zh-CN"))}");
 Console.WriteLine($"日期 en-US：{date.ToString("D", new CultureInfo("en-US"))}");
 Console.WriteLine($"日期 ja-JP：{date.ToString("D", new CultureInfo("ja-JP"))}");
 
-// 不变文化（跨语言/系统使用）
+// 日志、JSON 数字、跨机配置：永远 Invariant，避免 1.234,56 解析失败
 Console.WriteLine($"InvariantCulture：{money.ToString("F2", CultureInfo.InvariantCulture)}");
 
-// ============================================================
-// 9. IFormattable 接口演示
-// ============================================================
+// ---------- 9. FormattableString：插值先不格式化，稍后指定文化 ----------
 Console.WriteLine("\\n===== IFormattable =====");
-IFormattable formattable = $"时间 {DateTime.Now:O}, 数字 {12345:N0}";
-// 延迟格式化，可指定文化和格式
+IFormattable formattable = $"时间 {DateTime.Now:O}, 数字 {12345:N0}";  // 目标类型决定编译成 FormattableString
+// 延迟格式化：同一模板可按 Invariant 再 ToString，避免 SQL/日志吃进当前文化
 string formatted = formattable.ToString(null, CultureInfo.InvariantCulture);
 Console.WriteLine($"IFormattable 输出：{formatted}");
 
-// 自定义类型实现 IFormattable
+// 自定义类型实现 IFormattable 后，插值和 string.Format 都会走 ToString(format, provider)
 var money2 = new Money(1234.56m, "CNY");
 Console.WriteLine(money2.ToString("C", CultureInfo.CurrentCulture));
-Console.WriteLine(money2.ToString("S", CultureInfo.InvariantCulture));  // 自定义 S 格式
-Console.WriteLine(money2.ToString("RAW", CultureInfo.InvariantCulture)); // 自定义 RAW 格式
+Console.WriteLine(money2.ToString("S", CultureInfo.InvariantCulture));  // 业务自定义说明符
+Console.WriteLine(money2.ToString("RAW", CultureInfo.InvariantCulture));
 
-// ============================================================
-// 10. ICustomFormatter 自定义格式化器
-// ============================================================
+// ---------- 10. ICustomFormatter：接管 string.Format 的某一格 ----------
 Console.WriteLine("\\n===== ICustomFormatter =====");
 var provider = new ReverseFormatter();
 string customResult = string.Format(provider, "反转：{0:R}, 原样：{0}", "Hello World");
-Console.WriteLine(customResult);
+Console.WriteLine(customResult);  // 带 :R 的格子走自定义，其余走默认
 
-// ============================================================
-// 11. 字符串插值性能小贴士
-// ============================================================
+// ---------- 11. 日常插值已够快；热循环同一格式再考虑 StringBuilder / CompositeFormat ----------
 Console.WriteLine("\\n===== 性能小贴士 =====");
 string firstName = "Tom", lastName = "Jerry";
-// 简单拼接：插值性能已优化，日常放心用
+// C# 10+ 插值处理器会少分配；仍不要在百万次循环里拼日志
 string full = $"{firstName} {lastName}";
 Console.WriteLine($"插值拼接：{full}");
 
-// 大量拼接还是用 StringBuilder
+// 循环拼接仍用 StringBuilder；Append 插值每次仍可能分配
 var sb = new StringBuilder();
 for (int k = 0; k < 5; k++) sb.Append($"item{k},");
 Console.WriteLine($"循环拼接：{sb.ToString().TrimEnd(',')}");
 
-// ============================================================
-// 类型声明放在文件末尾
-// ============================================================
+// ---------- 类型声明放在文件末尾 ----------
 
-// 实现 IFormattable 的 Money 类型
+// 实现 IFormattable：让金额按 C/S/RAW 三种契约输出
 class Money : IFormattable
 {
     public decimal Amount { get; }
@@ -2378,45 +2288,41 @@ class Money : IFormattable
         CurrencyCode = code;
     }
 
-    // 实现 IFormattable.ToString
+    // format 为 null/空时约定默认 C，和 decimal 习惯一致
     public string ToString(string? format, IFormatProvider? formatProvider)
     {
-        // 根据格式说明符返回不同表示
         if (string.IsNullOrEmpty(format)) format = "C";
 
         return format switch
         {
-            "C" => $"{Amount.ToString("C", formatProvider)}",      // 货币格式
-            "S" => $"{CurrencyCode} {Amount:N2}",                  // 标准格式：CNY 1,234.56
-            "RAW" => $"{Amount:0.####} {CurrencyCode}",            // 原始数值
-            _ => Amount.ToString(format, formatProvider)           // 透传给 decimal
+            "C" => $"{Amount.ToString("C", formatProvider)}",      // 把文化传给内部 decimal
+            "S" => $"{CurrencyCode} {Amount:N2}",                  // N2 仍受当前文化影响
+            "RAW" => $"{Amount:0.####} {CurrencyCode}",            // 去掉多余 0
+            _ => Amount.ToString(format, formatProvider)           // 未知说明符透传，避免吞掉 F2 等
         };
     }
 
     public override string ToString() => ToString("C", null);
 }
 
-// 自定义 ICustomFormatter + IFormatProvider
+// IFormatProvider + ICustomFormatter：GetFormat 必须返回 this 才接得住
 class ReverseFormatter : IFormatProvider, ICustomFormatter
 {
-    // IFormatProvider：返回自定义 formatter
     public object? GetFormat(Type? formatType)
     {
         return formatType == typeof(ICustomFormatter) ? this : null;
     }
 
-    // ICustomFormatter：自定义格式化逻辑
     public string Format(string? format, object? arg, IFormatProvider? formatProvider)
     {
-        // 只处理 "R" 格式说明符
         if (format == "R" && arg is string s)
         {
             char[] arr = s.ToCharArray();
             Array.Reverse(arr);
-            return new string(arr);  // 反转字符串
+            return new string(arr);  // 演示用；生产可 Span 反转
         }
 
-        // 其他情况交给默认格式化
+        // 不是自己的说明符就交回 IFormattable / ToString
         if (arg is IFormattable f)
             return f.ToString(format, formatProvider);
         return arg?.ToString() ?? "";
@@ -2560,56 +2466,66 @@ finally { pool.Return(buf); }   // 不 Return 就等于泄漏到池外
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「数组」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// 数组完整演示：初始化、下标、范围、多维/交错、Array API、引用语义
+    code: `// 第十二章 数组 —— 可在 .NET 8 / C# 12 控制台直接运行
+// 本 demo 覆盖声明、下标与 Range、多维/交错、Array API、引用语义、
+// 协变陷阱、ArrayPool / Span / stackalloc、foreach 变量是拷贝。
+// 陷阱：arr[1..3] 会分配新数组；赋值共享存储；string[] 当 object[] 写入会炸。
+// 版本：^ 与 .. 是 C# 8；集合表达式 [1,2,3] 是 C# 12；stackalloc 初始化器 C# 7.2。
 using System;
 using System.Linq;
 
+// ---------- 1. 声明与初始化：长度固定 ----------
 Console.WriteLine("===== 1. 声明与初始化 =====");
-int[] a = new int[3];
-int[] b = { 10, 20, 30 };
-int[] c = [40, 50, 60];                 // C# 12 集合表达式
-int[] empty = [];
+int[] a = new int[3];  // 长度钉死，元素是 default(int)=0；不能 Add
+int[] b = { 10, 20, 30 };  // 仅在声明时能省略 new
+int[] c = [40, 50, 60];                 // C# 12 集合表达式，目标类型明确即可
+int[] empty = [];  // 常与 Array.Empty<int>() 一样是共享空实例
 Console.WriteLine($"new int[3] 默认值：{string.Join(",", a)}");
 Console.WriteLine($"集合表达式：{string.Join(",", c)}，空数组 Length={empty.Length}");
 
+// ---------- 2. 下标、^ 与范围（C# 8）：切片会分配 ----------
 Console.WriteLine("\\n===== 2. 下标、^ 与范围 =====");
 int[] nums = [1, 2, 3, 4, 5, 6];
 Console.WriteLine($"nums[0]={nums[0]}, nums[^1]={nums[^1]}, nums[^2]={nums[^2]}");
-int[] mid = nums[2..5];                 // 3,4,5 —— 会分配新数组
+int[] mid = nums[2..5];                 // 含 2 不含 5；对数组会 new 一块再拷贝
 int[] tail = nums[3..];
 int[] head = nums[..2];
 Console.WriteLine($"[2..5]={string.Join(",", mid)}  [3..]={string.Join(",", tail)}  [..2]={string.Join(",", head)}");
+// 零拷贝切片请用 AsSpan；越界下标抛 IndexOutOfRangeException
 
+// ---------- 3. foreach 变量是拷贝，改元素用 for ----------
 Console.WriteLine("\\n===== 3. 遍历：foreach vs for =====");
 foreach (int n in nums)
-    Console.Write($"{n} ");
+    Console.Write($"{n} ");  // n 是元素拷贝，n++ 改不了数组
 Console.WriteLine();
 for (int i = 0; i < nums.Length; i++)
-    nums[i] *= 10;                      // 要改元素必须用下标
+    nums[i] *= 10;                      // 要改元素必须走下标（或 Span）
 Console.WriteLine($"乘 10 后：{string.Join(",", nums)}");
 
+// ---------- 4. 多维矩形 vs 交错（数组的数组） ----------
 Console.WriteLine("\\n===== 4. 多维数组 vs 交错数组 =====");
 int[,] matrix =
 {
     { 1, 2, 3 },
     { 4, 5, 6 },
-};
+};  // 矩形、一块连续存储；GetLength(0) 行、GetLength(1) 列
 Console.WriteLine($"多维 Rank={matrix.Rank}, 行={matrix.GetLength(0)}, 列={matrix.GetLength(1)}");
 Console.WriteLine($"matrix[1,2]={matrix[1, 2]}");
 
-int[][] jagged = [ [1, 2], [3, 4, 5], [6] ];
+int[][] jagged = [ [1, 2], [3, 4, 5], [6] ];  // 数组的数组，每行长度可不同
 Console.WriteLine("交错数组各行列数：" + string.Join(", ", jagged.Select(row => row.Length)));
-jagged[0][1] = 99;
+jagged[0][1] = 99;  // 两层索引；jagged[0] 本身也是引用
 Console.WriteLine($"jagged[0] = [{string.Join(",", jagged[0])}]");
 
+// ---------- 5. Array API：Sort 原地、Clone 浅拷贝 ----------
 Console.WriteLine("\\n===== 5. Array API =====");
 int[] data = [5, 2, 8, 2, 9];
 Console.WriteLine($"IndexOf(2)={Array.IndexOf(data, 2)}, LastIndexOf(2)={Array.LastIndexOf(data, 2)}");
 Console.WriteLine($"Exists >7 ? {Array.Exists(data, x => x > 7)}");
 Console.WriteLine($"FindAll 偶数：{string.Join(",", Array.FindAll(data, x => x % 2 == 0))}");
 
-int[] sorted = (int[])data.Clone();
-Array.Sort(sorted);
+int[] sorted = (int[])data.Clone();  // 浅拷贝：值类型元素独立，引用类型元素仍共享对象
+Array.Sort(sorted);  // 原地排序，所以先 Clone
 Console.WriteLine($"Sort 后：{string.Join(",", sorted)}（Clone 后排序不影响 data）");
 Array.Reverse(sorted);
 Console.WriteLine($"Reverse 后：{string.Join(",", sorted)}");
@@ -2618,53 +2534,58 @@ Array.Fill(a, 7);
 Console.WriteLine($"Fill 后 a：{string.Join(",", a)}");
 
 int[] resized = [1, 2, 3];
-Array.Resize(ref resized, 5);          // 后两个位置补默认值 0
+Array.Resize(ref resized, 5);          // 分配新数组并拷贝，必须接住 ref；缩短会丢尾部
 Console.WriteLine($"Resize 到 5：{string.Join(",", resized)}");
 
 Console.WriteLine($"TrueForAll >0 ? {Array.TrueForAll(data, x => x > 0)}");
-Console.WriteLine($"Empty<int>().Length={Array.Empty<int>().Length}");
+Console.WriteLine($"Empty<int>().Length={Array.Empty<int>().Length}");  // 共享单例，别往里写
 
+// ---------- 6. 数组是引用类型：赋值共享存储 ----------
 Console.WriteLine("\\n===== 6. 引用语义（赋值共享） =====");
 int[] left = [1, 2, 3];
-int[] right = left;                    // 共享同一数组
+int[] right = left;                    // 只拷引用，不是拷内容
 right[0] = 100;
 Console.WriteLine($"left[0]={left[0]}（right 改了，left 一起变）");
 
 int[] copy = new int[left.Length];
-Array.Copy(left, copy, left.Length);   // 真正拷贝元素
+Array.Copy(left, copy, left.Length);   // 元素级拷贝；引用类型仍浅
 copy[0] = 1;
 Console.WriteLine($"Copy 后 left[0]={left[0]}, copy[0]={copy[0]}（互不影响）");
 
+// ---------- 7. 字符串数组排序请指定比较器 ----------
 Console.WriteLine("\\n===== 7. 字符串数组与 Join =====");
 string[] names = ["张三", "李四", "王五"];
 Console.WriteLine(string.Join(" | ", names));
-Array.Sort(names, StringComparer.Ordinal);
+Array.Sort(names, StringComparer.Ordinal);  // 序数比较，不跟当前文化走
 Console.WriteLine($"按序排序：{string.Join(",", names)}");
 
+// ---------- 8. BinarySearch 必须已排序；Clear 写成 default ----------
 Console.WriteLine("\\n===== 8. BinarySearch / Clear / Rank / 下界 =====");
 int[] ordered = [1, 3, 5, 7, 9];
-int found = Array.BinarySearch(ordered, 7);
-int missing = Array.BinarySearch(ordered, 4);
+int found = Array.BinarySearch(ordered, 7);  // 必须已排序，否则结果无意义
+int missing = Array.BinarySearch(ordered, 4);  // 找不到返回负值，~idx 是插入点
 Console.WriteLine("BinarySearch 7 = " + found + "，找不到 4 时 ~idx = " + (~missing) + "（插入点）");
 int[] wipe = [1, 2, 3];
-Array.Clear(wipe);
+Array.Clear(wipe);  // 重置为 default：int→0，引用→null
 Console.WriteLine("Clear 后：[" + string.Join(",", wipe) + "]，Rank=" + wipe.Rank + "，LowerBound=" + wipe.GetLowerBound(0));
 
+// ---------- 9. 数组协变：编译过、运行炸 ----------
 Console.WriteLine("\\n===== 9. 数组协变危险 =====");
 string[] words = ["hi"];
-object[] asObjects = words;
+object[] asObjects = words;  // 编译允许（数组协变）；泛型 List<string> 不能赋给 List<object>
 try
 {
-    asObjects[0] = 123;
+    asObjects[0] = 123;  // 运行时 ArrayTypeMismatchException
 }
 catch (ArrayTypeMismatchException)
 {
     Console.WriteLine("string[] 当 object[] 写入 int → ArrayTypeMismatchException");
 }
 
+// ---------- 10. ArrayPool / Span / stackalloc ----------
 Console.WriteLine("\\n===== 10. ArrayPool / Span / stackalloc（C# 12） =====");
 var pool = System.Buffers.ArrayPool<int>.Shared;
-int[] rented = pool.Rent(8);
+int[] rented = pool.Rent(8);  // 可能比 8 更长，且内容可能是脏数据
 try
 {
     rented[0] = 42;
@@ -2672,26 +2593,27 @@ try
 }
 finally
 {
-    pool.Return(rented);
+    pool.Return(rented);  // 不 Return 等于把缓冲漏出池外；敏感数据可 clearArray: true
 }
-Span<int> view = ordered.AsSpan(1, 2); // 不拷贝
+Span<int> view = ordered.AsSpan(1, 2); // 不拷贝，改 view 就是改 ordered
 Console.WriteLine("AsSpan(1,2)[0]=" + view[0] + "（与 ordered[1] 同一块内存）");
-Span<int> stacked = stackalloc int[] { 9, 8, 7 }; // stackalloc 初始化器：C# 7.2+
+Span<int> stacked = stackalloc int[] { 9, 8, 7 }; // 栈上，不能存进字段、不能跨 await
 Console.WriteLine("stackalloc 首元=" + stacked[0]);
 
+// ---------- 11. foreach + struct：改的是副本 ----------
 Console.WriteLine("\\n===== 11. foreach 变量是拷贝 =====");
 var boxes = new Box[] { new Box { N = 1 } };
-void Touch(Box copy) { copy.N = 99; } // 按值，改不了数组里那份
+void Touch(Box copy) { copy.N = 99; } // struct 按值传入，改的是副本
 foreach (var box in boxes)
     Touch(box); // 若写 box.N = 99 会 CS1654，编译器直接禁止
 Console.WriteLine("foreach+按值方法后仍是：" + boxes[0].N);
 for (int i = 0; i < boxes.Length; i++)
-    boxes[i].N = 99;
+    boxes[i].N = 99;  // 下标才能改数组里那份 struct
 Console.WriteLine("for 下标可改：boxes[0].N=" + boxes[0].N);
 
 Console.WriteLine("\\n本程序演示完毕！");
 
-struct Box { public int N; }
+struct Box { public int N; }  // 可变 struct 在数组里尤其容易「改了副本」
 `,
     lang: 'cs',
   },

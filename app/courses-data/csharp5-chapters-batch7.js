@@ -248,9 +248,13 @@ a -= () => Hi();  // 无效：每次 lambda 都是新实例，永远对不上
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「委托」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 委托完整演示
-// 演示：自定义委托、方法组转换、多播、GetInvocationList、
-//       Action/Func/Predicate/Comparison/Converter、回调模式、返回委托
+    code: `// ===========================================================
+// 第三十六章 委托
+// 演示：方法组转换、多播 +/-、GetInvocationList、Action/Func/Predicate、协变逆变
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：泛型委托 Action/Func（C# 2/3）；协变逆变委托（C# 4）；方法组转换不必再 new Transformer(...)
+// 陷阱：多播遇到异常会中断后续订阅者；有返回值时只保留最后一个。-= 按引用相等，去掉的是最后一次匹配
+// ===========================================================
 
 using System;
 
@@ -260,12 +264,13 @@ static void TransformArray(int[] data, Transformer transform)
 {
     for (int i = 0; i < data.Length; i++)
     {
-        data[i] = transform(data[i]);   // 调用委托，等价于 transform.Invoke(data[i])
+        data[i] = transform(data[i]);   // 委托调用就是 Invoke；null 委托会 NRE，生产代码要判空
     }
 }
 
 static Transformer GetMultiplier(int factor) => x => x * factor;
 
+// ---------- 1. 方法组转换：方法名赋给委托，签名必须兼容 ----------
 Console.WriteLine("=== 1. 自定义委托与方法组转换 ===");
 
 Transformer t1 = MathOps.Square;
@@ -278,6 +283,7 @@ Console.WriteLine($"Cube(5) = {t2(5)}");
 
 Console.WriteLine($"t1.Invoke(10) = {t1.Invoke(10)}");
 
+// ---------- 2. 实例方法委托 ----------
 Console.WriteLine("\\n=== 2. 实例方法委托 ===");
 
 var calc = new Calculator(100);
@@ -286,12 +292,13 @@ Transformer t3 = calc.AddOffset;
 
 Console.WriteLine($"AddOffset(5) = {t3(5)}");
 
-Console.WriteLine($"t3.Target = {t3.Target}");
+Console.WriteLine($"t3.Target = {t3.Target}");  // 实例方法：Target 是 calc，委托会延长对象寿命
 
 Console.WriteLine($"t3.Method = {t3.Method.Name}");
 
-Console.WriteLine($"t1.Target = {t1.Target}");
+Console.WriteLine($"t1.Target = {t1.Target}");  // 静态方法：Target 为 null
 
+// ---------- 3. 多播委托：+ 和 - ----------
 Console.WriteLine("\\n=== 3. 多播委托：+ 和 - ===");
 
 Action greet1 = () => Console.WriteLine("  你好");
@@ -300,7 +307,7 @@ Action greet2 = () => Console.WriteLine("  世界");
 
 Action greet3 = () => Console.WriteLine("  !");
 
-Action all = greet1 + greet2 + greet3;
+Action all = greet1 + greet2 + greet3;  // + 返回新委托，原 greet1 不变；委托不可变
 
 Console.WriteLine("调用组合后的 all：");
 
@@ -312,18 +319,19 @@ chain += greet2;
 
 chain += greet3;
 
-chain += greet1;
+chain += greet1;  // 同一方法可入列两次；调用顺序与 += 顺序一致
 
 Console.WriteLine("\\n+= 后调用 chain：");
 
 chain();
 
-chain -= greet1;
+chain -= greet1;  // -= 按引用相等移除「最后一次」匹配，前面那个 greet1 还在
 
 Console.WriteLine("\\n-= greet1 后调用 chain：");
 
 chain();
 
+// ---------- 4. GetInvocationList：单独处理每个委托 ----------
 Console.WriteLine("\\n=== 4. GetInvocationList：单独处理每个委托 ===");
 
 ActionWithError();
@@ -335,12 +343,10 @@ void ActionWithError()
     risky += () => throw new InvalidOperationException("故意抛异常");
     risky += () => Console.WriteLine("  [3] 应该执行（如果用 try/catch）");
 
-    // 直接调用：抛异常后停止
     Console.WriteLine("直接调用（异常会中断）：");
     try { risky(); }
     catch (Exception ex) { Console.WriteLine($"  捕获异常: {ex.Message}"); }
 
-    // 用 GetInvocationList 单独调用：异常不影响其他
     Console.WriteLine("用 GetInvocationList 单独调用：");
     foreach (Action handler in risky.GetInvocationList())
     {
@@ -349,6 +355,7 @@ void ActionWithError()
     }
 }
 
+// ---------- 5. 内置泛型委托：Action 系列 ----------
 Console.WriteLine("\\n=== 5. 内置泛型委托：Action 系列 ===");
 
 Action sayHello = () => Console.WriteLine("  Hello!");
@@ -363,6 +370,7 @@ log("这是一条日志");
 
 addAndPrint(3, 5);
 
+// ---------- 6. 内置泛型委托：Func 系列 ----------
 Console.WriteLine("\\n=== 6. 内置泛型委托：Func 系列 ===");
 
 Func<int> randomNum = () => Random.Shared.Next(1, 100);
@@ -381,6 +389,7 @@ Console.WriteLine($"  Max(3, 9) = {maxFunc(3, 9)}");
 
 Console.WriteLine($"  Sum(1, 2, 3) = {sumThree(1, 2, 3)}");
 
+// ---------- 7. 内置泛型委托：Predicate<T> ----------
 Console.WriteLine("\\n=== 7. 内置泛型委托：Predicate<T> ===");
 
 Predicate<int> isEven = n => n % 2 == 0;
@@ -403,6 +412,7 @@ var evens = numbers.FindAll(isEven);
 
 Console.WriteLine($"  偶数: {string.Join(", ", evens)}");
 
+// ---------- 8. Comparison<T>：自定义排序 ----------
 Console.WriteLine("\\n=== 8. Comparison<T>：自定义排序 ===");
 
 var people = new List<Person>
@@ -428,6 +438,7 @@ Console.WriteLine("  按名字降序：");
 
 foreach (var p in people) Console.WriteLine($"    {p}");
 
+// ---------- 9. Converter<TInput, TOutput>：集合转换 ----------
 Console.WriteLine("\\n=== 9. Converter<TInput, TOutput>：集合转换 ===");
 
 Converter<Person, string> toName = p => p.Name;
@@ -444,6 +455,7 @@ var hexs = ints.ConvertAll(intToHex);
 
 Console.WriteLine($"  十六进制: {string.Join(", ", hexs)}");
 
+// ---------- 10. 回调模式：委托作为方法参数 ----------
 Console.WriteLine("\\n=== 10. 回调模式：委托作为方法参数 ===");
 
 int[] data = { 1, 2, 3, 4, 5 };
@@ -462,6 +474,7 @@ TransformArray(data, x => x + 100);
 
 Console.WriteLine($"  加 100 后: {string.Join(", ", data)}");
 
+// ---------- 11. 委托作为返回值：工厂模式 ----------
 Console.WriteLine("\\n=== 11. 委托作为返回值：工厂模式 ===");
 
 var triple = GetMultiplier(3);
@@ -472,6 +485,7 @@ Console.WriteLine($"  triple(10) = {triple(10)}");
 
 Console.WriteLine($"  quintuple(10) = {quintuple(10)}");
 
+// ---------- 12. 多播委托返回值陷阱 ----------
 Console.WriteLine("\\n=== 12. 多播委托返回值陷阱 ===");
 
 Func<int> f1 = () => 1;
@@ -491,17 +505,18 @@ foreach (Func<int> f in multi.GetInvocationList())
     Console.WriteLine($"    handler 返回: {f()}");
 }
 
+// ---------- 13. 协变与逆变 ----------
 Console.WriteLine("\\n=== 13. 协变与逆变 ===");
 
 Action<object> objAction = o => Console.WriteLine($"  打印对象: {o}");
 
-Action<string> strAction = objAction;
+Action<string> strAction = objAction;  // 逆变：能处理 object 的委托，一定能处理 string
 
 strAction("hello");
 
 Func<string> strFunc = () => "hello";
 
-Func<object> objFunc = strFunc;
+Func<object> objFunc = strFunc;  // 协变：返回 string 的委托可当作返回 object
 
 Console.WriteLine($"  通过 Func<object> 调用: {objFunc()}");
 
@@ -513,9 +528,9 @@ delegate void LogHandler(string message, DateTime time);
 
 static class MathOps
 {
-    public static int Square(int x) => x * x;        // 静态方法
-    public static int Cube(int x) => x * x * x;      // 静态方法
-    public static int Negate(int x) => -x;           // 静态方法
+    public static int Square(int x) => x * x;        // 静态方法组：Target 为 null
+    public static int Cube(int x) => x * x * x;
+    public static int Negate(int x) => -x;
 }
 
 class Calculator
@@ -523,7 +538,7 @@ class Calculator
     public int Offset { get; }
     public Calculator(int offset) => Offset = offset;
 
-    // 实例方法：用 this.Offset 偏移
+    // 实例方法组会抓住 this；对象活着是因为委托持有 Target，小心生命周期
     public int AddOffset(int x) => x + Offset;
 }
 
@@ -791,17 +806,20 @@ Func<int, int> ok = static x => x * 2;     // 不捕获，无闭包对象
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「Lambda 表达式」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - Lambda 表达式完整演示
-// 演示：表达式/语句 Lambda、闭包、捕获陷阱、
-//       LINQ 中的 Lambda、表达式树、自然类型、弃元
-
+    code: `// ===========================================================
+// 第三十七章 Lambda 表达式
+// 演示：表达式/语句 Lambda、闭包与循环捕获、LINQ、表达式树 vs 委托、自然类型、弃元
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：Lambda（C# 3）、静态匿名函数未用、var 自然类型与显式返回类型（C# 10）、foreach 捕获修复（C# 5）
+// 陷阱：赋给 Func 的 Lambda 是可执行委托；赋给 Expression<Func<>> 的是数据树，必须 Compile 才能跑
+// ===========================================================
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 
-// === 1. 表达式 Lambda：单表达式，自动返回 ===
-Func<int, int> square = x => x * x;                  // 单参数省括号
+// ---------- 1. 表达式 Lambda：单表达式，返回值就是该表达式 ----------
+Func<int, int> square = x => x * x;                  // 单参数可省括号
 Func<int, int, int> add = (a, b) => a + b;          // 多参数
 Func<int> fortyTwo = () => 42;                       // 无参数
 Func<string, string> toUpper = s => s.ToUpper();
@@ -812,19 +830,20 @@ Console.WriteLine($"  Add(3, 4) = {add(3, 4)}");
 Console.WriteLine($"  fortyTwo() = {fortyTwo()}");
 Console.WriteLine($"  toUpper('hi') = {toUpper("hi")}");
 
+// ---------- 2. 语句 Lambda：用 { } 包多条语句，必须 return ----------
 Console.WriteLine("\\n=== 2. 语句 Lambda：用 { } 包多条语句，必须 return ===");
 Func<int, string> describe = x =>
 {
     if (x < 0) return "负数";
     if (x == 0) return "零";
-    return "正数";
+    return "正数";  // 语句 Lambda 不能赋给 Expression<T>，表达式树只接受表达式 Lambda
 };
 Console.WriteLine($"  -5: {describe(-5)}");
 Console.WriteLine($"  0: {describe(0)}");
 Console.WriteLine($"  7: {describe(7)}");
 
+// ---------- 3. 类型推断：编译器根据委托类型推断参数 ----------
 Console.WriteLine("\\n=== 3. 类型推断：编译器根据委托类型推断参数 ===");
-// 同一个 Lambda x => x*2，赋给不同委托，x 的类型不同
 Func<int, int> intDoubler = x => x * 2;       // x 是 int
 Func<double, double> dblDoubler = x => x * 2; // x 是 double
 Func<string, int> strLen = s => s.Length;     // s 是 string
@@ -832,34 +851,32 @@ Console.WriteLine($"  int 5 * 2 = {intDoubler(5)}");
 Console.WriteLine($"  double 2.5 * 2 = {dblDoubler(2.5)}");
 Console.WriteLine($"  'hello' 长度 = {strLen("hello")}");
 
+// ---------- 4. 闭包：捕获外部变量 ----------
 Console.WriteLine("\\n=== 4. 闭包：捕获外部变量 ===");
 int factor = 10;
-Func<int, int> multiplier = x => x * factor;   // 捕获 factor
+Func<int, int> multiplier = x => x * factor;   // 捕获的是变量本身，不是当时的 10
 Console.WriteLine($"  factor=10, multiplier(5) = {multiplier(5)}");   // 50
 
-// 修改捕获的变量：Lambda 看到新值
 factor = 20;
 Console.WriteLine($"  factor=20, multiplier(5) = {multiplier(5)}");  // 100
 
-// 捕获引用类型：Lambda 看到对象内部的变化
 var list = new List<int> { 1, 2, 3 };
 Func<int> getCount = () => list.Count;
 Console.WriteLine($"  初始 list.Count = {getCount()}");
 list.Add(4);
 Console.WriteLine($"  Add 后 list.Count = {getCount()}");
 
+// ---------- 5. 捕获陷阱：for 循环中的捕获 ----------
 Console.WriteLine("\\n=== 5. 捕获陷阱：for 循环中的捕获 ===");
-// ❌ 陷阱：所有 Lambda 共享同一个 i，循环结束时 i=3
 var badActions = new List<Action>();
 for (int i = 0; i < 3; i++)
 {
-    badActions.Add(() => Console.Write(i + " "));
+    badActions.Add(() => Console.Write(i + " "));  // for 的 i 是同一个变量；C# 13 才改成每次迭代独立
 }
 Console.Write("  错误版本: ");
 foreach (var a in badActions) a();   // 输出 3 3 3
 Console.WriteLine();
 
-// ✅ 修复：每次迭代拷贝一份
 var goodActions = new List<Action>();
 for (int i = 0; i < 3; i++)
 {
@@ -870,64 +887,57 @@ Console.Write("  修复版本: ");
 foreach (var a in goodActions) a();   // 输出 0 1 2
 Console.WriteLine();
 
-// ✅ C# 5+ foreach 自动拷贝循环变量
 var foreachActions = new List<Action>();
 foreach (var item in new[] { 10, 20, 30 })
 {
-    foreachActions.Add(() => Console.Write(item + " "));
+    foreachActions.Add(() => Console.Write(item + " "));  // C# 5+ foreach 每轮新变量，不必再拷 local
 }
 Console.Write("  foreach 版本: ");
 foreach (var a in foreachActions) a();   // 输出 10 20 30
 Console.WriteLine();
 
+// ---------- 6. Lambda 作为 LINQ 参数 ----------
 Console.WriteLine("\\n=== 6. Lambda 作为 LINQ 参数 ===");
 var nums = new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 
-// Where: 过滤
 var evens = nums.Where(n => n % 2 == 0);
 Console.WriteLine($"  偶数: {string.Join(", ", evens)}");
 
-// Select: 映射
 var squares = nums.Select(n => n * n);
 Console.WriteLine($"  平方: {string.Join(", ", squares)}");
 
-// OrderBy: 排序
 var desc = nums.OrderByDescending(n => n);
 Console.WriteLine($"  降序: {string.Join(", ", desc)}");
 
-// First/Single/Any/All：用 Lambda 表达条件
 Console.WriteLine($"  第一个 > 5: {nums.First(n => n > 5)}");
 Console.WriteLine($"  是否有 > 8: {nums.Any(n => n > 8)}");
 Console.WriteLine($"  是否全为正: {nums.All(n => n > 0)}");
 
-// Aggregate：累积
 var sum = nums.Aggregate((acc, n) => acc + n);
 Console.WriteLine($"  累积和: {sum}");
 
-// 链式调用：Lambda 让 LINQ 像流水线
 var result = nums
-    .Where(n => n % 2 == 0)       // 取偶数
-    .Select(n => n * 10)          // 乘 10
-    .OrderByDescending(n => n)     // 降序
-    .Take(2);                       // 取前两个
+    .Where(n => n % 2 == 0)
+    .Select(n => n * 10)
+    .OrderByDescending(n => n)
+    .Take(2);
 Console.WriteLine($"  链式: {string.Join(", ", result)}");
 
+// ---------- 7. 表达式树 Expression<T> ----------
 Console.WriteLine("\\n=== 7. 表达式树 Expression<T> ===");
-// Lambda 赋给 Expression<Func<>> 会编译成「表达式树」数据结构
+// 同一套 x => x*2+1：左边 Func 会编译成方法；左边 Expression 会编译成树，EF 才能翻译成 SQL
 Expression<Func<int, int>> expr = x => x * 2 + 1;
 
-// 看看表达式树长什么样
 Console.WriteLine($"  表达式树: {expr}");
 Console.WriteLine($"  Body: {expr.Body}");
 Console.WriteLine($"  Body 类型: {expr.Body.NodeType}");   // Add
 Console.WriteLine($"  参数: {expr.Parameters[0]}");
 
-// 编译成委托后才能执行
 var compiled = expr.Compile();
 Console.WriteLine($"  编译后执行: compiled(5) = {compiled(5)}");   // 11
 
+// ---------- 8. 自然类型（C# 10+）：var + Lambda ----------
 Console.WriteLine("\\n=== 8. 自然类型（C# 10+）：var + Lambda ===");
-// C# 10+：用 var 接收 Lambda，参数需显式标注类型
 var multiply = (int a, int b) => a * b;
 var greet = (string name) => $"Hello, {name}!";
 var noop = () => Console.WriteLine("  noop");
@@ -936,32 +946,29 @@ Console.WriteLine($"  multiply(3, 4) = {multiply(3, 4)}");
 Console.WriteLine($"  greet('C#') = {greet("C#")}");
 Console.Write("  noop: "); noop();
 
-// 显式返回类型（C# 10+）
 var parse = int (string s) => int.Parse(s);
 Console.WriteLine($"  parse('123') = {parse("123")}");
 
+// ---------- 9. 弃元 _：忽略不关心的参数 ----------
 Console.WriteLine("\\n=== 9. 弃元 _：忽略不关心的参数 ===");
-// 弃元表示「这个参数我不在乎」
 Action<int, int> printSecond = (_, y) => Console.WriteLine($"  只看第二个: {y}");
 printSecond(100, 200);
 
 Func<int, int, int, int> onlyThird = (_, _, z) => z;
 Console.WriteLine($"  onlyThird(1, 2, 3) = {onlyThird(1, 2, 3)}");
 
-// 多个 _ 不冲突：因为都是弃元
 Action<int, int, int> multi = (_, _, _) => Console.WriteLine("  三个参数都不在乎");
 multi(1, 2, 3);
 
+// ---------- 10. Lambda 与匿名方法对比 ----------
 Console.WriteLine("\\n=== 10. Lambda 与匿名方法对比 ===");
-// 旧：匿名方法（已不推荐）
 Func<int, int> oldStyle = delegate(int x) { return x * x; };
-// 新：Lambda（推荐）
 Func<int, int> newStyle = x => x * x;
 Console.WriteLine($"  匿名方法: {oldStyle(5)}");
 Console.WriteLine($"  Lambda: {newStyle(5)}");
 
+// ---------- 11. 闭包实战：生成器函数 ----------
 Console.WriteLine("\\n=== 11. 闭包实战：生成器函数 ===");
-// 用闭包实现一个计数器
 Func<int> makeCounter()
 {
     int count = 0;   // 闭包变量
@@ -973,8 +980,8 @@ var counter2 = makeCounter();   // 独立的闭包，互不影响
 Console.WriteLine($"  counter1: {counter1()}, {counter1()}, {counter1()}");
 Console.WriteLine($"  counter2: {counter2()}, {counter2()}");
 
+// ---------- 12. 高阶函数：接收函数参数，返回函数 ----------
 Console.WriteLine("\\n=== 12. 高阶函数：接收函数参数，返回函数 ===");
-// 接收一个函数，返回它的「组合版本」
 Func<int, int> compose(Func<int, int> f, Func<int, int> g)
     => x => f(g(x));
 
@@ -983,14 +990,15 @@ var plusOne = (int x) => x + 1;
 var doubleThenPlusOne = compose(plusOne, doubleIt);   // x => (x*2) + 1
 Console.WriteLine($"  doubleThenPlusOne(5) = {doubleThenPlusOne(5)}");   // 11
 
+// ---------- 13. 性能提示：闭包对象 ----------
 Console.WriteLine("\\n=== 13. 性能提示：闭包对象 ===");
-// 闭包会创建额外对象
 int captured = 42;
 Func<int, int> withClosure = x => x + captured;   // 创建闭包对象，多一次间接
 Func<int, int> noClosure = x => x + 42;           // 静态委托，无闭包
 Console.WriteLine($"  withClosure(8) = {withClosure(8)}");
 Console.WriteLine($"  noClosure(8) = {noClosure(8)}");
-Console.WriteLine("  提示：热路径上避免不必要的闭包");`,
+Console.WriteLine("  提示：热路径上避免不必要的闭包");
+`,
     lang: 'cs',
   },
 
@@ -1252,9 +1260,13 @@ handler?.Invoke(this, e);
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「事件」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 事件完整演示
-// 演示：event 关键字、EventHandler、自定义 EventArgs、OnXxx 模式、
-//       INotifyPropertyChanged、事件访问器、线程安全触发
+    code: `// ===========================================================
+// 第三十八章 事件
+// 演示：event 关键字、自定义 EventArgs、OnXxx、INotifyPropertyChanged、add/remove、取消订阅
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：泛型 EventHandler<T>（.NET 2）、CallerMemberName（C# 5）、?.Invoke 线程安全触发（C# 6）
+// 陷阱：订阅必须保存同一方法组才能 -= ；匿名 Lambda += 之后几乎无法精确退订。发布者持有订阅者强引用
+// ===========================================================
 
 using System;
 
@@ -1264,6 +1276,7 @@ using System.ComponentModel;
 
 using System.Runtime.CompilerServices;
 
+// ---------- 1. += 订阅 / -= 退订：必须用同一个方法组，不能各写一份相同的 Lambda ----------
 Console.WriteLine("=== 1. 基本 event + 自定义 EventArgs ===");
 
 var button = new Button();
@@ -1280,12 +1293,13 @@ button.SimulateClick(10, 20);
 
 button.SimulateClick(100, 200);
 
-button.Clicked -= notifier1.OnButtonClicked;
+button.Clicked -= notifier1.OnButtonClicked;  // 方法组退订：按 Target+Method 匹配，Logger 不再收到
 
 Console.WriteLine("  取消订阅 notifier1 后:");
 
 button.SimulateClick(50, 50);
 
+// ---------- 2. event 与普通委托的区别演示 ----------
 Console.WriteLine("\\n=== 2. event 与普通委托的区别演示 ===");
 
 Console.WriteLine("  event 关键字限制了外部行为:");
@@ -1296,6 +1310,7 @@ Console.WriteLine("    - 只能在类内部触发（外部不能 btn.Clicked()�
 
 Console.WriteLine("    - 自动线程安全的订阅/取消订阅");
 
+// ---------- 3. 手写事件访问器 add/remove ----------
 Console.WriteLine("\\n=== 3. 手写事件访问器 add/remove ===");
 
 var obs = new ObservableValue<int>();
@@ -1324,6 +1339,7 @@ Console.WriteLine("  设置 Value = 99:");
 
 obs.Value = 99;
 
+// ---------- 4. INotifyPropertyChanged 实战 ----------
 Console.WriteLine("\\n=== 4. INotifyPropertyChanged 实战 ===");
 
 var product = new Product { Name = "鼠标", Price = 99.9m };
@@ -1356,6 +1372,7 @@ Console.WriteLine("  再次修改 Price:");
 
 product.Price = 199.0m;
 
+// ---------- 5. 事件链式触发 ----------
 Console.WriteLine("\\n=== 5. 事件链式触发 ===");
 
 var order = new Order(20250719);
@@ -1370,6 +1387,7 @@ order.Placed += (s, e) => Console.WriteLine($"  [Payment] 触发扣款");
 
 order.Place();
 
+// ---------- 6. 多个订阅者全部触发 ----------
 Console.WriteLine("\\n=== 6. 多个订阅者全部触发 ===");
 
 var btn2 = new Button();
@@ -1386,6 +1404,7 @@ btn2.SimulateClick(1, 1);
 
 Console.WriteLine($"  3 个处理器各 ++count，count = {count}");
 
+// ---------- 7. OnXxx 模式：派生类重写 ----------
 Console.WriteLine("\\n=== 7. OnXxx 模式：派生类重写 ===");
 
 var customBtn = new CustomButton();
@@ -1394,6 +1413,7 @@ customBtn.Clicked += (s, e) => Console.WriteLine($"    [订阅者] 收到 {e}");
 
 customBtn.SimulateClick(5, 5);
 
+// ---------- 8. 事件内存泄漏示意 ----------
 Console.WriteLine("\\n=== 8. 事件内存泄漏示意 ===");
 
 Console.WriteLine("  事件持有订阅者的强引用，订阅者不取消订阅会导致内存泄漏:");
@@ -1404,6 +1424,7 @@ Console.WriteLine("  - 解决方案 2：使用 WeakReference 或 WeakEventManage
 
 Console.WriteLine("  - 解决方案 3：使用 IObservable<T> / Reactive Extensions");
 
+// ---------- 9. 线程安全的事件触发 ----------
 Console.WriteLine("\\n=== 9. 线程安全的事件触发 ===");
 
 Console.WriteLine("  ❌ 不安全写法（旧代码常见）:");
@@ -1418,6 +1439,7 @@ Console.WriteLine("  ✅ 安全写法 2：null 条件运算符（推荐）");
 
 Console.WriteLine("    Clicked?.Invoke(this, e);  // 编译器自动拷贝");
 
+// ---------- 10. 事件 vs 接口回调 ----------
 Console.WriteLine("\\n=== 10. 事件 vs 接口回调 ===");
 
 Console.WriteLine("  事件：松耦合，发布者无需知道订阅者类型，订阅者动态增减");
@@ -1430,7 +1452,7 @@ Console.WriteLine("  选择：动态多订阅者用 event，固定契约用接�
 
 class ClickEventArgs : EventArgs
 {
-    public int X { get; init; }      // init 保证不可变
+    public int X { get; init; }      // init 保证事件参数发出后订阅者改不了
     public int Y { get; init; }
     public DateTimeOffset Time { get; init; } = DateTimeOffset.Now;
 
@@ -1439,17 +1461,15 @@ class ClickEventArgs : EventArgs
 
 class Button
 {
-    // 1) 字段式事件：编译器自动生成 add/remove 访问器
+    // event 把委托封装成只能 +=/-=；外部写 Clicked = null 或 Clicked() 都会编译失败
     public event EventHandler<ClickEventArgs>? Clicked;
 
-    // 2) OnXxx 模式：protected virtual，子类可重写
     protected virtual void OnClicked(ClickEventArgs e)
     {
-        // null 条件运算符：只有有订阅者才触发（线程安全写法）
+        // ?.Invoke 先把委托拷到临时变量再调用，避免并发 -= 导致 NRE
         Clicked?.Invoke(this, e);
     }
 
-    // 模拟用户点击
     public void SimulateClick(int x, int y)
     {
         Console.WriteLine($"  [Button] 触发点击 ({x}, {y})");
@@ -1463,7 +1483,7 @@ class UINotifier
 
     public UINotifier(string name) => Name = name;
 
-    // 事件处理器方法：签名必须匹配 EventHandler<ClickEventArgs>
+    // 实例方法作处理器：退订必须是同一个实例的同一方法，new UINotifier(...).OnButtonClicked 对不上
     public void OnButtonClicked(object? sender, ClickEventArgs e)
     {
         Console.WriteLine($"    [{Name}] 收到点击事件: sender={sender?.GetType().Name}, e={e}");
@@ -1473,7 +1493,7 @@ class UINotifier
 class ObservableValue<T>
 {
     private T _value = default!;
-    private EventHandler<T>? _valueChanged;   // 私有委托字段
+    private EventHandler<T>? _valueChanged;   // 手写 backing：默认 event 的 add/remove 已是 lock(this)
 
     public T Value
     {
@@ -1488,18 +1508,17 @@ class ObservableValue<T>
         }
     }
 
-    // 手写事件访问器：可以加日志、监控等
     public event EventHandler<T> ValueChanged
     {
         add
         {
             Console.WriteLine($"    [ObservableValue] 新订阅者加入");
-            _valueChanged += value;
+            _valueChanged += value;  // 手写访问器默认不是线程安全，并发 += 请 Interlocked.CompareExchange
         }
         remove
         {
             Console.WriteLine($"    [ObservableValue] 订阅者移除");
-            _valueChanged -= value;
+            _valueChanged -= value;  // 必须传入当初 += 的那份委托引用
         }
     }
 
@@ -1540,13 +1559,10 @@ class Product : INotifyPropertyChanged
         }
     }
 
-    // INotifyPropertyChanged 接口要求的事件
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    // [CallerMemberName]：编译器自动填入调用方的方法/属性名
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        // 线程安全触发：null 条件运算符
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
@@ -1576,11 +1592,10 @@ class Inventory
 
 class CustomButton : Button
 {
-    // 重写 OnClicked：在事件触发前/后插入自定义逻辑
     protected override void OnClicked(ClickEventArgs e)
     {
         Console.WriteLine($"    [CustomButton] 拦截事件，触发前 e={e}");
-        base.OnClicked(e);   // 调用基类：真正触发事件
+        base.OnClicked(e);   // 忘了 base 则外部订阅者收不到事件
         Console.WriteLine($"    [CustomButton] 事件已触发");
     }
 }
@@ -1808,9 +1823,13 @@ EF Core **只翻译它认识的节点**：闭包常量、属性访问、一部�
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「表达式树」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 表达式树完整演示
-// 演示：Expression<T>、静态构造方法、Compile()、ExpressionVisitor、
-//       动态构建 (x, y) => x + y > 10、动态查询示意
+    code: `// ===========================================================
+// 第三十九章 表达式树
+// 演示：Expression vs Func、手动搭树、Visitor 改写、动态 AND 谓词、Compile 缓存
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：表达式树 API（.NET 3.5 / C# 3）；语句 Lambda 永远不能变成 Expression
+// 陷阱：Lambda 赋给 Func 是 IL；赋给 Expression<Func<>> 是对象图。Compile() 很贵，结果要缓存
+// ===========================================================
 
 using System;
 
@@ -1820,6 +1839,7 @@ using System.Linq;
 
 using System.Linq.Expressions;
 
+// ---------- 1. 同一套箭头语法：左边类型决定「可执行委托」还是「可检查的树」 ----------
 Console.WriteLine("=== 1. Expression vs Func ===");
 
 Func<int, int> func = x => x * 2;
@@ -1892,6 +1912,7 @@ Console.WriteLine($"  checkFunc(7, 8) = {checkFunc(7, 8)}");
 
 Console.WriteLine($"  checkFunc(5, 5) = {checkFunc(5, 5)}");
 
+// ---------- 4. ExpressionVisitor：遍历表达式树 ----------
 Console.WriteLine("\\n=== 4. ExpressionVisitor：遍历表达式树 ===");
 
 Expression<Func<int, int, bool>> complexExpr = (x, y) => x * 2 + y > 10;
@@ -1904,6 +1925,7 @@ var visitor = new PrintingVisitor();
 
 visitor.Visit(complexExpr.Body);
 
+// ---------- 5. ExpressionVisitor：修改表达式树 ----------
 Console.WriteLine("\\n=== 5. ExpressionVisitor：修改表达式树 ===");
 
 Expression<Func<int, int, bool>> originalExpr = (x, y) => x + y > 10;
@@ -1927,6 +1949,7 @@ Console.WriteLine($"  原函数(5, 5) = {origFunc(5, 5)}");
 
 Console.WriteLine($"  改后(5, 5) = {modiFunc(5, 5)}");
 
+// ---------- 6. 动态拼接查询条件（PredicateBuilder 思路） ----------
 Console.WriteLine("\\n=== 6. 动态拼接查询条件（PredicateBuilder 思路） ===");
 
 var users = new List<User>
@@ -1955,6 +1978,7 @@ Console.WriteLine($"  匹配结果:");
 
 foreach (var u in matched) Console.WriteLine($"    {u}");
 
+// ---------- 7. 动态生成属性的 getter ----------
 Console.WriteLine("\\n=== 7. 动态生成属性的 getter ===");
 
 var product = new { Name = "键盘", Price = 199.0 };
@@ -1967,6 +1991,7 @@ Console.WriteLine($"  Product.Name = {nameGetter(product)}");
 
 Console.WriteLine($"  Product.Price = {priceGetter(product)}");
 
+// ---------- 8. 表达式树的 ToString 调试 ----------
 Console.WriteLine("\\n=== 8. 表达式树的 ToString 调试 ===");
 
 Expression<Func<int, bool>> debugExpr = x => x > 0 && x < 100;
@@ -1983,6 +2008,7 @@ Console.WriteLine($"  Left: {body.Left} ({body.Left.NodeType})");
 
 Console.WriteLine($"  Right: {body.Right} ({body.Right.NodeType})");
 
+// ---------- 9. 表达式树的限制 ----------
 Console.WriteLine("\\n=== 9. 表达式树的限制 ===");
 
 Console.WriteLine("  ❌ 语句 Lambda 不能作为 Expression:");
@@ -1995,6 +2021,7 @@ Console.WriteLine("     Expression<Func<int, int>> good = x => x;  // OK");
 
 Console.WriteLine("  ❌ Lambda 转表达式树不能含赋值、try/catch、for 等语句");
 
+// ---------- 10. Compile 性能提示 ----------
 Console.WriteLine("\\n=== 10. Compile 性能提示 ===");
 
 Console.WriteLine("  Expression.Compile() 有开销，应该缓存编译结果:");
@@ -2023,12 +2050,11 @@ class PrintingVisitor : ExpressionVisitor
     {
         if (node == null) return node!;
 
-        // 缩进表示层级
         string indent = new string(' ', _depth * 2);
         Console.WriteLine($"  {indent}{node.NodeType}: {node}");
 
         _depth++;
-        base.Visit(node);   // 递归访问子节点
+        base.Visit(node);   // Visitor 默认不可变：改树要 return 新节点，不要原地改
         _depth--;
         return node;
     }
@@ -2038,11 +2064,9 @@ class GreaterToGreaterEqualVisitor : ExpressionVisitor
 {
     protected override Expression VisitBinary(BinaryExpression node)
     {
-        // 先递归处理子节点
         var left = Visit(node.Left);
         var right = Visit(node.Right);
 
-        // 如果当前节点是 >，改成 >=
         if (node.NodeType == ExpressionType.GreaterThan)
         {
             return Expression.GreaterThanOrEqual(left, right);
@@ -2059,7 +2083,7 @@ static class PredicateBuilder
     public static Expression<Func<T, bool>> And<T>(
         this Expression<Func<T, bool>> first, Expression<Func<T, bool>> second)
     {
-        // 把 second 的参数替换成 first 的参数
+        // 两棵树的 Parameter 不是同一个对象，不替换会变成「两个 u」无法 Compile/翻译
         var param = first.Parameters[0];
         var visitor = new ParameterReplaceVisitor(second.Parameters[0], param);
         var body = Expression.AndAlso(first.Body, visitor.Visit(second.Body));
@@ -2094,15 +2118,10 @@ class PropertyAccessorFactory
 {
     public static Func<object, object?> CreateGetter(Type targetType, string propertyName)
     {
-        // 参数：object obj
         var paramObj = Expression.Parameter(typeof(object), "obj");
-        // 转换为目标类型
         var cast = Expression.Convert(paramObj, targetType);
-        // 访问属性
         var prop = Expression.Property(cast, propertyName);
-        // 把结果转成 object
-        var castResult = Expression.Convert(prop, typeof(object));
-        // 编译成委托
+        var castResult = Expression.Convert(prop, typeof(object));  // 值类型必须装箱成 object
         return Expression.Lambda<Func<object, object?>>(castResult, paramObj).Compile();
     }
 }
@@ -2354,9 +2373,13 @@ Option / Result 把“没有值 / 预期失败”留在类型里，避免用 nul
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「函数式编程基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句 - 函数式编程基础演示
-// 演示：Map/Filter/Reduce、纯函数、函数组合、柯里化、Memoize、
-//       Option<T>、Result<T, TError>、Railway Oriented Programming
+    code: `// ===========================================================
+// 第四十章 函数式编程基础
+// 演示：Map/Filter/Reduce、纯函数、不可变、柯里化、Memoize、Option/Result、Railway
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：record / with（C# 9）、ImmutableList（System.Collections.Immutable）、where T : notnull
+// 陷阱：LINQ 是延迟的；闭包 Memoize 的 Dictionary 不是线程安全的。Option 的 None 是 default，HasValue 才可靠
+// ===========================================================
 
 using System;
 
@@ -2366,6 +2389,7 @@ using System.Collections.Immutable;
 
 using System.Linq;
 
+// ---------- 1. Map/Filter/Reduce：Select/Where/Aggregate，强调「做什么」而不是循环步骤 ----------
 Console.WriteLine("=== 1. Map / Filter / Reduce ===");
 
 var nums = new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
@@ -2386,6 +2410,7 @@ var pipeline = nums.Where(x => x % 2 == 0).Select(x => x * x).Sum();
 
 Console.WriteLine($"  组合 (偶数平方求和): {pipeline}");
 
+// ---------- 2. 纯函数 vs 不纯函数 ----------
 Console.WriteLine("\\n=== 2. 纯函数 vs 不纯函数 ===");
 
 static int Add(int a, int b) => a + b;
@@ -2402,6 +2427,7 @@ Console.WriteLine($"  Next() = {Next()}");
 
 Console.WriteLine($"  Next() = {Next()}  (不同！有状态)");
 
+// ---------- 3. 不可变性演示 ----------
 Console.WriteLine("\\n=== 3. 不可变性演示 ===");
 
 var p1 = new Point(1, 2);
@@ -2414,12 +2440,13 @@ Console.WriteLine($"  副本: {p2}");
 
 var immutableList = ImmutableList.Create(1, 2, 3);
 
-var added = immutableList.Add(4);
+var added = immutableList.Add(4);  // 返回新列表，原 immutableList 仍是 1,2,3
 
 Console.WriteLine($"  原列表: {string.Join(", ", immutableList)}");
 
 Console.WriteLine($"  Add 后新列表: {string.Join(", ", added)}");
 
+// ---------- 4. 函数组合 Compose ----------
 Console.WriteLine("\\n=== 4. 函数组合 Compose ===");
 
 static Func<T, T> Compose<T>(Func<T, T> f, Func<T, T> g) => x => f(g(x));
@@ -2440,6 +2467,7 @@ Func<int, int> pipeline2 = Compose(x => x - 3, Compose(doubleIt, addOne));
 
 Console.WriteLine($"  +1 -> *2 -> -3, (5) = {pipeline2(5)}");
 
+// ---------- 5. 柯里化与部分应用 ----------
 Console.WriteLine("\\n=== 5. 柯里化与部分应用 ===");
 
 Func<int, int, int> add = (a, b) => a + b;
@@ -2465,6 +2493,7 @@ Console.WriteLine($"  curriedAdd3(10)(20)(30) = {curriedAdd3(10)(20)(30)}");
 
 Console.WriteLine($"  add10Then20(5) = {add10Then20(5)}");
 
+// ---------- 6. Memoization：记忆化 ----------
 Console.WriteLine("\\n=== 6. Memoization：记忆化 ===");
 
 static int SlowSquare(int n)
@@ -2474,7 +2503,7 @@ static int SlowSquare(int n)
 }
 
 static Func<T, TResult> Memoize<T, TResult>(Func<T, TResult> f)
-    where T : notnull
+    where T : notnull  // Dictionary 不允许 null key；本闭包里的 cache 也不是线程安全的
 {
     var cache = new Dictionary<T, TResult>();
     return arg =>
@@ -2485,7 +2514,7 @@ static Func<T, TResult> Memoize<T, TResult>(Func<T, TResult> f)
             return result;
         }
         Console.WriteLine($"    [Cache 未命中] {arg}, 计算中...");
-        return cache[arg] = f(arg);
+        return cache[arg] = f(arg);  // 多线程请换 ConcurrentDictionary，否则会丢更新或抛
     };
 }
 
@@ -2511,6 +2540,7 @@ Console.WriteLine("  调用不同参数:");
 
 Console.WriteLine($"    memoizedSquare(6) = {memoizedSquare(6)}");
 
+// ---------- 7. Option<T> 类型 ----------
 Console.WriteLine("\\n=== 7. Option<T> 类型 ===");
 
 static Option<T> Some<T>(T value) => Option<T>.Some(value);
@@ -2553,6 +2583,7 @@ var name = FindUserById(99).ValueOr("(未知用户)");
 
 Console.WriteLine($"  id=99 或默认: {name}");
 
+// ---------- 8. Result<T, TError> 类型 ----------
 Console.WriteLine("\\n=== 8. Result<T, TError> 类型 ===");
 
 static Result<T, TError> Ok<T, TError>(T value) => Result<T, TError>.Ok(value);
@@ -2596,6 +2627,7 @@ var r4 = FindUser(-1).Bind(ValidateAge);
 
 Console.WriteLine($"    FindUser(-1).Bind(ValidateAge) = {r4}");
 
+// ---------- 9. Railway Oriented Programming：流水线 ----------
 Console.WriteLine("\\n=== 9. Railway Oriented Programming：流水线 ===");
 
 static Result<string, string> ProcessUser(int id)
@@ -2609,6 +2641,7 @@ Console.WriteLine($"  ProcessUser(2) = {ProcessUser(2)}");
 
 Console.WriteLine($"  ProcessUser(99) = {ProcessUser(99)}");
 
+// ---------- 10. 闭包实战：生成器 ----------
 Console.WriteLine("\\n=== 10. 闭包实战：生成器 ===");
 
 static Func<int> MakeCounter(int start, int step)
@@ -2627,6 +2660,7 @@ Console.WriteLine($"  counter2: {counter2()}, {counter2()}, {counter2()}");
 
 Console.WriteLine("  两个闭包互不影响，各自维护状态");
 
+// ---------- 11. 不可变数据流处理 ----------
 Console.WriteLine("\\n=== 11. 不可变数据流处理 ===");
 
 static ImmutableList<OrderLine> AddLine(ImmutableList<OrderLine> lines, OrderLine line)
@@ -2657,6 +2691,7 @@ order = RemoveLine(order, "鼠标");
 
 Console.WriteLine($"  移除鼠标后总计: {Total(order):C}");
 
+// ---------- 12. 函数式 vs 命令式对比 ----------
 Console.WriteLine("\\n=== 12. 函数式 vs 命令式对比 ===");
 
 Console.WriteLine("  命令式风格（强调步骤）:");
@@ -2671,6 +2706,7 @@ Console.WriteLine("  函数式风格（强调做什么）:");
 
 Console.WriteLine("    var sum = nums.Where(n => n % 2 == 0).Select(n => n*n).Sum();");
 
+// ---------- 13. C# 函数式生态简介 ----------
 Console.WriteLine("\\n=== 13. C# 函数式生态简介 ===");
 
 Console.WriteLine("  LanguageExt：.NET 最流行的 FP 库");
@@ -2687,6 +2723,7 @@ Console.WriteLine("  Optional：简单的 Option<T> 实现");
 
 Console.WriteLine("  Reactive Extensions (Rx)：基于 IObservable<T> 的响应式编程");
 
+// ---------- 14. 实践建议 ----------
 Console.WriteLine("\\n=== 14. 实践建议 ===");
 
 Console.WriteLine("  1. 数据建模用 record（不可变）");
@@ -2711,17 +2748,17 @@ readonly struct Option<T>
     public T Value { get; }
     private Option(T value) { Value = value; HasValue = true; }
     public static Option<T> Some(T value) => new(value);
-    public static Option<T> None() => default;
+    public static Option<T> None() => default;  // default 的 HasValue=false；不要用 Value 是否 default 判断空
     public override string ToString() => HasValue ? $"Some({Value})" : "None";
 }
 
 static class OptionExt
 {
     public static Option<TResult> Map<T, TResult>(this Option<T> opt, Func<T, TResult> f)
-        => opt.HasValue ? Option<TResult>.Some(f(opt.Value)) : Option<TResult>.None();
+        => opt.HasValue ? Option<TResult>.Some(f(opt.Value)) : Option<TResult>.None();  // None 短路，f 不会跑
 
     public static Option<TResult> Bind<T, TResult>(this Option<T> opt, Func<T, Option<TResult>> f)
-        => opt.HasValue ? f(opt.Value) : Option<TResult>.None();
+        => opt.HasValue ? f(opt.Value) : Option<TResult>.None();  // Bind 用于「返回 Option 的函数」，避免 Option<Option<T>>
 
     public static T ValueOr<T>(this Option<T> opt, T defaultValue)
         => opt.HasValue ? opt.Value : defaultValue;

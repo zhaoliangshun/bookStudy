@@ -156,46 +156,52 @@ var (name, age) = s2;                          // 需要 Deconstruct
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「类与对象基础」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句演示：类与对象基础
-// 文件开头直接写可执行代码，类型声明写在后面
+    code: `// ===========================================================
+// 第十九章 类与对象基础
+// 演示：new、构造重载、对象初始化器、partial、record/with、required+init、索引器
+// 适用：.NET 8 / C# 12 顶级语句（可执行代码必须全部写在类型声明之前）
+// 版本：目标类型 new / init / record（C# 9）、required（C# 11）、readonly record struct（C# 10）
+// 陷阱：对象初始化器在构造函数返回之后才赋值；private set 不能写进 { } 里
+// ===========================================================
 
 using System;
 
-// 1. new 创建对象：调用无参构造函数
+// ---------- 1. new：堆分配 + 调构造 + 返回引用 ----------
 var stu1 = new Student();
 Console.WriteLine($"stu1: {stu1.Name}, {stu1.Age}");
 
-// 2. 带参构造函数 + 调用实例方法
+// ---------- 2. 带参构造：数据走属性 set，才能触发校验 ----------
 var stu2 = new Student("小明", 18);
 stu2.Introduce();
 
-// 3. 对象初始化器：先无参构造，再赋值公开属性
-var stu3 = new Student("小红", 17) { School = "实验中学" };  // Age 是 private set，只能走构造函数
+// ---------- 3. 对象初始化器：构造完成后再给「公开可写」属性赋值 ----------
+var stu3 = new Student("小红", 17) { School = "实验中学" };  // Age 是 private set，初始化器改不了，只能走构造
 stu3.Introduce();
 
-// 4. 修改可写属性
+// ---------- 4. 公开 set 的属性：对象活着期间随时可改 ----------
 stu2.Birthday = new DateTime(2007, 5, 1);
 Console.WriteLine($"stu2 的生日：{stu2.Birthday:yyyy-MM-dd}");
 
-// 5. partial 类：两部分合并成一个完整类
+// ---------- 5. partial：同一类型可拆到多个声明，编译期合成一份 ----------
 var p = new Person { Name = "老王" };
 p.SayHi();
 
-// 6. 调用静态方法（属于类本身，不需要对象）
+// ---------- 6. 静态方法：属于类型本身，没有 this ----------
 Student.PrintTotal();
 
 
+// ---------- 7. record 值语义：with 复制并改指定成员，原实例不动 ----------
 Console.WriteLine("\\n===== 7. record / with / 目标类型 new / required+init =====");
 var rec = new PointRec(1, 2);
-var rec2 = rec with { Y = 9 };
+var rec2 = rec with { Y = 9 };                 // C# 9 with 表达式：按值拷贝，不是改 rec
 Console.WriteLine("record " + rec + " with Y=9 → " + rec2);
-NamedPerson named = new() { First = "Ada", Last = "Lovelace" };
+NamedPerson named = new() { First = "Ada", Last = "Lovelace" };  // C# 9 目标类型 new；required 漏赋会编译失败
 Console.WriteLine("required+init：" + named.First + " " + named.Last);
-var (dx, dy) = rec;
+var (dx, dy) = rec;                            // record 自动生成 Deconstruct
 Console.WriteLine("Deconstruct → " + dx + "," + dy);
 
 var tagged = new Tagged { Name = "book" };
-tagged["isbn"] = "978-1";
+tagged["isbn"] = "978-1";                      // 索引器是语法糖属性，内部仍是字典
 Console.WriteLine("索引器 isbn=" + tagged["isbn"]);
 
 var frozen = new FrozenId(7);
@@ -203,96 +209,96 @@ Console.WriteLine("get-only class FrozenId=" + frozen.Value);
 
 // ============ 类型声明区域（写在顶级语句之后） ============
 
-// 完整的 Student 类：演示字段、属性、方法、构造函数、this
+// Student：字段存状态，属性当门面，构造函数负责合法起点
 public class Student
 {
-    // 私有字段：内部状态，外部不可直接访问
-    private string _id;                          // 实例字段
-    private int _age;                            // 实例字段
+    // 私有字段：对象自己的状态，外部只能通过属性/方法间接碰
+    private string _id;                          // 实例字段：每个对象一份
+    private int _age;                            // 不要公开字段，校验会形同虚设
 
-    // 静态字段：所有实例共享一份数据
+    // 静态字段：类型级共享；多线程读写时要当共享可变状态
     public static int TotalCount;
 
-    // 自动属性（编译器自动生成隐藏的私有字段）
+    // 自动属性：编译器生成隐藏 backing field；对外仍是 get/set 方法
     public string Name { get; set; }
 
-    // 带私有 set 的属性：对外只读，对内可改
+    // 私有 set：调用方只能读；赋值必须走构造或类型内部方法
     public int Age
     {
-        get => _age;                             // 表达式 get
-        private set                              // 限制外部修改
+        get => _age;                             // 表达式主体 get（C# 6+）
+        private set                              // 外部 p.Age = 1 会编译失败
         {
-            if (value < 0 || value > 150)        // 参数验证
+            if (value < 0 || value > 150)        // set 里校验可以，但异常要写进契约
                 throw new ArgumentException("年龄非法");
             _age = value;
         }
     }
 
-    // 属性初始化器（C# 6+）
+    // 属性初始化器（C# 6+）：等价于在每个构造函数开头赋默认值
     public string School { get; set; } = "未知学校";
 
-    // 自动属性 + DateTime
+    // DateTime 是值类型；未赋值时是 0001-01-01，不是 null
     public DateTime Birthday { get; set; }
 
-    // 默认构造函数（无参）
+    // 无参构造：new Student() 与对象初始化器都会先走到这里
     public Student()
     {
-        _id = Guid.NewGuid().ToString();         // 生成唯一 ID
+        _id = Guid.NewGuid().ToString();         // 标识符用 Guid，不要用可变姓名当主键
         Name = "匿名";
         Age = 0;
-        TotalCount++;                            // 每创建一个对象，计数器+1
+        TotalCount++;                            // 静态计数：进程内共享，测试用例会互相污染
         Console.WriteLine($"[构造] 新学生 {_id} 已创建，当前总数 {TotalCount}");
     }
 
-    // 构造函数重载 + 链式调用 this(...)
-    public Student(string name, int age) : this()  // 先调用无参构造
+    // : this() 必须先跑完无参构造，再执行本构造体（避免重复初始化）
+    public Student(string name, int age) : this()  // 构造链：先 this()，再覆盖 Name/Age
     {
-        Name = name;                             // 通过属性赋值
-        Age = age;                               // 走 set 验证
+        Name = name;                             // 走属性而不是字段，才能复用校验
+        Age = age;                               // 非法年龄在 set 里抛，对象不会处于半初始化对外可见（构造失败则 new 失败）
     }
 
-    // 实例方法：使用 this 引用当前对象
+    // 实例方法才能用 this；加 this 只为消歧或强调「当前对象」
     public void Introduce()
     {
-        // this.Name 等价于 Name，加 this 仅为强调"当前对象"
+        // this.Name 与 Name 同一引用；静态方法里写 this 会编译失败
         Console.WriteLine($"大家好，我是 {this.Name}，{this.Age} 岁，就读于 {this.School}");
     }
 
-    // 静态方法：属于类本身，不需要对象就能调用
+    // 静态方法：没有当前实例，不能读 Name/Age
     public static void PrintTotal()
     {
-        // 静态方法里不能使用 this，也不能访问实例成员
+        // 只能碰静态成员；想打印某个学生请用实例方法
         Console.WriteLine($"学生总数：{TotalCount}");
     }
 }
 
-// partial 类第一部分
+// partial 第一部分：可与生成器代码分文件，但本 demo 写在同一文件里只为看清合并
 public partial class Person
 {
     public string Name { get; set; }
 }
 
-// partial 类第二部分（编译时与第一部分合并）
+// 编译器按「同一完全限定名」合并；两边访问修饰符必须一致
 public partial class Person
 {
     public void SayHi() => Console.WriteLine($"Hi, 我是 {Name}");
 }
 
-public readonly record struct PointRec(int X, int Y);
+public readonly record struct PointRec(int X, int Y);  // C# 10：值类型 record，with 不会改原副本
 
 public class NamedPerson
 {
-    public required string First { get; init; }
+    public required string First { get; init; }  // C# 11 required：对象初始化器必须赋；init 之后只读
     public required string Last { get; init; }
 }
 
 public class Tagged
 {
-    private readonly Dictionary<string, string> _extra = new();
+    private readonly Dictionary<string, string> _extra = new();  // 字段只读 ≠ 字典内容只读
     public string Name { get; set; } = "";
-    public string this[string key]
+    public string this[string key]                                   // 索引器：让对象看起来像字典
     {
-        get => _extra[key];
+        get => _extra[key];                      // 缺 key 会抛 KeyNotFoundException
         set => _extra[key] = value;
     }
 }
@@ -300,7 +306,7 @@ public class Tagged
 public class FrozenId
 {
     public FrozenId(int value) => Value = value;
-    public int Value { get; } // 不可变引用类型：没有 readonly class，靠 get-only
+    public int Value { get; } // class 没有 readonly class；不变性靠「只有 get、没有 set」
 }
 `,
     lang: 'cs',
@@ -525,40 +531,46 @@ public string Name
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「字段与属性」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句演示：字段与属性
+    code: `// ===========================================================
+// 第二十章 字段与属性
+// 演示：const / static / readonly、required、init、计算属性、私有 set、索引器重载
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：init（C# 9）、required（C# 11）；C# 14 的 field 关键字本 demo 不用，仍手写 backing field
+// 陷阱：const 跨程序集是编译期嵌入；属性 get 必须便宜，别把 IO/锁藏在 get 里
+// ===========================================================
 using System;
 
-// 1. const 常量（编译期，隐式 static，通过类名访问）
+// ---------- 1. const：编译期常量，调用点被替换成字面量 ----------
 Console.WriteLine($"税率：{Product.TaxRate}");
 
-// 2. 普通对象 + required 必填属性（必须赋值，否则编译报错）
+// ---------- 2. required：对象初始化器漏赋 Sku 会直接编译失败 ----------
 var p = new Product("鼠标", 88.0m) { Sku = "MS-001" };
-Console.WriteLine(p.Summary);                     // 表达式属性
+Console.WriteLine(p.Summary);                     // 计算属性：每次读取都现算，不占存储
 
-// 3. required + 多属性初始化
+// ---------- 3. 初始化器可同时写 required 与普通可写属性 ----------
 var p2 = new Product("键盘", 200m)
 {
-    Sku = "KB-001",                               // required 必须赋值
+    Sku = "KB-001",                               // required：编译器强制，不是运行时检查
     Category = "外设"
 };
 Console.WriteLine($"{p2.Sku} / {p2.Category}");
 
-// 4. init 只读属性：初始化后不能再改
+// ---------- 4. init：只允许在 new { } 或构造期间赋值，之后只读 ----------
 var p3 = new Product("显示器", 1500m)
 {
-    Code = "MON-2024",                            // init 属性只能初始化时赋值
+    Code = "MON-2024",                            // C# 9 init：赋值窗口只在初始化
     Sku = "MON-001"
 };
 // p3.Code = "X";                                // ❌ 编译错误：init 后只读
 
-// 5. 计算属性 + 私有 set
-p2.ApplyDiscount(0.2m);                           // 通过方法间接修改私有 set 的 Discount
-Console.WriteLine($"折后价：{p2.FinalPrice}");     // 计算属性动态算出
+// ---------- 5. 私有 set：对外只读，对内用方法改，才能把校验收口 ----------
+p2.ApplyDiscount(0.2m);                           // 不要公开 Discount 的 set，折扣区间只能由方法保证
+Console.WriteLine($"折后价：{p2.FinalPrice}");     // FinalPrice 无 backing field，改 Price/Discount 会自动变
 
-// 6. 静态字段：所有实例共享一份数据
+// ---------- 6. 静态字段：类型级计数，进程内共享、测试会串 ----------
 Console.WriteLine($"已创建商品总数：{Product.TotalProducts}");
 
-// 7. 索引器演示：让对象像数组一样访问
+// ---------- 7. 索引器：同一类型可按 int / string 重载 this[] ----------
 var store = new ProductStore();
 store[0] = p;
 store[1] = p2;
@@ -570,29 +582,29 @@ Console.WriteLine($"按 SKU 查找：{store["KB-001"]?.Name}");
 
 public class Product
 {
-    // const 常量：编译期替换，隐式 static
+    // const：隐式 static；改值必须重编译所有引用程序集（调用方嵌入的是旧字面量）
     public const double TaxRate = 0.13;
 
-    // 静态字段：所有实例共享一份数据
+    // 静态可变字段：多线程 ++ 会丢更新，生产用 Interlocked 或不要共享可变
     public static int TotalProducts;
 
-    // readonly 只读字段：只能在声明时或构造函数里赋值
+    // readonly 字段：声明时或构造函数里赋一次；与 init 属性不同，它连初始化器都不能写
     public readonly DateTime CreatedAt;
 
-    // 私有 backing field
+    // 手写 backing field：C# 12 没有属性访问器里的 field 关键字（那是 C# 14）
     private string _name;
     private decimal _price;
 
-    // 自动属性 + 默认值
+    // 自动属性默认值：每个构造都会先带上这个初始值
     public string Category { get; set; } = "未分类";
 
-    // required 必填属性（C# 11）：调用方必须赋值
+    // C# 11 required：new 的对象初始化器必须出现，构造函数赋了也不算数（除非 SetsRequiredMembers）
     public required string Sku { get; set; }
 
-    // init 只读属性（C# 9）：仅初始化时可写
+    // C# 9 init：对象初始化器可写，之后 p.Code = 会编译失败
     public string Code { get; init; } = "";
 
-    // 完整属性：带验证逻辑
+    // 完整属性：把 Trim / 空串拒绝放在边界，内部拿到的永远是干净值
     public string Name
     {
         get => _name;
@@ -601,36 +613,35 @@ public class Product
             : value.Trim();
     }
 
-    // 属性 + 私有 set：对外只读，对内可改
+    // 私有 set：外部不能 Price = -1；类型内部赋值仍走校验
     public decimal Price
     {
         get => _price;
-        private set                              // 外部不能直接 Price = ...
+        private set                              // 调用方只能读，改价请提供领域方法
         {
             if (value < 0) throw new ArgumentException("价格不能为负");
             _price = value;
         }
     }
 
-    // 折扣：私有 set，通过方法修改
+    // 折扣不存「折后价」，避免 Price 改了折扣价还是旧的
     public decimal Discount { get; private set; }
 
-    // 计算属性：动态算出来，不存数据
+    // 计算属性：无字段；get 必须便宜，这里只是乘法
     public decimal FinalPrice => Price * (1 - Discount);
 
-    // 表达式属性：单行 get 简写
+    // 表达式主体属性：单表达式 get；插值字符串每次 get 都会分配新 string
     public string Summary => $"{Name} - ¥{Price}";
 
-    // 构造函数
     public Product(string name, decimal price)
     {
-        Name = name;                             // 走属性赋值（带验证）
-        Price = price;                           // 走属性赋值
-        CreatedAt = DateTime.Now;                // readonly 字段在构造里赋值
-        TotalProducts++;                         // 静态字段 +1
+        Name = name;                             // 走属性，复用校验，不要直接 _name =
+        Price = price;
+        CreatedAt = DateTime.Now;                // readonly 只能在构造里赋；DateTime.Now 不可做 const
+        TotalProducts++;                         // 与对象生命周期绑定的静态副作用，测试要小心
     }
 
-    // 修改 Discount 的方法（间接修改私有 set 的属性）
+    // 唯一允许改 Discount 的入口：校验和赋值在同一处
     public void ApplyDiscount(decimal d)
     {
         if (d < 0 || d > 1) throw new ArgumentException("折扣必须在 0-1 之间");
@@ -638,12 +649,12 @@ public class Product
     }
 }
 
-// 索引器演示：让对象像数组一样访问
+// 索引器：看起来像数组，实际是带边界检查的方法
 public class ProductStore
 {
-    private Product?[] _items = new Product?[10];   // 内部数组
+    private Product?[] _items = new Product?[10];   // 固定槽位；越界要自己抛，数组不会变长
 
-    // int 索引器
+    // int 索引器：调用约定与数组相同，但可以加业务校验
     public Product? this[int index]
     {
         get
@@ -656,14 +667,15 @@ public class ProductStore
         {
             if (index < 0 || index >= _items.Length)
                 throw new IndexOutOfRangeException();
-            _items[index] = value;
+            _items[index] = value;               // 存的是引用；外面改 Product 字段，这里也能看见
         }
     }
 
-    // 索引器重载：按字符串 SKU 查找（只读）
+    // 按 SKU 查找：只读索引器；同名 this 靠参数类型区分
     public Product? this[string sku]
         => Array.Find(_items, x => x is not null && x.Sku == sku);
-}`,
+}
+`,
     lang: 'cs',
   },
   {
@@ -895,59 +907,65 @@ C# 12 及以前 \`params\` 只能是数组。**C# 13** 起 \`params ReadOnlySpan
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「方法详解」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句演示：方法详解
+    code: `// ===========================================================
+// 第二十一章 方法详解
+// 演示：值/ref/out/in、params、默认/命名参数、重载、ref 返回、局部函数、yield
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：in 参数（C# 7.2）、ref 返回（C# 7）、静态局部函数（C# 8）；C# 13 才允许 params Span，这里仍是 params int[]
+// 陷阱：值类型按值复制；引用类型按值传的是引用副本——改对象字段对外可见，换引用不可见
+// ===========================================================
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 var demo = new MethodDemo();
 
-// 1. 值传递：修改不影响外部
+// ---------- 1. 值传递：形参是副本，改它不影响实参 ----------
 int x = 10;
 demo.ByValue(x);
-Console.WriteLine($"值传递后 x = {x}");            // 仍是 10
+Console.WriteLine($"值传递后 x = {x}");            // 仍是 10：方法里改的是拷贝
 
-// 2. ref 引用传递：修改影响外部
+// ---------- 2. ref：形参与实参同一存储，调用方必须先赋值 ----------
 int y = 10;
 demo.ByRef(ref y);
-Console.WriteLine($"ref 传递后 y = {y}");          // 变成 11
+Console.WriteLine($"ref 传递后 y = {y}");          // 变成 11：调用处必须写 ref，避免误传
 
-// 3. out 输出参数：方法内必须赋值
+// ---------- 3. out：方法内必须赋遍所有路径；调用方可 out var 声明 ----------
 demo.TryParse("42", out int result);
 Console.WriteLine($"out 解析结果 = {result}");
 
-// 4. in 只读引用：传大对象不复制
+// ---------- 4. in：按只读引用传递，避免大结构体复制 ----------
 var big = new BigStruct { Data = new int[100] };
 demo.PrintBig(in big);
 
-// 5. params 可变参数
+// ---------- 5. params：必须是最后一个参数；调用方可展开成数组 ----------
 Console.WriteLine($"Sum = {demo.Sum(1, 2, 3, 4, 5)}");
 
-// 6. 默认参数
+// ---------- 6. 默认参数：缺省值必须是编译期常量，写入调用方元数据 ----------
 demo.Greet("小明");
 demo.Greet("小明", "Hello");
 
-// 7. 命名参数（可乱序）
+// ---------- 7. 命名参数：可打乱顺序，常与默认参数一起用 ----------
 demo.Greet(greeting: "Hi", name: "Tom");
 
-// 8. 方法重载：编译器按实参类型选最佳匹配
-Console.WriteLine(demo.Add(1, 2));                 // int 版本
-Console.WriteLine(demo.Add(1.5, 2.5));             // double 版本
-Console.WriteLine(demo.Add("a", "b"));             // string 版本
+// ---------- 8. 重载：靠签名（参数类型/数量）解析，返回类型不参与 ----------
+Console.WriteLine(demo.Add(1, 2));                 // 字面量 1、2 是 int，走 int 重载
+Console.WriteLine(demo.Add(1.5, 2.5));             // double 字面量才走 double 版
+Console.WriteLine(demo.Add("a", "b"));             // string + 是拼接不是算术
 
-// 9. 表达式方法
+// ---------- 9. 表达式主体：单表达式方法，等价于 { return ...; } ----------
 Console.WriteLine($"平方 = {demo.Square(7)}");
 
-// 10. ref 返回：返回数组元素的引用，可直接改原数组
+// ---------- 10. ref 返回：拿到的是数组槽位本身，赋值会改原数组 ----------
 int[] arr = { 1, 2, 3, 4, 5 };
 ref int r = ref demo.FindRef(arr, 3);
 r = 99;
 Console.WriteLine($"arr = {string.Join(", ", arr)}");
 
-// 11. 局部函数
+// ---------- 11. 局部函数：可捕获外部；static 局部函数故意禁止捕获 ----------
 Console.WriteLine($"Compute(5) = {demo.UseLocalFunction(5)}");
 
-// 12. yield return 迭代器：按需生成偶数
+// ---------- 12. yield：返回的是状态机，foreach 一次才走一步 ----------
 foreach (var n in demo.Evens(10))
     Console.Write(n + " ");
 Console.WriteLine();
@@ -956,73 +974,73 @@ Console.WriteLine();
 
 public class MethodDemo
 {
-    // 1. 值传递：复制一份
-    public void ByValue(int x) => x = 100;          // 修改的是副本
+    // 值传递 int：栈上复制 4 字节；x=100 只改副本
+    public void ByValue(int x) => x = 100;          // 调用方变量不变
 
-    // 2. ref 引用传递：直接操作外部变量
-    public void ByRef(ref int y) => y++;            // 影响外部
+    // ref int：不复制，++ 写回调用方
+    public void ByRef(ref int y) => y++;            // 忘记写 ref 会静默变成值传递（编译器会拦）
 
-    // 3. out 输出参数：方法内必须赋值
+    // out：所有路径必须赋值，所以失败分支也要 result = 0
     public bool TryParse(string s, out int result)
     {
-        if (int.TryParse(s, out result))            // 内部 TryParse 已赋值
+        if (int.TryParse(s, out result))            // BCL 的 TryParse 同样保证 out 已赋值
             return true;
-        result = 0;                                  // 失败也必须赋值
+        result = 0;                                  // 不能「失败就不写」——那是编译错误
         return false;
     }
 
-    // 4. in 只读引用：避免大对象复制
+    // in BigStruct：不复制结构体本身；但 Data 是引用，改数组元素对外仍可见
     public void PrintBig(in BigStruct s)
     {
-        // s.Data = null;                            // ❌ in 不允许修改
+        // s.Data = null;                            // ❌ in 禁止换引用 / 改结构体字段
         Console.WriteLine($"BigStruct 长度 = {s.Data.Length}");
     }
 
-    // 5. params 可变参数：必须是最后一个参数
+    // params int[]：C# 12 只能数组；每次调用可能分配新数组，热路径慎用
     public int Sum(params int[] nums) => nums.Sum();
 
-    // 6. 默认参数
+    // 默认参数写入调用方：库改默认值后，旧程序集不重编译仍用旧默认
     public void Greet(string name, string greeting = "你好")
         => Console.WriteLine($"{greeting}, {name}!");
 
-    // 7. 方法重载：签名不同即可
+    // 重载解析看「更好的转换」；int 能隐式转 double，所以 Add(1,2) 仍优先 int
     public int Add(int a, int b) => a + b;
     public double Add(double a, double b) => a + b;
     public string Add(string a, string b) => a + b;
 
-    // 8. 表达式方法（单行 => 简写）
     public int Square(int x) => x * x;
 
-    // 9. ref 返回：返回变量的引用
+    // ref 返回存活期跟 arr 绑定；不要返回局部变量的 ref（编译器会拦）
     public ref int FindRef(int[] arr, int target)
     {
         for (int i = 0; i < arr.Length; i++)
             if (arr[i] == target)
-                return ref arr[i];                  // 返回数组元素的引用
+                return ref arr[i];                  // 返回的是元素存储，不是拷贝
         throw new InvalidOperationException("not found");
     }
 
-    // 10. 局部函数：方法内部定义的函数
+    // 普通局部函数可闭包；static 局部函数强制无捕获，避免隐性分配
     public int UseLocalFunction(int n)
     {
-        int Helper(int x) => x * 2;                 // 普通局部函数：可捕获外部变量
-        static int StaticHelper(int x) => x + 1;    // 静态局部函数：不能捕获外部
+        int Helper(int x) => x * 2;                 // 可捕获 n，但这里没用到
+        static int StaticHelper(int x) => x + 1;    // 写 n 会编译失败：不能捕获
         return Helper(n) + StaticHelper(n);
     }
 
-    // 11. yield return 迭代器方法：按需生成序列
+    // yield return：方法体被改写成状态机；调用 Evens() 本身几乎不跑循环
     public IEnumerable<int> Evens(int max)
     {
         for (int i = 0; i <= max; i += 2)
-            yield return i;                         // 每次 MoveNext 才执行下一步
+            yield return i;                         // 调用方 MoveNext / foreach 才推进
     }
 }
 
-// 用于演示 in 参数的大结构体
+// 结构体含引用字段时，「大」的是结构体拷贝，数组本身仍在堆上共享
 public struct BigStruct
 {
     public int[] Data;
-}`,
+}
+`,
     lang: 'cs',
   },
   {
@@ -1223,37 +1241,43 @@ using var f = new FileWrapper("a.txt");  // 离开作用域自动 Dispose，异�
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「构造函数与析构」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句演示：构造函数与析构
+    code: `// ===========================================================
+// 第二十二章 构造函数与析构
+// 演示：构造重载与 this 链、私有构造+工厂、静态构造、C# 12 主构造函数、record 主构造
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：主构造函数是 C# 12；class 主构造参数不会自动变成属性（record 才会）
+// 陷阱：静态构造进程内只跑一次且线程安全，不要再套一层 lock；本 demo 不写终结器——能 IDisposable 就别 ~T()
+// ===========================================================
 using System;
 
-// 1. 默认构造函数 + 重载 + 构造链
-var a = new Point();                       // 无参，链到 Point(0,0)
-var b = new Point(3, 4);                   // 直接调 Point(int,int)
-var c = new Point(5);                      // 单参，链到 Point(5,0)
+// ---------- 1. 构造链：真正初始化只写一次，其余 : this(...) 转发 ----------
+var a = new Point();                       // 无参 → Point(0,0)，会看到两行构造日志
+var b = new Point(3, 4);                   // 直接双参，只跑「真正干活」的那一个
+var c = new Point(5);                      // 单参 → Point(5,0)
 Console.WriteLine($"a={a}, b={b}, c={c}");
 
-// 2. 对象初始化器：构造之后再赋值公开属性
+// ---------- 2. 对象初始化器：构造函数返回后才给 Tag 赋值 ----------
 var d = new Point(1, 1) { Tag = "origin" };
 Console.WriteLine($"d={d}, Tag={d.Tag}");
 
-// 3. 私有构造函数 + 静态工厂方法（首次访问 Config 时静态构造自动触发）
+// ---------- 3. 私有构造 + 静态工厂：外部不能 new，首次碰类型时静态构造已跑完 ----------
 var cfg = Config.Load();
 Console.WriteLine($"配置名：{cfg.Name}, 启动时刻：{Config.StartedAt:HH:mm:ss}");
 
-// 4. C# 12 主构造函数：参数写在类名后
+// ---------- 4. C# 12 class 主构造：参数是作用域捕获，不是自动属性 ----------
 var stu = new StudentV12("小明", 18);
 stu.Print();
-// 主构造函数参数不自动成属性，需要手写属性转发
+// 若要对外暴露，必须手写 Name => name 这种转发，否则调用方看不到字段
 Console.WriteLine($"Name={stu.Name}, Age={stu.Age}");
 
-// 5. 额外构造函数链到主构造函数
+// ---------- 5. 额外构造必须 : this(...) 链到主构造，不能绕开 ----------
 var stu2 = new StudentV12("小红");
 Console.WriteLine($"Name={stu2.Name}, Age={stu2.Age}");
 
-// 6. record 主构造函数：参数自动生成 init 只读属性
+// ---------- 6. record 主构造：参数自动生成 init 属性 + 值相等 ----------
 var p = new PointRec(10, 20);
 Console.WriteLine($"record: X={p.X}, Y={p.Y}");
-// p.X = 99;                              // ❌ init 后只读
+// p.X = 99;                              // ❌ init 后只读；要变请用 with
 
 // ============ 类型声明区域 ============
 
@@ -1261,21 +1285,20 @@ public class Point
 {
     public int X { get; set; }
     public int Y { get; set; }
-    public string? Tag { get; set; }      // 可空字符串
+    public string? Tag { get; set; }      // 可空：未赋值就是 null，不是空串
 
-    // 默认构造函数：链到带参构造（避免重复初始化代码）
+    // 构造链从外到内：先执行目标构造体，再执行本构造体
     public Point() : this(0, 0)
     {
         Console.WriteLine("[Point] 无参构造");
     }
 
-    // 单参构造：链到双参构造
     public Point(int x) : this(x, 0)
     {
         Console.WriteLine($"[Point] 单参构造 ({x})");
     }
 
-    // 双参构造：真正干活
+    // 唯一写 X/Y 的地方；链上的其它构造不要重复赋
     public Point(int x, int y)
     {
         X = x; Y = y;
@@ -1289,43 +1312,43 @@ public class Config
 {
     public string Name { get; }
 
-    // 静态字段
+    // 静态字段：类型初始化时由静态构造赋值；不要在多处抢着写
     public static DateTime StartedAt;
 
-    // 静态构造函数：类首次被使用时自动调用一次（无参、无修饰符）
+    // 静态构造：无参、无修饰符；运行时保证进程内一次、线程安全
     static Config()
     {
         StartedAt = DateTime.Now;
         Console.WriteLine($"[Config] 静态构造触发");
     }
 
-    // 私有构造函数：外部无法 new
+    // 私有构造：配合工厂控制实例化；单例/不可 new 的配置常用这一招
     private Config(string name)
     {
         Name = name;
         Console.WriteLine("[Config] 私有实例构造");
     }
 
-    // 静态工厂方法：内部可调用私有构造
     public static Config Load() => new Config("default");
 }
 
-// C# 12 主构造函数：参数写在类名后面的括号里
+// C# 12：class StudentV12(string name, int age) 的 name/age 是主构造参数，不是属性
 public class StudentV12(string name, int age)
 {
-    // 主构造函数参数不会自动成属性，需手写转发
-    public string Name => name;           // 只读属性转发
-    public int Age => age;                // 只读属性转发
+    // 手写转发后，参数会被提升为实例状态；不转发则只能在实例成员里当捕获用
+    public string Name => name;           // 只读：没有 set，外部改不了
+    public int Age => age;
 
-    // 可在任意方法中使用主构造函数参数
+    // 方法体里直接用 name/age，不必再写 this.Name
     public void Print() => Console.WriteLine($"学生：{name}，{age} 岁");
 
-    // 可额外定义普通构造函数，但必须用 : this(...) 链到主构造函数
+    // 普通构造必须链到主构造，否则主构造参数没人赋
     public StudentV12(string name) : this(name, 0) { }
 }
 
-// record 的主构造函数：参数自动生成 init 只读属性
-public record PointRec(int X, int Y);`,
+// record 主构造：自动生成 init 属性、值相等、with、Deconstruct
+public record PointRec(int X, int Y);
+`,
     lang: 'cs',
   },
   {
@@ -1531,36 +1554,42 @@ C# 11 起接口可以有 \`static abstract\` / \`static virtual\` 成员（泛�
 1. 改一改本章 demo 里的输入数据，再点运行，确认输出按你的预期变化。
 2. 合上示例，用「静态类与静态成员」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
-    code: `// C# 12 顶级语句演示：静态类与静态成员
+    code: `// ===========================================================
+// 第二十三章 静态类与静态成员
+// 演示：静态字段/方法/构造、using static、饿汉单例、扩展方法
+// 适用：.NET 8 / C# 12 顶级语句
+// 版本：扩展方法（C# 3）、using static（C# 6）；switch 表达式（C# 8）用在 ToRoman
+// 陷阱：静态可变是进程级状态；const 跨程序集嵌入，配置/DateTime 请用 static readonly
+// ===========================================================
 using System;
-using static System.Math;                  // using static：直接用 Sqrt、PI 等
+using static System.Math;                  // C# 6：把静态成员拉进作用域，但会牺牲「来自哪个类型」的可读性
 
-// 1. 静态字段：通过类名访问，不需要对象
+// ---------- 1. 静态成员：用类型名访问，不需要 new ----------
 Counter.Count = 100;
 Console.WriteLine($"Counter.Count = {Counter.Count}");
 Console.WriteLine($"Counter.DoubledCount = {Counter.DoubledCount}");
 
-// 2. 静态方法 + 静态构造函数（首次访问 MathHelper 时自动触发）
+// ---------- 2. 静态构造：第一次碰 MathHelper 时自动跑，且只跑一次 ----------
 Console.WriteLine($"5! = {MathHelper.Factorial(5)}");
 
-// 3. 静态类：不能 new，只能用静态成员
+// ---------- 3. 静态类：编译器禁止 new，所有成员必须 static ----------
 // var x = new MathHelper();                // ❌ 编译错误：静态类无法实例化
 Console.WriteLine($"IsPrime(7) = {MathHelper.IsPrime(7)}");
 Console.WriteLine($"E = {MathHelper.E}");
 
-// 4. using static：直接调用 Math 的静态成员，省略类名前缀
-var r = Sqrt(2);                            // 等价于 Math.Sqrt(2)
-var p = PI;                                 // 等价于 Math.PI
+// ---------- 4. using static：Sqrt / PI 不必再写 Math. 前缀 ----------
+var r = Sqrt(2);                            // 同名静态成员冲突时，还是写完整类型名更安全
+var p = PI;                                 // Math.PI 是 const double
 Console.WriteLine($"√2 = {r:F4}, π = {p:F4}");
 
-// 5. 单例模式：全局唯一实例
+// ---------- 5. 饿汉单例：static readonly 在类型初始化时创建，运行时保证线程安全 ----------
 var s1 = Singleton.Instance;
 var s2 = Singleton.Instance;
-Console.WriteLine($"s1 == s2 ? {ReferenceEquals(s1, s2)}");  // True
+Console.WriteLine($"s1 == s2 ? {ReferenceEquals(s1, s2)}");  // True：比较引用，不是值
 s1.Value = 42;
-Console.WriteLine($"s2.Value = {s2.Value}");   // 42（同一个实例）
+Console.WriteLine($"s2.Value = {s2.Value}");   // 42：同一实例上的可变状态，多线程要自己同步
 
-// 6. 扩展方法：像调用实例方法一样使用
+// ---------- 6. 扩展方法：编译成静态调用，第一个参数的 this 只是语法糖 ----------
 Console.WriteLine($"单词数 = {"hello world foo".WordCount()}");   // 3
 Console.WriteLine($"123 罗马数字 = {123.ToRoman()}");              // CXXIII
 
@@ -1568,36 +1597,34 @@ Console.WriteLine($"123 罗马数字 = {123.ToRoman()}");              // CXXIII
 
 public class Counter
 {
-    // 静态字段：所有实例共享
+    // 静态字段活到进程结束；测试之间会串数据，能注入就别用静态可变
     public static int Count;
 
-    // 静态属性：只能访问静态字段
+    // 静态属性只能碰静态状态；写 this 或实例字段会编译失败
     public static int DoubledCount => Count * 2;
 }
 
-// 静态类：不能实例化，全部成员必须静态
+// 静态类 = 工具箱：不能继承、不能实例字段
 public static class MathHelper
 {
-    // const 常量（隐式 static）
+    // const 跨程序集是编译期嵌入；改 E 必须重编译所有调用方
     public const double E = 2.71828;
 
-    // static readonly：运行时常量
+    // DateTime 不能 const；运行时初始化用 static readonly，调用方读的是字段不是字面量
     public static readonly DateTime CompiledAt = DateTime.Now;
 
-    // 静态构造函数：首次访问类时自动调用一次（无参、无修饰符）
+    // 静态构造无访问修饰符；失败会变成 TypeInitializationException，整个类型废掉
     static MathHelper()
     {
         Console.WriteLine($"[MathHelper] 静态构造触发，编译时刻 {CompiledAt:HH:mm:ss}");
     }
 
-    // 静态方法：递归阶乘
     public static int Factorial(int n)
     {
         if (n < 0) throw new ArgumentException("负数无阶乘");
         return n <= 1 ? 1 : n * Factorial(n - 1);
     }
 
-    // 静态方法：判断素数
     public static bool IsPrime(int n)
     {
         if (n < 2) return false;
@@ -1607,34 +1634,32 @@ public static class MathHelper
     }
 }
 
-// 单例模式：sealed + private ctor + static Instance
+// sealed + 私有构造：堵住外部 new 和子类再搞一个实例
 public sealed class Singleton
 {
-    // 私有静态字段：唯一实例（运行时保证线程安全懒加载）
+    // 字段初始化发生在静态构造里，CLR 对类型初始化加锁，不必再包一层 lock
     private static readonly Singleton _instance = new Singleton();
 
-    // 公开静态属性：暴露唯一实例
     public static Singleton Instance => _instance;
 
-    // 实例字段
+    // 单例不等于不可变：Value 仍是共享可变，多线程读写要当全局状态
     public int Value { get; set; }
 
-    // 私有构造函数：禁止外部 new
     private Singleton()
     {
         Console.WriteLine("[Singleton] 唯一实例已创建");
     }
 }
 
-// 扩展方法所在的静态类
+// 扩展方法必须放在非泛型静态类里；using 了所在命名空间才能被发现
 public static class StringExtensions
 {
-    // 扩展方法：第一个参数加 this，表示扩展 string 类型
+    // this string s：可写成 s.WordCount()；实例方法永远优先于扩展
     public static int WordCount(this string s)
         => s.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
 }
 
-// 扩展方法：扩展 int 类型，递归调用自己
+// 给值类型扩展方法不会装箱（this int 按值传）；递归扩展调用仍是静态调用
 public static class IntExtensions
 {
     public static string ToRoman(this int number) => number switch
@@ -1654,7 +1679,8 @@ public static class IntExtensions
         >= 1 => "I" + (number - 1).ToRoman(),
         _ => ""
     };
-}`,
+}
+`,
     lang: 'cs',
   },
 ];
