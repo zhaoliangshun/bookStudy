@@ -67,7 +67,7 @@ const DOTNET_BIN = "dotnet";
 // 放在系统临时目录下，进程间共享
 // 注意：本目录只作为模板，每次请求会复制一份到独立临时目录再写入用户代码，
 //       避免并发请求相互覆盖源文件
-const RUNNER_DIR = join(/*turbopackIgnore: true*/ tmpdir(), "csharp-runner-v3");
+const RUNNER_DIR = join(/*turbopackIgnore: true*/ tmpdir(), "csharp-runner-v4");
 
 /**
  * 构建 dotnet 子进程所需的环境变量。
@@ -161,6 +161,8 @@ function ensureRunnerProject() {
     <TargetFramework>net${majorVersion}.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- 允许 unsafe 代码（指针 / sizeof(T) 等示例需要） -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>Runner</AssemblyName>
     <RootNamespace>Runner</RootNamespace>
   </PropertyGroup>

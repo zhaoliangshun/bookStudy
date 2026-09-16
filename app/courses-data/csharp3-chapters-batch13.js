@@ -193,6 +193,13 @@ await Task.Delay(1000);                      // 模拟异步初始化
 
 Console.WriteLine("初始化完成: " + DateTime.Now);
 
+// 待调用的异步方法（局部函数）
+async Task DoWorkAsync()
+{
+    await Task.Delay(500);
+    Console.WriteLine(\"DoWorkAsync 执行完毕\");
+}
+
 // 调用异步方法
 await DoWorkAsync();                          // 顶级语句中直接 await
 
@@ -728,14 +735,14 @@ Console.WriteLine($"WaitAny: 第一个完成的是任务 {idx}");
 // ContinueWith 在任务完成后执行回调（基于回调的异步模式）
 
 // 1. 基本用法
-Task initialTask = Task.Run(() =>
+Task<int> initialTask = Task.Run(() =>
 {
     Console.WriteLine("初始任务执行中...");
     Thread.Sleep(500);
     return 42;
 });
 
-Task continuationTask = initialTask.ContinueWith(prev =>
+Task<int> continuationTask = initialTask.ContinueWith(prev =>
 {
     // 此回调在初始任务完成后执行
     Console.WriteLine($"前一个任务结果: {prev.Result}");
@@ -747,7 +754,7 @@ int finalResult = await continuationTask;
 Console.WriteLine($"最终结果: {finalResult}");
 
 // 2. 按状态执行不同回调
-Task riskyTask = Task.Run(() =>
+Task<string> riskyTask = Task.Run(() =>
 {
     // 模拟可能失败的操作
     if (Random.Shared.Next(2) == 0)
@@ -1351,29 +1358,6 @@ Console.WriteLine($"建议并行度: {Environment.ProcessorCount} (CPU 密集型
 \`\`\`csharp
 // lock 是 C# 中最简单的互斥锁，确保同一时间只有一个线程访问临界区
 
-// 1. 基本用法
-class Counter
-{
-    private readonly object _lock = new();      // 锁对象（必须是引用类型）
-    private int _value = 0;                      // 需要保护的共享数据
-
-    public void Increment()
-    {
-        lock (_lock)                             // 获取锁，其他线程在此等待
-        {
-            _value++;                            // 临界区：一次只有一个线程能执行
-        }                                        // 释放锁
-    }
-
-    public int GetValue()
-    {
-        lock (_lock)                             // 读操作也需要锁
-        {
-            return _value;                       // 确保读取到最新值
-        }
-    }
-}
-
 // 2. 演示：没有锁的竞态条件
 int unsafeCounter = 0;
 var tasks = new List<Task>();
@@ -1411,6 +1395,33 @@ Console.WriteLine($"有锁计数器: {safeCounter} (一定是 1000)");
 // ❌ 不要锁 string（字符串可能被内联共享）
 // ❌ 不要在锁内调用外部代码（可能死锁）
 // ✅ 锁的粒度要尽可能小
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 1. 基本用法
+class Counter
+{
+    private readonly object _lock = new();      // 锁对象（必须是引用类型）
+    private int _value = 0;                      // 需要保护的共享数据
+
+    public void Increment()
+    {
+        lock (_lock)                             // 获取锁，其他线程在此等待
+        {
+            _value++;                            // 临界区：一次只有一个线程能执行
+        }                                        // 释放锁
+    }
+
+    public int GetValue()
+    {
+        lock (_lock)                             // 读操作也需要锁
+        {
+            return _value;                       // 确保读取到最新值
+        }
+    }
+}
 \`\`\`
 
 ### 二、Monitor：lock 的底层实现 ⭐⭐
@@ -1567,6 +1578,30 @@ else
 // 多个线程可以同时持有读锁（并发读）
 // 写锁是独占的（写时不能读，读时不能写）
 
+// 2. 演示读写锁的并发优势
+var cache = new ThreadSafeCache();
+var sw = System.Diagnostics.Stopwatch.StartNew();
+
+// 多个线程并发读取
+var readTasks = new List<Task>();
+for (int i = 0; i < 10; i++)
+{
+    readTasks.Add(Task.Run(() =>
+    {
+        for (int j = 0; j < 100; j++)
+        {
+            cache.Get(j);                        // 并发读，不互相阻塞
+        }
+    }));
+}
+await Task.WhenAll(readTasks);
+sw.Stop();
+Console.WriteLine($"并发读完成，耗时: {sw.ElapsedMilliseconds}ms");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 1. 基本用法
 class ThreadSafeCache
 {
@@ -1629,26 +1664,6 @@ class ThreadSafeCache
         }
     }
 }
-
-// 2. 演示读写锁的并发优势
-var cache = new ThreadSafeCache();
-var sw = System.Diagnostics.Stopwatch.StartNew();
-
-// 多个线程并发读取
-var readTasks = new List<Task>();
-for (int i = 0; i < 10; i++)
-{
-    readTasks.Add(Task.Run(() =>
-    {
-        for (int j = 0; j < 100; j++)
-        {
-            cache.Get(j);                        // 并发读，不互相阻塞
-        }
-    }));
-}
-await Task.WhenAll(readTasks);
-sw.Stop();
-Console.WriteLine($"并发读完成，耗时: {sw.ElapsedMilliseconds}ms");
 \`\`\`
 
 ### 五、Interlocked：原子操作 ⭐⭐⭐
@@ -1708,6 +1723,29 @@ Console.WriteLine($"Interlocked.Read: {read}");
 // 禁止编译器对读写进行优化（如缓存到寄存器）
 // 确保每次读写都直接访问内存
 
+// 2. volatile 的局限性
+// ⚠️ volatile 只保证单个读写的原子性，不保证复合操作的原子性
+// ❌ volatile int count; count++;  ← count++ 不是原子操作（读-改-写）
+// ✅ 正确做法：Interlocked.Increment(ref count)
+// ✅ 或使用 lock
+
+// 3. volatile 使用场景
+// - 简单的标志位（如 _isDisposed、_shouldStop）
+// - 单次赋值的引用（如 _initialized = true）
+// - 不适用于需要复合操作或有依赖关系的场景
+
+// 4. volatile vs lock vs Interlocked
+// | 方式 | 性能 | 功能 | 适用场景 |
+// |------|------|------|---------|
+// | volatile | 最高 | 单次读写可见性 | 简单标志位 |
+// | Interlocked | 很高 | 原子操作 | 计数器、CAS |
+// | lock | 较低 | 完整互斥 | 复杂临界区 |
+Console.WriteLine("volatile: 轻量级可见性保证，但不提供原子性");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 1. volatile 基本用法
 class VolatileDemo
 {
@@ -1727,25 +1765,6 @@ class VolatileDemo
         _shouldStop = true;                      // 写入立即对其它线程可见
     }
 }
-
-// 2. volatile 的局限性
-// ⚠️ volatile 只保证单个读写的原子性，不保证复合操作的原子性
-// ❌ volatile int count; count++;  ← count++ 不是原子操作（读-改-写）
-// ✅ 正确做法：Interlocked.Increment(ref count)
-// ✅ 或使用 lock
-
-// 3. volatile 使用场景
-// - 简单的标志位（如 _isDisposed、_shouldStop）
-// - 单次赋值的引用（如 _initialized = true）
-// - 不适用于需要复合操作或有依赖关系的场景
-
-// 4. volatile vs lock vs Interlocked
-// | 方式 | 性能 | 功能 | 适用场景 |
-// |------|------|------|---------|
-// | volatile | 最高 | 单次读写可见性 | 简单标志位 |
-// | Interlocked | 很高 | 原子操作 | 计数器、CAS |
-// | lock | 较低 | 完整互斥 | 复杂临界区 |
-Console.WriteLine("volatile: 轻量级可见性保证，但不提供原子性");
 \`\`\`
 
 ### 七、线程安全模式 ⭐⭐⭐
@@ -1754,26 +1773,11 @@ Console.WriteLine("volatile: 轻量级可见性保证，但不提供原子性");
 // 1. 不可变对象（Immutable）—— 最安全的线程安全模式
 // 不可变对象创建后无法修改，天然线程安全
 
-record ImmutablePerson(string Name, int Age);   // record 默认不可变
+   // record 默认不可变
 
 var person = new ImmutablePerson("Alice", 30);
 // person.Name = "Bob";  // ❌ 编译错误，record 属性只读
 var newPerson = person with { Age = 31 };       // ✅ 创建新对象而非修改
-
-// 2. 线程静态存储（ThreadStatic）
-// 每个线程有自己独立的字段副本
-class ThreadStaticDemo
-{
-    [ThreadStatic]
-    private static int _threadLocalValue;        // 每个线程独立的值
-
-    public static void Increment()
-    {
-        _threadLocalValue++;                     // 线程安全，无需锁
-    }
-
-    public static int GetValue() => _threadLocalValue;
-}
 
 // 3. ThreadLocal<T>：更现代的线程本地存储
 ThreadLocal<int> threadLocal = new(() => 0);    // 每个线程初始化为 0
@@ -1797,6 +1801,27 @@ await Task.Run(async () =>
 });
 
 Console.WriteLine($"主线程: {asyncLocal.Value}");  // 初始值（不受异步上下文影响）
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+record ImmutablePerson(string Name, int Age);
+
+// 2. 线程静态存储（ThreadStatic）
+// 每个线程有自己独立的字段副本
+class ThreadStaticDemo
+{
+    [ThreadStatic]
+    private static int _threadLocalValue;        // 每个线程独立的值
+
+    public static void Increment()
+    {
+        _threadLocalValue++;                     // 线程安全，无需锁
+    }
+
+    public static int GetValue() => _threadLocalValue;
+}
 \`\`\`
 
 ### 八、死锁及其预防 ⭐⭐⭐
@@ -1906,6 +1931,7 @@ Console.WriteLine("死锁预防：统一锁顺序 + 超时 + 减少锁粒度");
 // 提供线程安全的键值对存储，无需 lock
 
 // 1. 基本 CRUD 操作
+using System.Collections.Concurrent;
 var dict = new ConcurrentDictionary<int, string>();
 
 // Add：添加（如果键已存在则返回 false）
@@ -1988,6 +2014,7 @@ Console.WriteLine($"总条目: {concurrentDict.Count}");
 // 适合生产者-消费者模式
 
 // 1. 基本操作
+using System.Collections.Concurrent;
 var queue = new ConcurrentQueue<int>();
 
 // Enqueue：入队
@@ -2060,6 +2087,7 @@ Console.WriteLine($"快照: [{string.Join(", ", snapshot)}]");
 // ConcurrentStack 是 LIFO（后进先出）的线程安全栈
 
 // 1. 基本操作
+using System.Collections.Concurrent;
 var stack = new ConcurrentStack<int>();
 
 // Push：压栈
@@ -2117,6 +2145,7 @@ Console.WriteLine($"撤销栈总数: {undoStack.Count}");  // 50
 // 特别适合同一线程既生产又消费的场景（工作窃取）
 
 // 1. 基本操作
+using System.Collections.Concurrent;
 var bag = new ConcurrentBag<int>();
 
 // Add：添加元素
@@ -2179,6 +2208,7 @@ Console.WriteLine($"总共取出: {total} 个元素");  // 500
 // 当集合满时，生产者自动阻塞等待（有界集合）
 
 // 1. 基本用法（无界集合）
+using System.Collections.Concurrent;
 Console.WriteLine("=== BlockingCollection 基本用法 ===");
 
 using var blockingCollection = new BlockingCollection<int>();  // 无界
@@ -2269,6 +2299,7 @@ foreach (int item in stackBased.GetConsumingEnumerable())
 \`\`\`csharp
 // 综合示例：多生产者-多消费者处理管道
 
+using System.Collections.Concurrent;
 async Task ProducerConsumerPipelineAsync()
 {
     // 阶段 1：原始数据队列
@@ -2723,6 +2754,10 @@ catch (InvalidOperationException ex)
 {
     Console.WriteLine($"捕获异常: {ex.Message}");  // 在 yield return 2 之后
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 
 record User(int Id, string Name);
 \`\`\`

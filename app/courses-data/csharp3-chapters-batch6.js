@@ -30,8 +30,7 @@ const chapters = [
 ### 一、委托基础 ⭐
 
 \`\`\`csharp
-// 1. 定义委托
-delegate int MathOp(int a, int b);
+
 
 // 2. 静态方法
 static int Add(int a, int b) => a + b;
@@ -47,6 +46,13 @@ Console.WriteLine($"Mul: {op2(3, 5)}");  // 15
 int Apply(int a, int b, MathOp op) => op(a, b);
 Console.WriteLine($"Apply Add: {Apply(3, 5, Add)}");
 Console.WriteLine($"Apply Mul: {Apply(3, 5, Mul)}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 1. 定义委托
+delegate int MathOp(int a, int b);
 \`\`\`
 
 > ⭐ **委托 = 类型安全的函数指针**——把方法当作值传递、存储、组合。
@@ -97,7 +103,7 @@ Console.WriteLine(square2(5));  // 25
 
 \`\`\`csharp
 // 多播：+= 添加方法，-= 移除方法
-Action logger = null!;
+Action<string> logger = null!;
 logger += msg => Console.WriteLine($"[INFO] {msg}");
 logger += msg => Console.WriteLine($"[DEBUG] {msg}");
 logger += msg => Console.WriteLine($"[ERROR] {msg}");
@@ -126,23 +132,38 @@ printString("Hello");
 ### 六、实战 demo：策略模式
 
 \`\`\`csharp
-// 策略模式：用委托实现
-class Calculator {
-    public int Calculate(int a, int b, Func<int, int, int> strategy) {
-        return strategy(a, b);
-    }
-}
+
 
 var calc = new Calculator();
 Console.WriteLine($"加：{calc.Calculate(3, 5, (a, b) => a + b)}");
 Console.WriteLine($"减：{calc.Calculate(10, 4, (a, b) => a - b)}");
 Console.WriteLine($"乘：{calc.Calculate(3, 5, (a, b) => a * b)}");
 Console.WriteLine($"除：{calc.Calculate(10, 2, (a, b) => b != 0 ? a / b : 0)}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 策略模式：用委托实现
+class Calculator {
+    public int Calculate(int a, int b, Func<int, int, int> strategy) {
+        return strategy(a, b);
+    }
+}
 \`\`\`
 
 ### 七、实战 demo：回调函数
 
 \`\`\`csharp
+
+
+var task = new LongTask();
+task.Run(result => Console.WriteLine($"回调：{result}"));
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 异步操作完成时回调
 class LongTask {
     public void Run(Action<string> onComplete) {
@@ -151,9 +172,6 @@ class LongTask {
         onComplete?.Invoke("任务完成");
     }
 }
-
-var task = new LongTask();
-task.Run(result => Console.WriteLine($"回调：{result}"));
 \`\`\`
 
 ### 八、小结
@@ -337,6 +355,19 @@ Console.WriteLine($"结果：{string.Join(",", result)}");
 ### 一、事件基础 ⭐⭐
 
 \`\`\`csharp
+
+
+// 订阅者
+var btn = new Button();
+btn.Clicked += msg => Console.WriteLine($"  订阅者1收到：{msg}");
+btn.Clicked += msg => Console.WriteLine($"  订阅者2收到：{msg}");
+
+btn.Click();
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 发布者：拥有事件的对象
 class Button {
     // event 关键字：限制只能在类内 invoke
@@ -347,13 +378,6 @@ class Button {
         Clicked?.Invoke("click event");  // 触发事件
     }
 }
-
-// 订阅者
-var btn = new Button();
-btn.Clicked += msg => Console.WriteLine($"  订阅者1收到：{msg}");
-btn.Clicked += msg => Console.WriteLine($"  订阅者2收到：{msg}");
-
-btn.Click();
 \`\`\`
 
 > ⭐⭐ **event 关键字**：在委托基础上加了"封装"——外部只能 \`+=\` / \`-=\`，不能 \`Invoke\`。
@@ -361,6 +385,19 @@ btn.Click();
 ### 二、EventHandler 标准模式 ⭐⭐
 
 \`\`\`csharp
+
+
+var pub = new Publisher();
+pub.SomethingHappened += (sender, e) => {
+    Console.WriteLine($"发送方：{sender.GetType().Name}");
+    Console.WriteLine($"消息：{e.Message}，时间：{e.Time:HH:mm:ss}");
+};
+pub.Trigger();
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // .NET 标准事件模式
 public class MyEventArgs : EventArgs {
     public string Message { get; }
@@ -380,13 +417,6 @@ class Publisher {
         SomethingHappened?.Invoke(this, new MyEventArgs("Hello Event"));
     }
 }
-
-var pub = new Publisher();
-pub.SomethingHappened += (sender, e) => {
-    Console.WriteLine($"发送方：{sender.GetType().Name}");
-    Console.WriteLine($"消息：{e.Message}，时间：{e.Time:HH:mm:ss}");
-};
-pub.Trigger();
 \`\`\`
 
 > ⭐⭐ **\`EventHandler<TEventArgs>\`** 是 .NET 标准事件签名，所有 .NET 框架事件都用这种模式。
@@ -394,14 +424,7 @@ pub.Trigger();
 ### 三、移除订阅
 
 \`\`\`csharp
-class Counter {
-    public event Action<int>? ThresholdReached;
 
-    public void Trigger() {
-        // 模拟触发
-        ThresholdReached?.Invoke(100);
-    }
-}
 
 var c = new Counter();
 Action<int> handler = n => Console.WriteLine($"达到：{n}");
@@ -410,11 +433,42 @@ c.ThresholdReached += handler;
 c.Trigger();
 c.ThresholdReached -= handler;
 c.Trigger();  // 这次不会触发
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+class Counter {
+    public event Action<int>? ThresholdReached;
+
+    public void Trigger() {
+        // 模拟触发
+        ThresholdReached?.Invoke(100);
+    }
+}
 \`\`\`
 
 ### 四、实战 demo：订单状态变化通知
 
 \`\`\`csharp
+
+
+var order = new Order("ORD001");
+order.StatusChanged += (s, e) => {
+    Console.WriteLine($"[日志] 订单 {e.OrderId} 状态：{e.Status}");
+};
+order.StatusChanged += (s, e) => {
+    Console.WriteLine($"[通知] 发送通知给客户：订单 {e.OrderId} {e.Status}");
+};
+
+order.Status = "已支付";
+order.Status = "已发货";
+order.Status = "已签收";
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 class OrderEventArgs : EventArgs {
     public string OrderId { get; }
     public string Status { get; }
@@ -446,23 +500,23 @@ class Order {
         }
     }
 }
-
-var order = new Order("ORD001");
-order.StatusChanged += (s, e) => {
-    Console.WriteLine($"[日志] 订单 {e.OrderId} 状态：{e.Status}");
-};
-order.StatusChanged += (s, e) => {
-    Console.WriteLine($"[通知] 发送通知给客户：订单 {e.OrderId} {e.Status}");
-};
-
-order.Status = "已支付";
-order.Status = "已发货";
-order.Status = "已签收";
 \`\`\`
 
 ### 五、实战 demo：文件下载进度
 
 \`\`\`csharp
+
+
+var dm = new DownloadManager();
+dm.ProgressChanged += p => Console.WriteLine($"进度：{p}%");
+dm.Completed += () => Console.WriteLine("下载完成！");
+
+dm.Download();
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 class DownloadManager {
     public event Action<int>? ProgressChanged;
     public event Action? Completed;
@@ -474,12 +528,6 @@ class DownloadManager {
         Completed?.Invoke();
     }
 }
-
-var dm = new DownloadManager();
-dm.ProgressChanged += p => Console.WriteLine($"进度：{p}%");
-dm.Completed += () => Console.WriteLine("下载完成！");
-
-dm.Download();
 \`\`\`
 
 ### 六、小结
@@ -654,7 +702,7 @@ Console.WriteLine($"数量：{count}，转 List：{string.Join(",", list)}");
 ### 八、实战 demo：成绩分析
 
 \`\`\`csharp
-record Student(string Name, int Score, string ClassName);
+
 
 var students = new List<Student> {
     new("张三", 85, "A"),
@@ -683,6 +731,12 @@ foreach (var x in avgByClass) Console.WriteLine($"  {x.Class}: {x.Avg:F1}");
 var top3 = students.OrderByDescending(s => s.Score).Take(3);
 Console.WriteLine("Top 3：");
 foreach (var s in top3) Console.WriteLine($"  {s.Name}: {s.Score}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+record Student(string Name, int Score, string ClassName);
 \`\`\`
 
 ### 九、小结
@@ -709,7 +763,7 @@ foreach (var s in top3) Console.WriteLine($"  {s.Name}: {s.Score}");
 ### 一、GroupBy 分组 ⭐⭐
 
 \`\`\`csharp
-record Student(string Name, string Class, int Score);
+
 
 var students = new List<Student> {
     new("张三", "A", 85),
@@ -743,13 +797,18 @@ Console.WriteLine("班级统计：");
 foreach (var stat in stats) {
     Console.WriteLine($"  {stat.Class}：{stat.Count}人，平均 {stat.Avg:F1}，最高 {stat.Max}，最低 {stat.Min}");
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+record Student(string Name, string Class, int Score);
 \`\`\`
 
 ### 二、Join 联表查询 ⭐⭐
 
 \`\`\`csharp
-record Student(int Id, string Name);
-record Course(int Id, string Title, int StudentId);
+
 
 var students = new List<Student> {
     new(1, "张三"),
@@ -785,6 +844,14 @@ var grouped = students.GroupJoin(
 foreach (var x in grouped) {
     Console.WriteLine($"{x.Name}：{string.Join(",", x.Courses)}");
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+record Student(int Id, string Name);
+
+record Course(int Id, string Title, int StudentId);
 \`\`\`
 
 ### 三、SelectMany 平铺 ⭐⭐
@@ -807,8 +874,8 @@ Console.WriteLine($"所有学生：{string.Join(",", allStudents)}");
 
 // 实战：扁平化字典值
 var dict = new Dictionary<string, List<int>> {
-    ["A"] = { 1, 2, 3 },
-    ["B"] = { 4, 5 }
+    ["A"] = new List<int> { 1, 2, 3 },   // 注意：值是 List 时必须 new，直接 = { } 会触发索引器
+    ["B"] = new List<int> { 4, 5 }
 };
 var allValues = dict.SelectMany(kv => kv.Value);
 Console.WriteLine($"所有值：{string.Join(",", allValues)}");
@@ -861,7 +928,7 @@ Console.WriteLine($"去重：{string.Join(",", a.Distinct())}");
 ### 七、实战 demo：销售数据多维分析
 
 \`\`\`csharp
-record Sale(string Product, string Region, decimal Amount, DateTime Date);
+
 
 var sales = new List<Sale> {
     new("笔记本", "华北", 12000m, new DateTime(2026, 1, 5)),
@@ -893,6 +960,12 @@ Console.WriteLine("大额订单：");
 foreach (var s in bigOrders) {
     Console.WriteLine($"  {s.Product} {s.Region}: ¥{s.Amount:N0}");
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+record Sale(string Product, string Region, decimal Amount, DateTime Date);
 \`\`\`
 
 ### 八、小结
@@ -920,6 +993,17 @@ foreach (var s in bigOrders) {
 ### 一、扩展方法基础 ⭐⭐
 
 \`\`\`csharp
+
+
+string text = "Hello World C# 教程";
+Console.WriteLine($"字数：{text.WordCount()}");  // 4
+Console.WriteLine($"a@b.com 是邮箱：{"a@b.com".IsEmail()}");  // True
+Console.WriteLine($"截断：{"Hello World".Truncate(5)}");  // Hello...
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 扩展方法：给 string 加一个 WordCount 方法
 static class StringExtensions {
     // this 关键字：扩展的类型
@@ -936,11 +1020,6 @@ static class StringExtensions {
         return s.Length <= maxLen ? s : s.Substring(0, maxLen) + suffix;
     }
 }
-
-string text = "Hello World C# 教程";
-Console.WriteLine($"字数：{text.WordCount()}");  // 4
-Console.WriteLine($"a@b.com 是邮箱：{"a@b.com".IsEmail()}");  // True
-Console.WriteLine($"截断：{"Hello World".Truncate(5)}");  // Hello...
 \`\`\`
 
 > ⭐⭐ **扩展方法** = 给已有类型加方法（无继承）。LINQ 全部基于它。
@@ -949,19 +1028,48 @@ Console.WriteLine($"截断：{"Hello World".Truncate(5)}");  // Hello...
 
 \`\`\`csharp
 // 实际上是静态方法，编译器把 string.WordCount() 翻译成 StringExtensions.WordCount(string)
-"hello".WordCount();
+Console.WriteLine($"字数：{"hello world".WordCount()}");
 // 等同于
-StringExtensions.WordCount("hello");
+Console.WriteLine($"字数：{StringExtensions.WordCount("hello world")}");
 
 // 限制：
 // 1. 必须是静态类的静态方法
 // 2. 第一个参数用 this 修饰
 // 3. 不能访问原类型的私有成员
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+// 上一节定义的扩展方法类（这里补齐，保证本段代码能独立运行）
+static class StringExtensions
+{
+    public static int WordCount(this string s)
+    {
+        if (string.IsNullOrEmpty(s)) return 0;
+        return s.Split(new[] { ' ', '\\t', '\\n' }, StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+}
 \`\`\`
 
 ### 三、链式扩展方法 ⭐⭐
 
 \`\`\`csharp
+
+
+5.Times(() => Console.WriteLine("Hi"));  // 输出 5 次 Hi
+Console.WriteLine($"返回值：{5.Times(() => { })}");  // 5
+
+string result = "Hello World"
+    .Pipe(s => s.ToUpper())
+    .Pipe(s => s.Replace(" ", "_"))
+    .Pipe(s => $"[{s}]");
+
+Console.WriteLine($"链式：{result}");  // [HELLO_WORLD]
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 自定义链式调用
 static class IntExtensions {
     public static int Times(this int n, Action action) {
@@ -970,20 +1078,10 @@ static class IntExtensions {
     }
 }
 
-5.Times(() => Console.WriteLine("Hi"));  // 输出 5 次 Hi
-Console.WriteLine($"返回值：{5.Times(() => { })}");  // 5
-
 // 实战：链式字符串处理
 static class ChainExtensions {
     public static string Pipe(this string s, Func<string, string> f) => f(s);
 }
-
-string result = "Hello World"
-    .Pipe(s => s.ToUpper())
-    .Pipe(s => s.Replace(" ", "_"))
-    .Pipe(s => $"[{s}]");
-
-Console.WriteLine($"链式：{result}");  // [HELLO_WORLD]
 \`\`\`
 
 ### 四、Map / Filter / Reduce 函数式思维 ⭐
@@ -1015,6 +1113,16 @@ Console.WriteLine($"复合：{sumOfSquaresOfEvens}");  // 4+16 = 20
 ### 五、实战 demo：自定义 LINQ 风格 API
 
 \`\`\`csharp
+
+
+int[] data = { 1, 2, 3, 4, 5 };
+int sum2 = data.Filter(x => x % 2 == 0).Map(x => x * x).Reduce((a, b) => a + b);
+Console.WriteLine($"函数式：{sum2}");  // 4+16 = 20
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 static class FunctionalExtensions {
     // Map：转换
     public static IEnumerable<TResult> Map<T, TResult>(this IEnumerable<T> source, Func<T, TResult> f) {
@@ -1035,15 +1143,11 @@ static class FunctionalExtensions {
         return acc;
     }
 }
-
-int[] data = { 1, 2, 3, 4, 5 };
-int sum2 = data.Filter(x => x % 2 == 0).Map(x => x * x).Reduce((a, b) => a + b);
-Console.WriteLine($"函数式：{sum2}");  // 4+16 = 20
 \`\`\`
 
 ### 六、扩展方法 vs 继承 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 扩展方法的局限：
 // 1. 不能访问私有成员
 // 2. 不能重写（基类方法优先于扩展）

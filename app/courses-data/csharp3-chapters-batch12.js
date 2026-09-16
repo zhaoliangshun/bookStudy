@@ -46,7 +46,22 @@ const chapters = [
 
 ### 一、DateTimeOffset：含时区的时间 ⭐⭐⭐
 
-\`\`\`csharp\n// DateTimeOffset = 时间点 + UTC 偏移量\nDateTimeOffset dto = DateTimeOffset.Now;\nConsole.WriteLine($\"Now     = {dto}\");\nConsole.WriteLine($\"UtcDt   = {dto.UtcDateTime}\");\nConsole.WriteLine($\"LocalDt = {dto.LocalDateTime}\");\nConsole.WriteLine($\"Offset  = {dto.Offset}\");\n\n// 构造\nDateTimeOffset utc = new DateTimeOffset(2026, 7, 18, 14, 30, 0, TimeSpan.Zero);\nDateTimeOffset beijing = new DateTimeOffset(2026, 7, 18, 14, 30, 0, TimeSpan.FromHours(8));\nDateTimeOffset ny = new DateTimeOffset(2026, 7, 18, 14, 30, 0, TimeSpan.FromHours(-4));\n\nConsole.WriteLine($\"UTC    = {utc:o}\");\nConsole.WriteLine($\"北京   = {beijing:o}\");\nConsole.WriteLine($\"纽约   = {ny:o}\");\nConsole.WriteLine($\"三者表示同一时刻: {utc == beijing && beijing == ny}\");\n\`\`\`\n\n### 二、DateTimeOffset vs DateTime ⭐⭐\n\n\`\`\`csharp\n// DateTime 的 Kind 在序列化时容易丢\nDateTime localDt = DateTime.Now;          // Kind=Local\nDateTime utcDt = localDt.ToUniversalTime(); // Kind=Utc\n// 数据库/JSON 来回转容易丢 Kind\n\n// DateTimeOffset 始终携带偏移量，跨时区安全\nDateTimeOffset dto1 = DateTimeOffset.Now;\nstring json = $\"\"\"\"\"\"\"\"\"{dto1:O}\"\"\"\"\"\"\"\"\"\";  // 2026-07-18T14:30:00.0000000+08:00\nDateTimeOffset back = DateTimeOffset.Parse(json);\nConsole.WriteLine($\"往返: {dto1 == back}\");\n\n// 转换\nDateTime dt = dto1.DateTime;\nDateTimeOffset dto2 = (DateTimeOffset)dt;\nConsole.WriteLine($\"dt.Kind = {dt.Kind}, dto.Offset = {dto2.Offset}\");\n\`\`\`\n\n### 三、DateOnly：纯日期（.NET 6+） ⭐⭐⭐\n\n\`\`\`csharp\nDateOnly today = DateOnly.FromDateTime(DateTime.Now);\nDateOnly bday = new DateOnly(1990, 5, 1);\n\nConsole.WriteLine($\"Today = {today}\");\nConsole.WriteLine($\"Birthday = {bday}\");\n\n// 计算年龄\nint age = today.Year - bday.Year;\nif (today < bday.AddYears(age)) age--;\nConsole.WriteLine($\"年龄 = {age}\");\n\n// 月初/月末\nDateOnly first = new DateOnly(today.Year, today.Month, 1);\nDateOnly last = first.AddMonths(1).AddDays(-1);\nConsole.WriteLine($\"本月 {first} 到 {last}\");\n\n// 解析\nDateOnly parsed = DateOnly.Parse(\"2026-07-18\");\nDateOnly.TryParseExact(\"20260718\", \"yyyyMMdd\", out DateOnly r);\nConsole.WriteLine($\"parsed = {parsed}, r = {r}\");\n\n// 范围\nConsole.WriteLine($\"MinValue = {DateOnly.MinValue}\");\nConsole.WriteLine($\"MaxValue = {DateOnly.MaxValue}\");\n\`\`\`\n\n### 四、TimeOnly：纯时间（.NET 6+） ⭐⭐⭐\n\n\`\`\`csharp\nTimeOnly now = TimeOnly.FromDateTime(DateTime.Now);\nTimeOnly meeting = new TimeOnly(14, 30);  // 14:30\nTimeOnly morning = new TimeOnly(9, 0, 0);\n\nConsole.WriteLine($\"Now     = {now}\");\nConsole.WriteLine($\"Meeting = {meeting}\");\n\n// 比较\nbool isBeforeNoon = now < new TimeOnly(12, 0);\nConsole.WriteLine($\"上午? {isBeforeNoon}\");\n\n// 计算\nTimeOnly added = meeting.AddHours(2);\nConsole.WriteLine($\"meeting+2h = {added}\");\n\n// 解析\nTimeOnly.TryParseExact(\"14:30\", \"HH:mm\", out TimeOnly t);\nConsole.WriteLine($\"parsed = {t}\");\n\n// 范围\nConsole.WriteLine($\"MinValue = {TimeOnly.MinValue}\"); // 00:00\nConsole.WriteLine($\"MaxValue = {TimeOnly.MaxValue}\"); // 23:59:59.999...\n\`\`\`\n\n### 五、TimeZoneInfo：时区处理 ⭐⭐⭐\n\n\`\`\`csharp\n// 本地时区\nTimeZoneInfo local = TimeZoneInfo.Local;\nConsole.WriteLine($\"本地时区   = {local.DisplayName}\");\nConsole.WriteLine($\"UTC 偏移   = {local.BaseUtcOffset}\");\nConsole.WriteLine($\"是否夏令时 = {local.SupportsDaylightSavingTime}\");\n\n// UTC\nTimeZoneInfo utc = TimeZoneInfo.Utc;\n\n// 找特定时区\nTimeZoneInfo beijing = TimeZoneInfo.FindSystemTimeZoneById(\"Asia/Shanghai\");\nTimeZoneInfo ny = TimeZoneInfo.FindSystemTimeZoneById(\"America/New_York\");\nTimeZoneInfo tokyo = TimeZoneInfo.FindSystemTimeZoneById(\"Asia/Tokyo\");\n\nConsole.WriteLine($\"北京 偏移 = {beijing.BaseUtcOffset}\");\nConsole.WriteLine($\"纽约 偏移 = {ny.BaseUtcOffset}\");\nConsole.WriteLine($\"东京 偏移 = {tokyo.BaseUtcOffset}\");\n\n// 不同时区之间转换\nDateTime utcTime = new DateTime(2026, 7, 18, 6, 0, 0, DateTimeKind.Utc);\nDateTime beijingTime = TimeZoneInfo.ConvertTimeFromUtc(utcTime, beijing);\nDateTime nyTime = TimeZoneInfo.ConvertTimeFromUtc(utcTime, ny);\n\nConsole.WriteLine($\"UTC     {utcTime:HH:mm}\");\nConsole.WriteLine($\"北京    {beijingTime:HH:mm}\");\nConsole.WriteLine($\"纽约    {nyTime:HH:mm}\");\n\n// 系统支持的时区 ID 列表\nvar ids = TimeZoneInfo.GetSystemTimeZones().Take(10).Select(z => z.Id);\nConsole.WriteLine($\"前 10 个时区: {string.Join(\", \", ids)}\");\n\`\`\`\n\n### 六、夏令时处理 ⭐⭐\n\n\`\`\`csharp\nTimeZoneInfo ny = TimeZoneInfo.FindSystemTimeZoneById(\"America/New_York\");\n\n// 检查某个时间是否在夏令时\nDateTime summer = new DateTime(2026, 7, 18);\nDateTime winter = new DateTime(2026, 1, 18);\n\nbool summerDst = ny.IsDaylightSavingTime(summer);\nbool winterDst = ny.IsDaylightSavingTime(winter);\nConsole.WriteLine($\"7月夏令时? {summerDst}\");\nConsole.WriteLine($\"1月夏令时? {winterDst}\");\n\n// 时区偏移可能因夏令时而变\nConsole.WriteLine($\"7月偏移 = {ny.GetUtcOffset(summer)}\");\nConsole.WriteLine($\"1月偏移 = {ny.GetUtcOffset(winter)}\");\n\n// 转换示例\nDateTime utcSummer = new DateTime(2026, 7, 18, 12, 0, 0, DateTimeKind.Utc);\nDateTime nySummer = TimeZoneInfo.ConvertTimeFromUtc(utcSummer, ny);\nConsole.WriteLine($\"UTC {utcSummer:HH:mm} -> 纽约 {nySummer:HH:mm} (夏令时 EDT)\");\n\nDateTime utcWinter = new DateTime(2026, 1, 18, 12, 0, 0, DateTimeKind.Utc);\nDateTime nyWinter = TimeZoneInfo.ConvertTimeFromUtc(utcWinter, ny);\nConsole.WriteLine($\"UTC {utcWinter:HH:mm} -> 纽约 {nyWinter:HH:mm} (冬令时 EST)\");\n\`\`\`\n\n### 七、DateTimeOffset 与序列化 ⭐\n\n\`\`\`csharp\nrecord Event(string Name, DateTimeOffset When);\n\nvar e = new Event(\"会议\", DateTimeOffset.Now);\nstring json = System.Text.Json.JsonSerializer.Serialize(e, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });\nConsole.WriteLine(json);\n// {\"Name\":\"会议\",\"When\":\"2026-07-18T14:30:00.0000000+08:00\"}\n\nvar back = System.Text.Json.JsonSerializer.Deserialize<Event>(json)!;\nConsole.WriteLine($\"回读: {back}\");\nConsole.WriteLine($\"Offset 一致: {e.When.Offset == back.When.Offset}\");\n\`\`\`\n\n### 八、关键总结\n\n- \`DateTime\`：含 Kind，容易丢时区\n- \`DateTimeOffset\`：始终带偏移量，跨时区推荐\n- \`DateOnly\`：纯日期（生日、节假日）\n- \`TimeOnly\`：纯时间（营业时间、闹钟）\n- \`TimeZoneInfo\`：时区转换、夏令时\n- 数据库：存 \`DateTime\` UTC + 业务时区字符串\n- 序列化：\`DateTimeOffset\` 往返更安全\n- .NET 6+ 优先用 \`DateOnly\`/\`TimeOnly\`\n\n**最佳实践**：\n1. 数据库：\`DateTime\` (UTC) + 业务时区 ID\n2. 业务展示：转本地时区\n3. API 响应：ISO 8601 带偏移量\n4. 用户输入：明确时区，不假设本地\n\n`,
+\`\`\`csharp\n// DateTimeOffset = 时间点 + UTC 偏移量\nDateTimeOffset dto = DateTimeOffset.Now;\nConsole.WriteLine($\"Now     = {dto}\");\nConsole.WriteLine($\"UtcDt   = {dto.UtcDateTime}\");\nConsole.WriteLine($\"LocalDt = {dto.LocalDateTime}\");\nConsole.WriteLine($\"Offset  = {dto.Offset}\");\n\n// 构造\nDateTimeOffset utc = new DateTimeOffset(2026, 7, 18, 14, 30, 0, TimeSpan.Zero);\nDateTimeOffset beijing = new DateTimeOffset(2026, 7, 18, 14, 30, 0, TimeSpan.FromHours(8));\nDateTimeOffset ny = new DateTimeOffset(2026, 7, 18, 14, 30, 0, TimeSpan.FromHours(-4));\n\nConsole.WriteLine($\"UTC    = {utc:o}\");\nConsole.WriteLine($\"北京   = {beijing:o}\");\nConsole.WriteLine($\"纽约   = {ny:o}\");\nConsole.WriteLine($\"三者表示同一时刻: {utc == beijing && beijing == ny}\");\n\`\`\`\n\n### 二、DateTimeOffset vs DateTime ⭐⭐\n\n\`\`\`csharp\n// DateTime 的 Kind 在序列化时容易丢\nDateTime localDt = DateTime.Now;          // Kind=Local\nDateTime utcDt = localDt.ToUniversalTime(); // Kind=Utc\n// 数据库/JSON 来回转容易丢 Kind\n\n// DateTimeOffset 始终携带偏移量，跨时区安全\nDateTimeOffset dto1 = DateTimeOffset.Now;\nstring json = $\"{dto1:O}\";  // 2026-07-18T14:30:00.0000000+08:00\nDateTimeOffset back = DateTimeOffset.Parse(json);\nConsole.WriteLine($\"往返: {dto1 == back}\");\n\n// 转换\nDateTime dt = dto1.DateTime;\nDateTimeOffset dto2 = (DateTimeOffset)dt;\nConsole.WriteLine($\"dt.Kind = {dt.Kind}, dto.Offset = {dto2.Offset}\");\n\`\`\`\n\n### 三、DateOnly：纯日期（.NET 6+） ⭐⭐⭐\n\n\`\`\`csharp\nDateOnly today = DateOnly.FromDateTime(DateTime.Now);\nDateOnly bday = new DateOnly(1990, 5, 1);\n\nConsole.WriteLine($\"Today = {today}\");\nConsole.WriteLine($\"Birthday = {bday}\");\n\n// 计算年龄\nint age = today.Year - bday.Year;\nif (today < bday.AddYears(age)) age--;\nConsole.WriteLine($\"年龄 = {age}\");\n\n// 月初/月末\nDateOnly first = new DateOnly(today.Year, today.Month, 1);\nDateOnly last = first.AddMonths(1).AddDays(-1);\nConsole.WriteLine($\"本月 {first} 到 {last}\");\n\n// 解析\nDateOnly parsed = DateOnly.Parse(\"2026-07-18\");\nDateOnly.TryParseExact(\"20260718\", \"yyyyMMdd\", out DateOnly r);\nConsole.WriteLine($\"parsed = {parsed}, r = {r}\");\n\n// 范围\nConsole.WriteLine($\"MinValue = {DateOnly.MinValue}\");\nConsole.WriteLine($\"MaxValue = {DateOnly.MaxValue}\");\n\`\`\`\n\n### 四、TimeOnly：纯时间（.NET 6+） ⭐⭐⭐\n\n\`\`\`csharp\nTimeOnly now = TimeOnly.FromDateTime(DateTime.Now);\nTimeOnly meeting = new TimeOnly(14, 30);  // 14:30\nTimeOnly morning = new TimeOnly(9, 0, 0);\n\nConsole.WriteLine($\"Now     = {now}\");\nConsole.WriteLine($\"Meeting = {meeting}\");\n\n// 比较\nbool isBeforeNoon = now < new TimeOnly(12, 0);\nConsole.WriteLine($\"上午? {isBeforeNoon}\");\n\n// 计算\nTimeOnly added = meeting.AddHours(2);\nConsole.WriteLine($\"meeting+2h = {added}\");\n\n// 解析\nTimeOnly.TryParseExact(\"14:30\", \"HH:mm\", out TimeOnly t);\nConsole.WriteLine($\"parsed = {t}\");\n\n// 范围\nConsole.WriteLine($\"MinValue = {TimeOnly.MinValue}\"); // 00:00\nConsole.WriteLine($\"MaxValue = {TimeOnly.MaxValue}\"); // 23:59:59.999...\n\`\`\`\n\n### 五、TimeZoneInfo：时区处理 ⭐⭐⭐\n\n\`\`\`csharp\n// 本地时区\nTimeZoneInfo local = TimeZoneInfo.Local;\nConsole.WriteLine($\"本地时区   = {local.DisplayName}\");\nConsole.WriteLine($\"UTC 偏移   = {local.BaseUtcOffset}\");\nConsole.WriteLine($\"是否夏令时 = {local.SupportsDaylightSavingTime}\");\n\n// UTC\nTimeZoneInfo utc = TimeZoneInfo.Utc;\n\n// 找特定时区\nTimeZoneInfo beijing = TimeZoneInfo.FindSystemTimeZoneById(\"Asia/Shanghai\");\nTimeZoneInfo ny = TimeZoneInfo.FindSystemTimeZoneById(\"America/New_York\");\nTimeZoneInfo tokyo = TimeZoneInfo.FindSystemTimeZoneById(\"Asia/Tokyo\");\n\nConsole.WriteLine($\"北京 偏移 = {beijing.BaseUtcOffset}\");\nConsole.WriteLine($\"纽约 偏移 = {ny.BaseUtcOffset}\");\nConsole.WriteLine($\"东京 偏移 = {tokyo.BaseUtcOffset}\");\n\n// 不同时区之间转换\nDateTime utcTime = new DateTime(2026, 7, 18, 6, 0, 0, DateTimeKind.Utc);\nDateTime beijingTime = TimeZoneInfo.ConvertTimeFromUtc(utcTime, beijing);\nDateTime nyTime = TimeZoneInfo.ConvertTimeFromUtc(utcTime, ny);\n\nConsole.WriteLine($\"UTC     {utcTime:HH:mm}\");\nConsole.WriteLine($\"北京    {beijingTime:HH:mm}\");\nConsole.WriteLine($\"纽约    {nyTime:HH:mm}\");\n\n// 系统支持的时区 ID 列表\nvar ids = TimeZoneInfo.GetSystemTimeZones().Take(10).Select(z => z.Id);\nConsole.WriteLine($\"前 10 个时区: {string.Join(\", \", ids)}\");\n\`\`\`\n\n### 六、夏令时处理 ⭐⭐\n\n\`\`\`csharp\nTimeZoneInfo ny = TimeZoneInfo.FindSystemTimeZoneById(\"America/New_York\");\n\n// 检查某个时间是否在夏令时\nDateTime summer = new DateTime(2026, 7, 18);\nDateTime winter = new DateTime(2026, 1, 18);\n\nbool summerDst = ny.IsDaylightSavingTime(summer);\nbool winterDst = ny.IsDaylightSavingTime(winter);\nConsole.WriteLine($\"7月夏令时? {summerDst}\");\nConsole.WriteLine($\"1月夏令时? {winterDst}\");\n\n// 时区偏移可能因夏令时而变\nConsole.WriteLine($\"7月偏移 = {ny.GetUtcOffset(summer)}\");\nConsole.WriteLine($\"1月偏移 = {ny.GetUtcOffset(winter)}\");\n\n// 转换示例\nDateTime utcSummer = new DateTime(2026, 7, 18, 12, 0, 0, DateTimeKind.Utc);\nDateTime nySummer = TimeZoneInfo.ConvertTimeFromUtc(utcSummer, ny);\nConsole.WriteLine($\"UTC {utcSummer:HH:mm} -> 纽约 {nySummer:HH:mm} (夏令时 EDT)\");\n\nDateTime utcWinter = new DateTime(2026, 1, 18, 12, 0, 0, DateTimeKind.Utc);\nDateTime nyWinter = TimeZoneInfo.ConvertTimeFromUtc(utcWinter, ny);\nConsole.WriteLine($\"UTC {utcWinter:HH:mm} -> 纽约 {nyWinter:HH:mm} (冬令时 EST)\");\n\`\`\`\n\n### 七、DateTimeOffset 与序列化 ⭐\n\n\`\`\`csharp\n
+
+var e = new Event("会议", DateTimeOffset.Now);
+string json = System.Text.Json.JsonSerializer.Serialize(e, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+Console.WriteLine(json);
+// {"Name":"会议","When":"2026-07-18T14:30:00.0000000+08:00"}
+
+var back = System.Text.Json.JsonSerializer.Deserialize<Event>(json)!;
+Console.WriteLine($"回读: {back}");
+Console.WriteLine($"Offset 一致: {e.When.Offset == back.When.Offset}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+record Event(string Name, DateTimeOffset When);
+\`\`\`\n\n### 八、关键总结\n\n- \`DateTime\`：含 Kind，容易丢时区\n- \`DateTimeOffset\`：始终带偏移量，跨时区推荐\n- \`DateOnly\`：纯日期（生日、节假日）\n- \`TimeOnly\`：纯时间（营业时间、闹钟）\n- \`TimeZoneInfo\`：时区转换、夏令时\n- 数据库：存 \`DateTime\` UTC + 业务时区字符串\n- 序列化：\`DateTimeOffset\` 往返更安全\n- .NET 6+ 优先用 \`DateOnly\`/\`TimeOnly\`\n\n**最佳实践**：\n1. 数据库：\`DateTime\` (UTC) + 业务时区 ID\n2. 业务展示：转本地时区\n3. API 响应：ISO 8601 带偏移量\n4. 用户输入：明确时区，不假设本地\n\n`,
   },
 
   // ============================================================
@@ -63,7 +78,40 @@ URI 是网络编程的基础。.NET 提供 \`System.Uri\` 类安全地解析、�
 
 ### 一、Uri 基础 ⭐⭐⭐
 
-\`\`\`csharp\n// 构造\nUri uri = new Uri(\"https://user:pass@example.com:8080/path/to/file?q=1&r=2#fragment\");\n\nConsole.WriteLine($\"Scheme     = {uri.Scheme}\");\nConsole.WriteLine($\"Host       = {uri.Host}\");\nConsole.WriteLine($\"Port       = {uri.Port}\");\nConsole.WriteLine($\"UserInfo   = {uri.UserInfo}\");\nConsole.WriteLine($\"Authority  = {uri.Authority}\");\nConsole.WriteLine($\"Path       = {uri.AbsolutePath}\");\nConsole.WriteLine($\"Query      = {uri.Query}\");\nConsole.WriteLine($\"Fragment   = {uri.Fragment}\");\nConsole.WriteLine($\"AbsoluteUri= {uri.AbsoluteUri}\");\nConsole.WriteLine($\"ToString   = {uri}\");\n\`\`\`\n\n### 二、相对 Uri 解析 ⭐⭐\n\n\`\`\`csharp\nUri baseUri = new Uri(\"https://example.com/api/v1/\");\n\n// 相对路径解析\nUri r1 = new Uri(baseUri, \"users/100\");\nConsole.WriteLine(r1); // https://example.com/api/v1/users/100\n\nUri r2 = new Uri(baseUri, \"/v2/products\");\nConsole.WriteLine(r2); // https://example.com/v2/products (根路径)\n\nUri r3 = new Uri(baseUri, \"../admin\");\nConsole.WriteLine(r3); // https://example.com/api/admin\n\nUri r4 = new Uri(baseUri, \"?q=search\");\nConsole.WriteLine(r4); // https://example.com/api/v1/?q=search\n\nUri r5 = new Uri(baseUri, \"#section\");\nConsole.WriteLine(r5); // https://example.com/api/v1/#section\n\nUri r6 = new Uri(baseUri, \"https://other.com/x\");\nConsole.WriteLine(r6); // 绝对 URL 替换\n\n// 文件路径\nUri file = new Uri(\"file:///tmp/data.txt\");\nConsole.WriteLine(file.LocalPath); // /tmp/data.txt\n\`\`\`\n\n### 三、Query 解析：HttpUtility / WebUtility ⭐⭐⭐\n\n\`\`\`csharp\n// 需要引用 System.Web 或 Microsoft.AspNetCore\n// .NET 8 中可使用 System.Web.HttpUtility\nusing System.Web; // 来自 System.Web.HttpUtility\n\nstring url = \"https://example.com/search?q=hello world&lang=zh&page=2\";\nUri u = new Uri(url);\n\n// 解析 query\nvar qs = HttpUtility.ParseQueryString(u.Query);\nConsole.WriteLine($\"q     = {qs[\"q\"]}\");     // \"hello world\" (已 URL decode)\nConsole.WriteLine($\"lang  = {qs[\"lang\"]}\");  // \"zh\"\nConsole.WriteLine($\"page  = {qs[\"page\"]}\");  // \"2\"\n\n// 遍历所有\nforeach (string? key in qs.AllKeys)\n{\n    Console.WriteLine($\"  {key} = {qs[key]}\");\n}\n\n// 反向构造\nvar builder = new UriBuilder(\"https://example.com/search\");\nbuilder.Query = $\"q={HttpUtility.UrlEncode(\"中文 & spaces\")}&page=1\";\nConsole.WriteLine(builder.Uri);\n// https://example.com/search?q=%e4%b8%ad%e6%96%87+%26+spaces&page=1\n\n// WebUtility（更轻量，不需要 System.Web）\nusing System.Net;\nstring decoded = WebUtility.UrlDecode(\"hello%20world\");\nstring encoded = WebUtility.UrlEncode(\"中文 world\");\nConsole.WriteLine($\"decoded = {decoded}\");\nConsole.WriteLine($\"encoded = {encoded}\");\n\`\`\`\n\n### 四、URL 编码 ⭐⭐⭐\n\n\`\`\`csharp\nusing System.Net;\n\nstring s = \"中文 & spaces?#\";\n\n// URL 编码（百分号编码）\nstring enc = Uri.EscapeDataString(s);\nConsole.WriteLine($\"EscapeDataString = {enc}\");\n// %E4%B8%AD%E6%96%87%20%26%20spaces%3F%23\n\n// 完整 URL 编码（保留 URL 结构字符）\nstring enc2 = Uri.EscapeUriString(s);\nConsole.WriteLine($\"EscapeUriString   = {enc2}\");\n// %E4%B8%AD%E6%96%87%20&%20spaces%3F%23 (& 不编码)\n\n// 解码\nstring dec = Uri.UnescapeDataString(enc);\nConsole.WriteLine($\"UnescapeDataString = {dec}\");\n\n// HTML 编码（用于 HTML 内容，不是 URL）\nstring htmlEnc = WebUtility.HtmlEncode(\"<a href=\\\"x\\\">test</a>\");\nConsole.WriteLine($\"HtmlEncode = {htmlEnc}\");\n\nstring htmlDec = WebUtility.HtmlDecode(htmlEnc);\nConsole.WriteLine($\"HtmlDecode = {htmlDec}\");\n\n// 选型：\n// URL 部分（如 query value）：Uri.EscapeDataString\n// 完整 URL：Uri.EscapeUriString\n// HTML 内容：WebUtility.HtmlEncode\n// 解码：对应方法\n\`\`\`\n\n### 五、UriBuilder：构造 URL ⭐⭐\n\n\`\`\`csharp\nvar b = new UriBuilder\n{\n    Scheme = \"https\",\n    Host = \"api.example.com\",\n    Port = 443,\n    Path = \"/v1/users/100\",\n    Query = \"include=profile&include=posts\"\n};\nConsole.WriteLine(b.Uri);\n\n// 增量添加 query\nb.Query = $\"{b.Query.TrimStart('?')}&token=abc123\";\nConsole.WriteLine(b.Uri);\n\n// 构造完整 URL\nstring url = new UriBuilder\n{\n    Scheme = \"https\",\n    Host = \"example.com\",\n    Path = \"/api\",\n    Fragment = \"results\"\n}.ToString();\nConsole.WriteLine(url);\n\n// 复制并修改\nUri source = new Uri(\"https://api.example.com/v1\");\nvar copy = new UriBuilder(source) { Path = \"/v2\" };\nConsole.WriteLine(copy.Uri);\n\`\`\`\n\n### 六、Uri 类型判断 ⭐\n\n\`\`\`csharp\nUri[] uris = {\n    new Uri(\"https://example.com\"),\n    new Uri(\"http://example.com\"),\n    new Uri(\"ftp://files.example.com/file.zip\"),\n    new Uri(\"mailto:user@example.com\"),\n    new Uri(\"file:///tmp/data.txt\"),\n    new Uri(\"https://example.com:8080/path\")\n};\n\nforeach (var u in uris)\n{\n    bool isHttps = u.Scheme == \"https\";\n    bool isHttp = u.Scheme == \"http\" || u.Scheme == \"https\";\n    bool isFile = u.IsFile;\n    bool isLoop = u.IsLoopback;\n    bool isUnc = u.IsUnc;\n    Console.WriteLine($\"{u,-40} isHttps={isHttps,-5} isFile={isFile,-5} loop={isLoop,-5}\");\n}\n\n// 绝对 vs 相对\nUri abs = new Uri(\"https://example.com/x\");\nUri rel = new Uri(\"x\", UriKind.Relative);\nConsole.WriteLine($\"abs.IsAbsoluteUri = {abs.IsAbsoluteUri}\");\nConsole.WriteLine($\"rel.IsAbsoluteUri = {rel.IsAbsoluteUri}\");\nConsole.WriteLine($\"rel.IsAbsoluteUri (rel) = {rel.IsAbsoluteUri}\");\n\n// Unc 路径（Windows）\ntry\n{\n    Uri unc = new Uri(@\"\\\\server\\share\\file.txt\");\n    Console.WriteLine($\"UNC = {unc}, IsUnc = {unc.IsUnc}\");\n}\ncatch { Console.WriteLine(\"UNC 仅 Windows\"); }\n\`\`\`\n\n### 七、文件路径与 Uri 互转 ⭐\n\n\`\`\`csharp\n// 文件路径 -> Uri\nstring path = Path.Combine(Environment.CurrentDirectory, \"data.txt\");\nUri fromPath = new Uri(path);\nConsole.WriteLine($\"fromPath = {fromPath}\");\nConsole.WriteLine($\"LocalPath = {fromPath.LocalPath}\");\n\n// Uri -> 文件路径\nUri fromUrl = new Uri(\"file:///tmp/data.txt\");\nstring back2 = fromUrl.LocalPath;\nConsole.WriteLine($\"back = {back2}\");\n\n// Windows 路径特殊处理\nif (OperatingSystem.IsWindows())\n{\n    Uri winPath = new Uri(\"C:\\\\Users\\\\alice\\\\file.txt\");\n    Console.WriteLine($\"winPath = {winPath}\");\n    Console.WriteLine($\"LocalPath = {winPath.LocalPath}\");\n}\n\`\`\`\n\n### 八、HttpClient 配合 Uri ⭐\n\n\`\`\`csharp\n// 基础用法（演示结构，不实际发请求）\nusing var http = new HttpClient { BaseAddress = new Uri(\"https://api.example.com/v1/\") };\n\n// BaseAddress 帮你自动拼接\nUri usersUri = new Uri(http.BaseAddress, \"users/100\");\nConsole.WriteLine($\"GET {usersUri}\");\n\nUri searchUri = new Uri(http.BaseAddress, \"search?q=hello\");\nConsole.WriteLine($\"GET {searchUri}\");\n\n// 完整路径覆盖\nUri fullUri = new Uri(\"https://other.com/path\");\nConsole.WriteLine($\"GET {fullUri}\");\n\`\`\`\n\n### 九、关键总结\n\n- \`Uri\`：安全解析 URL，自动处理编码\n- 构造 \`new Uri(baseUri, relative)\` 解析相对路径\n- 编码：\`Uri.EscapeDataString\`（用于 query value）\n- 编码：\`Uri.EscapeUriString\`（用于完整 URL）\n- \`HttpUtility.ParseQueryString\`：解析 query string\n- \`UriBuilder\`：可变构造 URL\n- \`WebUtility\`：HTML/URL 通用编解码\n- \`IsFile\`、\`IsLoopback\`、\`IsUnc\`：Uri 类型判断\n- 文件路径和 Uri 互转注意 Windows 盘符\n\n`,
+\`\`\`csharp\n// 构造\nUri uri = new Uri(\"https://user:pass@example.com:8080/path/to/file?q=1&r=2#fragment\");\n\nConsole.WriteLine($\"Scheme     = {uri.Scheme}\");\nConsole.WriteLine($\"Host       = {uri.Host}\");\nConsole.WriteLine($\"Port       = {uri.Port}\");\nConsole.WriteLine($\"UserInfo   = {uri.UserInfo}\");\nConsole.WriteLine($\"Authority  = {uri.Authority}\");\nConsole.WriteLine($\"Path       = {uri.AbsolutePath}\");\nConsole.WriteLine($\"Query      = {uri.Query}\");\nConsole.WriteLine($\"Fragment   = {uri.Fragment}\");\nConsole.WriteLine($\"AbsoluteUri= {uri.AbsoluteUri}\");\nConsole.WriteLine($\"ToString   = {uri}\");\n\`\`\`\n\n### 二、相对 Uri 解析 ⭐⭐\n\n\`\`\`csharp\nUri baseUri = new Uri(\"https://example.com/api/v1/\");\n\n// 相对路径解析\nUri r1 = new Uri(baseUri, \"users/100\");\nConsole.WriteLine(r1); // https://example.com/api/v1/users/100\n\nUri r2 = new Uri(baseUri, \"/v2/products\");\nConsole.WriteLine(r2); // https://example.com/v2/products (根路径)\n\nUri r3 = new Uri(baseUri, \"../admin\");\nConsole.WriteLine(r3); // https://example.com/api/admin\n\nUri r4 = new Uri(baseUri, \"?q=search\");\nConsole.WriteLine(r4); // https://example.com/api/v1/?q=search\n\nUri r5 = new Uri(baseUri, \"#section\");\nConsole.WriteLine(r5); // https://example.com/api/v1/#section\n\nUri r6 = new Uri(baseUri, \"https://other.com/x\");\nConsole.WriteLine(r6); // 绝对 URL 替换\n\n// 文件路径\nUri file = new Uri(\"file:///tmp/data.txt\");\nConsole.WriteLine(file.LocalPath); // /tmp/data.txt\n\`\`\`\n\n### 三、Query 解析：HttpUtility / WebUtility ⭐⭐⭐\n\n\`\`\`csharp\n// 需要引用 System.Web 或 Microsoft.AspNetCore
+// .NET 8 中可使用 System.Web.HttpUtility
+using System.Web;
+using System.Net;
+using System.Web; // 来自 System.Web.HttpUtility
+
+string url = "https://example.com/search?q=hello world&lang=zh&page=2";
+Uri u = new Uri(url);
+
+// 解析 query
+var qs = HttpUtility.ParseQueryString(u.Query);
+Console.WriteLine($"q     = {qs["q"]}");     // "hello world" (已 URL decode)
+Console.WriteLine($"lang  = {qs["lang"]}");  // "zh"
+Console.WriteLine($"page  = {qs["page"]}");  // "2"
+
+// 遍历所有
+foreach (string? key in qs.AllKeys)
+{
+    Console.WriteLine($"  {key} = {qs[key]}");
+}
+
+// 反向构造
+var builder = new UriBuilder("https://example.com/search");
+builder.Query = $"q={HttpUtility.UrlEncode("中文 & spaces")}&page=1";
+Console.WriteLine(builder.Uri);
+// https://example.com/search?q=%e4%b8%ad%e6%96%87+%26+spaces&page=1
+
+// WebUtility（更轻量，不需要 System.Web）
+
+string decoded = WebUtility.UrlDecode("hello%20world");
+string encoded = WebUtility.UrlEncode("中文 world");
+Console.WriteLine($"decoded = {decoded}");
+Console.WriteLine($"encoded = {encoded}");
+\`\`\`\n\n### 四、URL 编码 ⭐⭐⭐\n\n\`\`\`csharp\nusing System.Net;\n\nstring s = \"中文 & spaces?#\";\n\n// URL 编码（百分号编码）\nstring enc = Uri.EscapeDataString(s);\nConsole.WriteLine($\"EscapeDataString = {enc}\");\n// %E4%B8%AD%E6%96%87%20%26%20spaces%3F%23\n\n// 完整 URL 编码（保留 URL 结构字符）\nstring enc2 = Uri.EscapeUriString(s);\nConsole.WriteLine($\"EscapeUriString   = {enc2}\");\n// %E4%B8%AD%E6%96%87%20&%20spaces%3F%23 (& 不编码)\n\n// 解码\nstring dec = Uri.UnescapeDataString(enc);\nConsole.WriteLine($\"UnescapeDataString = {dec}\");\n\n// HTML 编码（用于 HTML 内容，不是 URL）\nstring htmlEnc = WebUtility.HtmlEncode(\"<a href=\\\"x\\\">test</a>\");\nConsole.WriteLine($\"HtmlEncode = {htmlEnc}\");\n\nstring htmlDec = WebUtility.HtmlDecode(htmlEnc);\nConsole.WriteLine($\"HtmlDecode = {htmlDec}\");\n\n// 选型：\n// URL 部分（如 query value）：Uri.EscapeDataString\n// 完整 URL：Uri.EscapeUriString\n// HTML 内容：WebUtility.HtmlEncode\n// 解码：对应方法\n\`\`\`\n\n### 五、UriBuilder：构造 URL ⭐⭐\n\n\`\`\`csharp\nvar b = new UriBuilder\n{\n    Scheme = \"https\",\n    Host = \"api.example.com\",\n    Port = 443,\n    Path = \"/v1/users/100\",\n    Query = \"include=profile&include=posts\"\n};\nConsole.WriteLine(b.Uri);\n\n// 增量添加 query\nb.Query = $\"{b.Query.TrimStart('?')}&token=abc123\";\nConsole.WriteLine(b.Uri);\n\n// 构造完整 URL\nstring url = new UriBuilder\n{\n    Scheme = \"https\",\n    Host = \"example.com\",\n    Path = \"/api\",\n    Fragment = \"results\"\n}.ToString();\nConsole.WriteLine(url);\n\n// 复制并修改\nUri source = new Uri(\"https://api.example.com/v1\");\nvar copy = new UriBuilder(source) { Path = \"/v2\" };\nConsole.WriteLine(copy.Uri);\n\`\`\`\n\n### 六、Uri 类型判断 ⭐\n\n\`\`\`csharp\nUri[] uris = {\n    new Uri(\"https://example.com\"),\n    new Uri(\"http://example.com\"),\n    new Uri(\"ftp://files.example.com/file.zip\"),\n    new Uri(\"mailto:user@example.com\"),\n    new Uri(\"file:///tmp/data.txt\"),\n    new Uri(\"https://example.com:8080/path\")\n};\n\nforeach (var u in uris)\n{\n    bool isHttps = u.Scheme == \"https\";\n    bool isHttp = u.Scheme == \"http\" || u.Scheme == \"https\";\n    bool isFile = u.IsFile;\n    bool isLoop = u.IsLoopback;\n    bool isUnc = u.IsUnc;\n    Console.WriteLine($\"{u,-40} isHttps={isHttps,-5} isFile={isFile,-5} loop={isLoop,-5}\");\n}\n\n// 绝对 vs 相对\nUri abs = new Uri(\"https://example.com/x\");\nUri rel = new Uri(\"x\", UriKind.Relative);\nConsole.WriteLine($\"abs.IsAbsoluteUri = {abs.IsAbsoluteUri}\");\nConsole.WriteLine($\"rel.IsAbsoluteUri = {rel.IsAbsoluteUri}\");\nConsole.WriteLine($\"rel.IsAbsoluteUri (rel) = {rel.IsAbsoluteUri}\");\n\n// Unc 路径（Windows）\ntry\n{\n    Uri unc = new Uri(@\"\\\\server\\share\\file.txt\");\n    Console.WriteLine($\"UNC = {unc}, IsUnc = {unc.IsUnc}\");\n}\ncatch { Console.WriteLine(\"UNC 仅 Windows\"); }\n\`\`\`\n\n### 七、文件路径与 Uri 互转 ⭐\n\n\`\`\`csharp\n// 文件路径 -> Uri\nstring path = Path.Combine(Environment.CurrentDirectory, \"data.txt\");\nUri fromPath = new Uri(path);\nConsole.WriteLine($\"fromPath = {fromPath}\");\nConsole.WriteLine($\"LocalPath = {fromPath.LocalPath}\");\n\n// Uri -> 文件路径\nUri fromUrl = new Uri(\"file:///tmp/data.txt\");\nstring back2 = fromUrl.LocalPath;\nConsole.WriteLine($\"back = {back2}\");\n\n// Windows 路径特殊处理\nif (OperatingSystem.IsWindows())\n{\n    Uri winPath = new Uri(\"C:\\\\Users\\\\alice\\\\file.txt\");\n    Console.WriteLine($\"winPath = {winPath}\");\n    Console.WriteLine($\"LocalPath = {winPath.LocalPath}\");\n}\n\`\`\`\n\n### 八、HttpClient 配合 Uri ⭐\n\n\`\`\`csharp\n// 基础用法（演示结构，不实际发请求）\nusing var http = new HttpClient { BaseAddress = new Uri(\"https://api.example.com/v1/\") };\n\n// BaseAddress 帮你自动拼接\nUri usersUri = new Uri(http.BaseAddress, \"users/100\");\nConsole.WriteLine($\"GET {usersUri}\");\n\nUri searchUri = new Uri(http.BaseAddress, \"search?q=hello\");\nConsole.WriteLine($\"GET {searchUri}\");\n\n// 完整路径覆盖\nUri fullUri = new Uri(\"https://other.com/path\");\nConsole.WriteLine($\"GET {fullUri}\");\n\`\`\`\n\n### 九、关键总结\n\n- \`Uri\`：安全解析 URL，自动处理编码\n- 构造 \`new Uri(baseUri, relative)\` 解析相对路径\n- 编码：\`Uri.EscapeDataString\`（用于 query value）\n- 编码：\`Uri.EscapeUriString\`（用于完整 URL）\n- \`HttpUtility.ParseQueryString\`：解析 query string\n- \`UriBuilder\`：可变构造 URL\n- \`WebUtility\`：HTML/URL 通用编解码\n- \`IsFile\`、\`IsLoopback\`、\`IsUnc\`：Uri 类型判断\n- 文件路径和 Uri 互转注意 Windows 盘符\n\n`,
   },
 
   // ============================================================
@@ -80,7 +128,65 @@ URI 是网络编程的基础。.NET 提供 \`System.Uri\` 类安全地解析、�
 
 ### 一、最简单的 GET 请求 ⭐⭐⭐
 
-\`\`\`csharp\n// 实际发送：\n// using var client = new HttpClient();\n// string html = await client.GetStringAsync(\"https://example.com\");\n// Console.WriteLine(html.Substring(0, 100));\n\n// 演示构造请求（不实际发送，避免依赖网络）\nusing var http = new HttpClient();\nHttpRequestMessage req = new(HttpMethod.Get, \"https://api.example.com/users\");\nConsole.WriteLine($\"Method: {req.Method}\");\nConsole.WriteLine($\"URI:    {req.RequestUri}\");\nConsole.WriteLine($\"Headers: {req.Headers.Count()} 头\");\nConsole.WriteLine($\"Content: {req.Content?.ToString() ?? \"(none)\"}\");\n\nHttpResponseMessage resp = new(HttpStatusCode.OK)\n{\n    Content = new StringContent(\"Hello\")\n};\nConsole.WriteLine($\"Status: {resp.StatusCode}\");\nConsole.WriteLine($\"Body:   {await resp.Content.ReadAsStringAsync()}\");\n\`\`\`\n\n### 二、HttpClient 配置 ⭐⭐⭐\n\n\`\`\`csharp\n// 推荐通过依赖注入使用 HttpClient（实际项目）\n// 这里演示裸 HttpClient 的配置\n\nvar handler = new SocketsHttpHandler\n{\n    PooledConnectionLifetime = TimeSpan.FromMinutes(2),  // 连接池超时\n    MaxConnectionsPerServer = 10                          // 单服务器最大连接\n};\n\nusing var client = new HttpClient(handler)\n{\n    BaseAddress = new Uri(\"https://api.example.com/v1/\"),\n    Timeout = TimeSpan.FromSeconds(30),\n    DefaultRequestHeaders =\n    {\n        // 公共头\n        { \"User-Agent\", \"MyApp/1.0\" },\n        { \"Accept\", \"application/json\" },\n        { \"Accept-Language\", \"zh-CN,zh;q=0.9\" }\n    }\n};\n\nConsole.WriteLine($\"BaseAddress = {client.BaseAddress}\");\nConsole.WriteLine($\"Timeout     = {client.Timeout}\");\nConsole.WriteLine($\"UA          = {client.DefaultRequestHeaders.UserAgent}\");\n\n// 注：实际请求\n// await client.GetAsync(\"users\");\n\`\`\`\n\n### 三、IHttpClientFactory（推荐） ⭐⭐⭐\n\n\`\`\`csharp\n// 实际项目：通过 IHttpClientFactory 注入\n// services.AddHttpClient(\"github\", c =>\n// {\n//     c.BaseAddress = new Uri(\"https://api.github.com/\");\n//     c.DefaultRequestHeaders.Add(\"User-Agent\", \"MyApp\");\n// });\n//\n// public class MyService(IHttpClientFactory factory)\n// {\n//     public async Task<string> GetUser(string name)\n//     {\n//         var client = factory.CreateClient(\"github\");\n//         return await client.GetStringAsync($\"users/{name}\");\n//     }\n// }\nConsole.WriteLine(\"IHttpClientFactory 自动管理 HttpClient 生命周期\");\nConsole.WriteLine(\"避免手动 new HttpClient 导致的 socket 泄漏\");\nConsole.WriteLine(\"支持 Polly 熔断、重试\");\n\`\`\`\n\n### 四、GET 请求 ⭐⭐⭐\n\n\`\`\`csharp\nusing var client = new HttpClient { BaseAddress = new Uri(\"https://api.example.com/\") };\n\n// 1. GetStringAsync：直接拿字符串\n// string s = await client.GetStringAsync(\"users/100\");\n\n// 2. GetByteArrayAsync：拿字节\n// byte[] b = await client.GetByteArrayAsync(\"files/img.png\");\n\n// 3. GetStreamAsync：拿流（适合大文件）\n// using Stream s = await client.GetStreamAsync(\"files/big.zip\");\n// using FileStream fs = File.Create(\"local.zip\");\n// await s.CopyToAsync(fs);\n\n// 4. GetAsync：拿完整响应\n// HttpResponseMessage resp = await client.GetAsync(\"users/100\");\n// resp.EnsureSuccessStatusCode(); // 非 2xx 抛异常\n// string body = await resp.Content.ReadAsStringAsync();\n\nConsole.WriteLine(\"四种方式：string/bytes/stream/response\");\n\`\`\`\n\n### 五、POST 请求 ⭐⭐⭐\n\n\`\`\`csharp\nusing var client = new HttpClient { BaseAddress = new Uri(\"https://api.example.com/\") };\n\n// 1. JSON POST\nvar payload = new { name = \"alice\", age = 30 };\nstring json = System.Text.Json.JsonSerializer.Serialize(payload);\nvar content = new StringContent(json, Encoding.UTF8, \"application/json\");\n\n// HttpResponseMessage resp = await client.PostAsync(\"users\", content);\n// string result = await resp.Content.ReadAsStringAsync();\nConsole.WriteLine($\"POST 1: {json}\");\n\n// 2. 表单 POST\nvar form = new FormUrlEncodedContent(new[]\n{\n    new KeyValuePair<string, string>(\"name\", \"alice\"),\n    new KeyValuePair<string, string>(\"age\", \"30\")\n});\n\n// HttpResponseMessage resp2 = await client.PostAsync(\"login\", form);\nConsole.WriteLine($\"POST 2: form-urlencoded\");\n\n// 3. multipart/form-data（文件上传）\nusing var form2 = new MultipartFormDataContent();\nform2.Add(new StringContent(\"alice\"), \"name\");\nvar fileContent = new ByteArrayContent(new byte[] { 1, 2, 3 });\nfileContent.Headers.ContentType = new MediaTypeHeaderValue(\"application/octet-stream\");\nform2.Add(fileContent, \"file\", \"data.bin\");\n\n// HttpResponseMessage resp3 = await client.PostAsync(\"upload\", form2);\nConsole.WriteLine($\"POST 3: multipart\");\n\n// 4. PostAsJsonAsync（扩展方法）\n// await client.PostAsJsonAsync(\"users\", payload);\nConsole.WriteLine($\"POST 4: PostAsJsonAsync extension\");\n\`\`\`\n\n### 六、其他方法 ⭐⭐\n\n\`\`\`csharp\nusing var client = new HttpClient { BaseAddress = new Uri(\"https://api.example.com/\") };\n\n// PUT / PATCH / DELETE\n// await client.PutAsJsonAsync(\"users/100\", new { name = \"new\" });\n// await client.PatchAsJsonAsync(\"users/100\", new { age = 31 });\n// await client.DeleteAsync(\"users/100\");\n\n// HEAD（只取头，不取 body）\n// HttpResponseMessage resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, \"users\"));\n// Console.WriteLine(resp.Headers);\n\nConsole.WriteLine(\"PUT/PATCH/DELETE/HEAD 都有对应方法\");\n\`\`\`\n\n### 七、添加自定义头 ⭐⭐\n\n\`\`\`csharp\n// 单次请求头\nusing var req = new HttpRequestMessage(HttpMethod.Get, \"users/100\");\nreq.Headers.Add(\"Authorization\", $\"Bearer {Guid.NewGuid()}\");\nreq.Headers.Add(\"X-Request-Id\", Guid.NewGuid().ToString());\n\nConsole.WriteLine($\"Authorization: {req.Headers.Authorization}\");\nConsole.WriteLine($\"X-Request-Id: {req.Headers.GetValues(\"X-Request-Id\").First()}\");\n\n// 实际发送：\n// using var client = new HttpClient();\n// using var resp = await client.SendAsync(req);\n\n// 用 SendAsync 替代 GetAsync\nConsole.WriteLine(\"SendAsync 用于自定义头\");\n\`\`\`\n\n### 八、错误处理 ⭐⭐\n\n\`\`\`csharp\nusing var client = new HttpClient();\n\nasync Task<string> SafeGet(string url)\n{\n    try\n    {\n        // 实际：return await client.GetStringAsync(url);\n        throw new HttpRequestException(\"网络失败（演示）\");\n    }\n    catch (HttpRequestException ex)\n    {\n        Console.WriteLine($\"网络错误: {ex.Message}\");\n        return string.Empty;\n    }\n    catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)\n    {\n        Console.WriteLine($\"超时: {ex.Message}\");\n        return string.Empty;\n    }\n}\n\n// 模拟调用\n// string r = await SafeGet(\"https://example.com\");\nConsole.WriteLine(\"异常类型：HttpRequestException, TaskCanceledException\");\n\n// 状态码检查\n// HttpResponseMessage resp = await client.GetAsync(url);\n// if (resp.IsSuccessStatusCode) { ... } else { ... }\n// resp.EnsureSuccessStatusCode();\nConsole.WriteLine(\"EnsureSuccessStatusCode 2xx 之外抛异常\");\n\`\`\`\n\n### 九、取消令牌 ⭐\n\n\`\`\`csharp\nusing var client = new HttpClient();\nusing var cts = new CancellationTokenSource();\ncts.CancelAfter(TimeSpan.FromSeconds(5));\n\ntry\n{\n    // 实际：await client.GetAsync(\"https://example.com\", cts.Token);\n    Console.WriteLine(\"5 秒后自动取消\");\n}\ncatch (TaskCanceledException)\n{\n    Console.WriteLine(\"请求被取消\");\n}\n\nConsole.WriteLine(\"支持取消令牌\");\n\`\`\`\n\n### 十、关键总结\n\n| 方法 | 用途 |\n| --- | --- |\n| \`GetStringAsync\` | 拿响应字符串 |\n| \`GetByteArrayAsync\` | 拿响应字节 |\n| \`GetStreamAsync\` | 拿响应流 |\n| \`GetAsync\` | 拿完整响应 |\n| \`PostAsync\` | 发送任意内容 |\n| \`PostAsJsonAsync\` | 发送 JSON |\n| \`SendAsync\` | 完全控制请求 |\n| \`DeleteAsync\` | 删除 |\n| \`PutAsync\` / \`PatchAsync\` | 更新 |\n\n- **不要**频繁 \`new HttpClient()\`：会泄漏 socket\n- **推荐**：\`IHttpClientFactory\` 注入\n- 配置：\`BaseAddress\`、\`Timeout\`、\`DefaultRequestHeaders\`\n- 错误处理：\`HttpRequestException\`、\`TaskCanceledException\`\n- 实际项目用 \`Microsoft.Extensions.Http\` 扩展包\n\n`,
+\`\`\`csharp\n// 实际发送：
+// using var client = new HttpClient();
+// string html = await client.GetStringAsync("https://example.com");
+// Console.WriteLine(html.Substring(0, 100));
+
+// 演示构造请求（不实际发送，避免依赖网络）
+using System.Net;
+using var http = new HttpClient();
+
+HttpRequestMessage req = new(HttpMethod.Get, "https://api.example.com/users");
+Console.WriteLine($"Method: {req.Method}");
+Console.WriteLine($"URI:    {req.RequestUri}");
+Console.WriteLine($"Headers: {req.Headers.Count()} 头");
+Console.WriteLine($"Content: {req.Content?.ToString() ?? "(none)"}");
+
+HttpResponseMessage resp = new(HttpStatusCode.OK)
+{
+    Content = new StringContent("Hello")
+};
+Console.WriteLine($"Status: {resp.StatusCode}");
+Console.WriteLine($"Body:   {await resp.Content.ReadAsStringAsync()}");
+\`\`\`\n\n### 二、HttpClient 配置 ⭐⭐⭐\n\n\`\`\`csharp\n// 推荐通过依赖注入使用 HttpClient（实际项目）\n// 这里演示裸 HttpClient 的配置\n\nvar handler = new SocketsHttpHandler\n{\n    PooledConnectionLifetime = TimeSpan.FromMinutes(2),  // 连接池超时\n    MaxConnectionsPerServer = 10                          // 单服务器最大连接\n};\n\nusing var client = new HttpClient(handler)\n{\n    BaseAddress = new Uri(\"https://api.example.com/v1/\"),\n    Timeout = TimeSpan.FromSeconds(30),\n    DefaultRequestHeaders =\n    {\n        // 公共头\n        { \"User-Agent\", \"MyApp/1.0\" },\n        { \"Accept\", \"application/json\" },\n        { \"Accept-Language\", \"zh-CN,zh;q=0.9\" }\n    }\n};\n\nConsole.WriteLine($\"BaseAddress = {client.BaseAddress}\");\nConsole.WriteLine($\"Timeout     = {client.Timeout}\");\nConsole.WriteLine($\"UA          = {client.DefaultRequestHeaders.UserAgent}\");\n\n// 注：实际请求\n// await client.GetAsync(\"users\");\n\`\`\`\n\n### 三、IHttpClientFactory（推荐） ⭐⭐⭐\n\n\`\`\`csharp\n// 实际项目：通过 IHttpClientFactory 注入\n// services.AddHttpClient(\"github\", c =>\n// {\n//     c.BaseAddress = new Uri(\"https://api.github.com/\");\n//     c.DefaultRequestHeaders.Add(\"User-Agent\", \"MyApp\");\n// });\n//\n// public class MyService(IHttpClientFactory factory)\n// {\n//     public async Task<string> GetUser(string name)\n//     {\n//         var client = factory.CreateClient(\"github\");\n//         return await client.GetStringAsync($\"users/{name}\");\n//     }\n// }\nConsole.WriteLine(\"IHttpClientFactory 自动管理 HttpClient 生命周期\");\nConsole.WriteLine(\"避免手动 new HttpClient 导致的 socket 泄漏\");\nConsole.WriteLine(\"支持 Polly 熔断、重试\");\n\`\`\`\n\n### 四、GET 请求 ⭐⭐⭐\n\n\`\`\`csharp\nusing var client = new HttpClient { BaseAddress = new Uri(\"https://api.example.com/\") };\n\n// 1. GetStringAsync：直接拿字符串\n// string s = await client.GetStringAsync(\"users/100\");\n\n// 2. GetByteArrayAsync：拿字节\n// byte[] b = await client.GetByteArrayAsync(\"files/img.png\");\n\n// 3. GetStreamAsync：拿流（适合大文件）\n// using Stream s = await client.GetStreamAsync(\"files/big.zip\");\n// using FileStream fs = File.Create(\"local.zip\");\n// await s.CopyToAsync(fs);\n\n// 4. GetAsync：拿完整响应\n// HttpResponseMessage resp = await client.GetAsync(\"users/100\");\n// resp.EnsureSuccessStatusCode(); // 非 2xx 抛异常\n// string body = await resp.Content.ReadAsStringAsync();\n\nConsole.WriteLine(\"四种方式：string/bytes/stream/response\");\n\`\`\`\n\n### 五、POST 请求 ⭐⭐⭐\n\n\`\`\`csharp\nusing System.Text;
+using System.Net.Http.Headers;
+using var client = new HttpClient { BaseAddress = new Uri("https://api.example.com/") };
+
+// 1. JSON POST
+
+var payload = new { name = "alice", age = 30 };
+string json = System.Text.Json.JsonSerializer.Serialize(payload);
+var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+// HttpResponseMessage resp = await client.PostAsync("users", content);
+// string result = await resp.Content.ReadAsStringAsync();
+Console.WriteLine($"POST 1: {json}");
+
+// 2. 表单 POST
+var form = new FormUrlEncodedContent(new[]
+{
+    new KeyValuePair<string, string>("name", "alice"),
+    new KeyValuePair<string, string>("age", "30")
+});
+
+// HttpResponseMessage resp2 = await client.PostAsync("login", form);
+Console.WriteLine($"POST 2: form-urlencoded");
+
+// 3. multipart/form-data（文件上传）
+using var form2 = new MultipartFormDataContent();
+form2.Add(new StringContent("alice"), "name");
+var fileContent = new ByteArrayContent(new byte[] { 1, 2, 3 });
+fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+form2.Add(fileContent, "file", "data.bin");
+
+// HttpResponseMessage resp3 = await client.PostAsync("upload", form2);
+Console.WriteLine($"POST 3: multipart");
+
+// 4. PostAsJsonAsync（扩展方法）
+// await client.PostAsJsonAsync("users", payload);
+Console.WriteLine($"POST 4: PostAsJsonAsync extension");
+\`\`\`\n\n### 六、其他方法 ⭐⭐\n\n\`\`\`csharp\nusing var client = new HttpClient { BaseAddress = new Uri(\"https://api.example.com/\") };\n\n// PUT / PATCH / DELETE\n// await client.PutAsJsonAsync(\"users/100\", new { name = \"new\" });\n// await client.PatchAsJsonAsync(\"users/100\", new { age = 31 });\n// await client.DeleteAsync(\"users/100\");\n\n// HEAD（只取头，不取 body）\n// HttpResponseMessage resp = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, \"users\"));\n// Console.WriteLine(resp.Headers);\n\nConsole.WriteLine(\"PUT/PATCH/DELETE/HEAD 都有对应方法\");\n\`\`\`\n\n### 七、添加自定义头 ⭐⭐\n\n\`\`\`csharp\n// 单次请求头\nusing var req = new HttpRequestMessage(HttpMethod.Get, \"users/100\");\nreq.Headers.Add(\"Authorization\", $\"Bearer {Guid.NewGuid()}\");\nreq.Headers.Add(\"X-Request-Id\", Guid.NewGuid().ToString());\n\nConsole.WriteLine($\"Authorization: {req.Headers.Authorization}\");\nConsole.WriteLine($\"X-Request-Id: {req.Headers.GetValues(\"X-Request-Id\").First()}\");\n\n// 实际发送：\n// using var client = new HttpClient();\n// using var resp = await client.SendAsync(req);\n\n// 用 SendAsync 替代 GetAsync\nConsole.WriteLine(\"SendAsync 用于自定义头\");\n\`\`\`\n\n### 八、错误处理 ⭐⭐\n\n\`\`\`csharp\nusing var client = new HttpClient();\n\nasync Task<string> SafeGet(string url)\n{\n    try\n    {\n        // 实际：return await client.GetStringAsync(url);\n        throw new HttpRequestException(\"网络失败（演示）\");\n    }\n    catch (HttpRequestException ex)\n    {\n        Console.WriteLine($\"网络错误: {ex.Message}\");\n        return string.Empty;\n    }\n    catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)\n    {\n        Console.WriteLine($\"超时: {ex.Message}\");\n        return string.Empty;\n    }\n}\n\n// 模拟调用\n// string r = await SafeGet(\"https://example.com\");\nConsole.WriteLine(\"异常类型：HttpRequestException, TaskCanceledException\");\n\n// 状态码检查\n// HttpResponseMessage resp = await client.GetAsync(url);\n// if (resp.IsSuccessStatusCode) { ... } else { ... }\n// resp.EnsureSuccessStatusCode();\nConsole.WriteLine(\"EnsureSuccessStatusCode 2xx 之外抛异常\");\n\`\`\`\n\n### 九、取消令牌 ⭐\n\n\`\`\`csharp\nusing var client = new HttpClient();\nusing var cts = new CancellationTokenSource();\ncts.CancelAfter(TimeSpan.FromSeconds(5));\n\ntry\n{\n    // 实际：await client.GetAsync(\"https://example.com\", cts.Token);\n    Console.WriteLine(\"5 秒后自动取消\");\n}\ncatch (TaskCanceledException)\n{\n    Console.WriteLine(\"请求被取消\");\n}\n\nConsole.WriteLine(\"支持取消令牌\");\n\`\`\`\n\n### 十、关键总结\n\n| 方法 | 用途 |\n| --- | --- |\n| \`GetStringAsync\` | 拿响应字符串 |\n| \`GetByteArrayAsync\` | 拿响应字节 |\n| \`GetStreamAsync\` | 拿响应流 |\n| \`GetAsync\` | 拿完整响应 |\n| \`PostAsync\` | 发送任意内容 |\n| \`PostAsJsonAsync\` | 发送 JSON |\n| \`SendAsync\` | 完全控制请求 |\n| \`DeleteAsync\` | 删除 |\n| \`PutAsync\` / \`PatchAsync\` | 更新 |\n\n- **不要**频繁 \`new HttpClient()\`：会泄漏 socket\n- **推荐**：\`IHttpClientFactory\` 注入\n- 配置：\`BaseAddress\`、\`Timeout\`、\`DefaultRequestHeaders\`\n- 错误处理：\`HttpRequestException\`、\`TaskCanceledException\`\n- 实际项目用 \`Microsoft.Extensions.Http\` 扩展包\n\n`,
   },
 
   // ============================================================
@@ -97,7 +203,133 @@ URI 是网络编程的基础。.NET 提供 \`System.Uri\` 类安全地解析、�
 
 ### 一、PostAsJsonAsync ⭐⭐⭐
 
-\`\`\`csharp\n// 需要：Microsoft.Extensions.Http\n// dotnet add package Microsoft.Extensions.Http\n\nusing var client = new HttpClient { BaseAddress = new Uri(\"https://api.example.com/\") };\n\n// 简单 POST\nrecord CreateUserRequest(string Name, int Age);\nrecord User(int Id, string Name, int Age);\n\nvar req = new CreateUserRequest(\"alice\", 30);\n\n// 实际：User created = await client.PostAsJsonAsync(\"users\", req).Result.Content.ReadFromJsonAsync<User>();\n\nConsole.WriteLine($\"POST JSON: {System.Text.Json.JsonSerializer.Serialize(req)}\");\n\n// 带配置\nvar opts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };\n// await client.PostAsJsonAsync(\"users\", req, opts);\nConsole.WriteLine(\"PostAsJsonAsync 自动 JSON 序列化\");\n\n// 完整模式：Get -> Deserialize\n// using HttpResponseMessage resp = await client.GetAsync(\"users/100\");\n// User? user = await resp.Content.ReadFromJsonAsync<User>();\nConsole.WriteLine(\"ReadFromJsonAsync 自动 JSON 反序列化\");\n\`\`\`\n\n### 二、HttpClient 拦截器：DelegatingHandler ⭐⭐⭐\n\n\`\`\`csharp\n// 自定义 Handler：在请求前后插入逻辑（日志、认证、重试）\nabstract class LoggingHandler : DelegatingHandler\n{\n    protected override async Task<HttpResponseMessage> SendAsync(\n        HttpRequestMessage request, CancellationToken cancellationToken)\n    {\n        Console.WriteLine($\"[REQ] {request.Method} {request.RequestUri}\");\n        var sw = System.Diagnostics.Stopwatch.StartNew();\n        var response = await base.SendAsync(request, cancellationToken);\n        sw.Stop();\n        Console.WriteLine($\"[RESP] {(int)response.StatusCode} ({sw.ElapsedMilliseconds}ms)\");\n        return response;\n    }\n}\n\nclass AuthHandler : DelegatingHandler\n{\n    private readonly string _token;\n    public AuthHandler(string token) { _token = token; }\n\n    protected override Task<HttpResponseMessage> SendAsync(\n        HttpRequestMessage request, CancellationToken cancellationToken)\n    {\n        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(\"Bearer\", _token);\n        return base.SendAsync(request, cancellationToken);\n    }\n}\n\n// 链式组合：Auth -> Logging -> InnerHandler\nvar pipeline = new AuthHandler(\"my-token\")\n{\n    InnerHandler = new LoggingHandler { InnerHandler = new HttpClientHandler() }\n};\nusing var client2 = new HttpClient(pipeline);\nConsole.WriteLine(\"Pipeline 准备就绪\");\n// 实际：await client2.GetAsync(\"https://api.example.com/users\");\n\`\`\`\n\n### 三、超时配置：精细化 ⭐⭐\n\n\`\`\`csharp\n// 1. HttpClient 全局超时\nvar c1 = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };\n\n// 2. 单次请求超时（更精细）\nusing var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));\n// await c1.GetAsync(\"url\", cts.Token);\nConsole.WriteLine(\"单次超时\");\n\n// 3. HttpRequestMessage 上的超时（不能直接设）\n// 用 CancellationTokenSource 配合\n\n// 4. 阶段超时：连接超时 vs 读超时\n// Polly 提供更精细控制\nConsole.WriteLine(\"精细超时：连接/读/总/单次\");\n\`\`\`\n\n### 四、Polly：重试和熔断 ⭐⭐⭐\n\n\`\`\`csharp\n// dotnet add package Microsoft.Extensions.Http.Polly\n\n// 实际代码（需要 Polly 包）：\n// services.AddHttpClient(\"github\")\n//     .AddPolicyHandler(HttpPolicyExtensions\n//         .HandleTransientHttpError()\n//         .WaitAndRetryAsync(3,\n//             attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))));\nConsole.WriteLine(\"Polly 提供：\");\nConsole.WriteLine(\"- 重试（指数退避）\");\nConsole.WriteLine(\"- 熔断（连续失败熔断）\");\nConsole.WriteLine(\"- 超时保护\");\nConsole.WriteLine(\"- 限流\");\nConsole.WriteLine(\"- 降级\");\n\`\`\`\n\n### 五、文件下载与进度 ⭐⭐\n\n\`\`\`csharp\nasync Task DownloadWithProgress(string url, string dest, IProgress<double>? progress = null)\n{\n    using var client = new HttpClient();\n    using var resp = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);\n    resp.EnsureSuccessStatusCode();\n\n    long? total = resp.Content.Headers.ContentLength;\n    Console.WriteLine($\"总大小 = {total} bytes\");\n\n    await using var src = await resp.Content.ReadAsStreamAsync();\n    await using var fs = File.Create(dest);\n\n    byte[] buffer = new byte[8192];\n    long downloaded = 0;\n    int read;\n    while ((read = await src.ReadAsync(buffer)) > 0)\n    {\n        await fs.WriteAsync(buffer.AsMemory(0, read));\n        downloaded += read;\n        if (total.HasValue)\n        {\n            progress?.Report((double)downloaded / total.Value * 100);\n        }\n    }\n}\n\nvar prog = new Progress<double>(p => Console.WriteLine($\"进度: {p:F1}%\"));\n// await DownloadWithProgress(\"https://example.com/big.zip\", \"/tmp/big.zip\", prog);\nConsole.WriteLine(\"支持进度回调\");\n\`\`\`\n\n### 六、HttpClient 复用：静态实例 ⭐⭐\n\n\`\`\`csharp\n// HttpClient 设计为可复用，new 一个成本高且会泄漏 socket\n// 但静态实例 DNS 不会刷新（IP 变更时可能连不上）\n\n// 解决：使用 SocketsHttpHandler.PooledConnectionLifetime\nvar handler = new SocketsHttpHandler\n{\n    PooledConnectionLifetime = TimeSpan.FromMinutes(5),  // 5 分钟后强制新连接\n    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)\n};\n\n// 静态单例 + 正确 handler\nclass HttpClientSingleton\n{\n    public static readonly HttpClient Instance = new(new SocketsHttpHandler\n    {\n        PooledConnectionLifetime = TimeSpan.FromMinutes(5)\n    })\n    {\n        Timeout = TimeSpan.FromSeconds(30)\n    };\n}\n\nConsole.WriteLine($\"Singleton Timeout = {HttpClientSingleton.Instance.Timeout}\");\nConsole.WriteLine(\"推荐用 IHttpClientFactory（更标准）\");\n\`\`\`\n\n### 七、HttpClient 最佳实践 ⭐⭐⭐\n\n\`\`\`csharp\n// 1. ✅ 推荐：IHttpClientFactory + 命名/类型化客户端\n// services.AddHttpClient<IGitHubClient, GitHubClient>(c =>\n//     c.BaseAddress = new Uri(\"https://api.github.com/\"));\n\n// 2. ✅ 静态 HttpClient + 正确配置\n// (见 HttpClientSingleton)\n\n// 3. ❌ 错误：每次都 new HttpClient\n// using var c = new HttpClient(); // 频繁调用会耗尽 socket\n\n// 4. ✅ 短生命周期：using var client = new HttpClient(); 在 using 块内用完就释放\n// 也行（每次都新建连接）\n\n// 5. ✅ 长生命周期：HttpClient 是线程安全的，可以静态共享\nConsole.WriteLine(\"HttpClient 是线程安全的，重复使用没问题\");\n\`\`\`\n\n### 八、HttpClient 测试：HttpMessageHandler 模拟 ⭐⭐\n\n\`\`\`csharp\n// 测试时用 MockHttpMessageHandler 模拟响应\nclass MockHandler : HttpMessageHandler\n{\n    private readonly Func<HttpRequestMessage, Task<HttpResponseMessage>> _handler;\n    public MockHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> h) { _handler = h; }\n\n    protected override Task<HttpResponseMessage> SendAsync(\n        HttpRequestMessage request, CancellationToken cancellationToken)\n    {\n        return _handler(request);\n    }\n}\n\n// 使用：\n// var mock = new MockHandler(req =>\n// {\n//     var resp = new HttpResponseMessage(HttpStatusCode.OK)\n//     {\n//         Content = new StringContent(\"{\\\"name\\\":\\\"alice\\\"}\")\n//     };\n//     return Task.FromResult(resp);\n// });\n// var client = new HttpClient(mock);\n// var user = await client.GetFromJsonAsync<User>(\"users/1\");\nConsole.WriteLine(\"测试用 MockHandler 替代真实 HTTP\");\n\`\`\`\n\n### 九、关键总结\n\n- \`PostAsJsonAsync\` / \`ReadFromJsonAsync\`：自动 JSON 序列化\n- \`DelegatingHandler\`：拦截器（日志、认证、重试）\n- \`Polly\`：重试、熔断、超时、降级\n- \`HttpCompletionOption.ResponseHeadersRead\`：流式下载\n- \`IProgress<T>\` + \`ReadAsync\`：下载进度\n- **不要**频繁 new HttpClient：用 IHttpClientFactory 或静态单例\n- \`PooledConnectionLifetime\`：避免 DNS 缓存问题\n- 测试用 \`HttpMessageHandler\` 模拟\n\n**HttpClient 三种使用模式**：\n1. \`IHttpClientFactory\`（DI 注入）⭐⭐⭐ 推荐\n2. 静态单例 + SocketsHttpHandler\n3. 短生命周期 using（次优）\n\n`,
+\`\`\`csharp\n// 需要：Microsoft.Extensions.Http
+// dotnet add package Microsoft.Extensions.Http
+
+using var client = new HttpClient { BaseAddress = new Uri("https://api.example.com/") };
+
+var req = new CreateUserRequest("alice", 30);
+
+// 实际：User created = await client.PostAsJsonAsync("users", req).Result.Content.ReadFromJsonAsync<User>();
+
+Console.WriteLine($"POST JSON: {System.Text.Json.JsonSerializer.Serialize(req)}");
+
+// 带配置
+var opts = new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase };
+// await client.PostAsJsonAsync("users", req, opts);
+Console.WriteLine("PostAsJsonAsync 自动 JSON 序列化");
+
+// 完整模式：Get -> Deserialize
+// using HttpResponseMessage resp = await client.GetAsync("users/100");
+// User? user = await resp.Content.ReadFromJsonAsync<User>();
+Console.WriteLine("ReadFromJsonAsync 自动 JSON 反序列化");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+// 简单 POST
+record CreateUserRequest(string Name, int Age);
+
+record User(int Id, string Name, int Age);
+\`\`\`\n\n### 二、HttpClient 拦截器：DelegatingHandler ⭐⭐⭐\n\n\`\`\`csharp\n
+
+// 链式组合：Auth -> Logging -> InnerHandler
+var pipeline = new AuthHandler("my-token")
+{
+    InnerHandler = new LoggingHandler { InnerHandler = new HttpClientHandler() }
+};
+using var client2 = new HttpClient(pipeline);
+Console.WriteLine("Pipeline 准备就绪");
+// 实际：await client2.GetAsync("https://api.example.com/users");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+// 自定义 Handler：在请求前后插入逻辑（日志、认证、重试）
+class LoggingHandler : DelegatingHandler
+{
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        Console.WriteLine($"[REQ] {request.Method} {request.RequestUri}");
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var response = await base.SendAsync(request, cancellationToken);
+        sw.Stop();
+        Console.WriteLine($"[RESP] {(int)response.StatusCode} ({sw.ElapsedMilliseconds}ms)");
+        return response;
+    }
+}
+
+class AuthHandler : DelegatingHandler
+{
+    private readonly string _token;
+    public AuthHandler(string token) { _token = token; }
+
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _token);
+        return base.SendAsync(request, cancellationToken);
+    }
+}
+\`\`\`\n\n### 三、超时配置：精细化 ⭐⭐\n\n\`\`\`csharp\n// 1. HttpClient 全局超时\nvar c1 = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };\n\n// 2. 单次请求超时（更精细）\nusing var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));\n// await c1.GetAsync(\"url\", cts.Token);\nConsole.WriteLine(\"单次超时\");\n\n// 3. HttpRequestMessage 上的超时（不能直接设）\n// 用 CancellationTokenSource 配合\n\n// 4. 阶段超时：连接超时 vs 读超时\n// Polly 提供更精细控制\nConsole.WriteLine(\"精细超时：连接/读/总/单次\");\n\`\`\`\n\n### 四、Polly：重试和熔断 ⭐⭐⭐\n\n\`\`\`csharp\n// dotnet add package Microsoft.Extensions.Http.Polly\n\n// 实际代码（需要 Polly 包）：\n// services.AddHttpClient(\"github\")\n//     .AddPolicyHandler(HttpPolicyExtensions\n//         .HandleTransientHttpError()\n//         .WaitAndRetryAsync(3,\n//             attempt => TimeSpan.FromSeconds(Math.Pow(2, attempt))));\nConsole.WriteLine(\"Polly 提供：\");\nConsole.WriteLine(\"- 重试（指数退避）\");\nConsole.WriteLine(\"- 熔断（连续失败熔断）\");\nConsole.WriteLine(\"- 超时保护\");\nConsole.WriteLine(\"- 限流\");\nConsole.WriteLine(\"- 降级\");\n\`\`\`\n\n### 五、文件下载与进度 ⭐⭐\n\n\`\`\`csharp\nasync Task DownloadWithProgress(string url, string dest, IProgress<double>? progress = null)\n{\n    using var client = new HttpClient();\n    using var resp = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);\n    resp.EnsureSuccessStatusCode();\n\n    long? total = resp.Content.Headers.ContentLength;\n    Console.WriteLine($\"总大小 = {total} bytes\");\n\n    await using var src = await resp.Content.ReadAsStreamAsync();\n    await using var fs = File.Create(dest);\n\n    byte[] buffer = new byte[8192];\n    long downloaded = 0;\n    int read;\n    while ((read = await src.ReadAsync(buffer)) > 0)\n    {\n        await fs.WriteAsync(buffer.AsMemory(0, read));\n        downloaded += read;\n        if (total.HasValue)\n        {\n            progress?.Report((double)downloaded / total.Value * 100);\n        }\n    }\n}\n\nvar prog = new Progress<double>(p => Console.WriteLine($\"进度: {p:F1}%\"));\n// await DownloadWithProgress(\"https://example.com/big.zip\", \"/tmp/big.zip\", prog);\nConsole.WriteLine(\"支持进度回调\");\n\`\`\`\n\n### 六、HttpClient 复用：静态实例 ⭐⭐\n\n\`\`\`csharp\n// HttpClient 设计为可复用，new 一个成本高且会泄漏 socket
+// 但静态实例 DNS 不会刷新（IP 变更时可能连不上）
+
+// 解决：使用 SocketsHttpHandler.PooledConnectionLifetime
+var handler = new SocketsHttpHandler
+{
+    PooledConnectionLifetime = TimeSpan.FromMinutes(5),  // 5 分钟后强制新连接
+    PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2)
+};
+
+Console.WriteLine($"Singleton Timeout = {HttpClientSingleton.Instance.Timeout}");
+Console.WriteLine("推荐用 IHttpClientFactory（更标准）");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+// 静态单例 + 正确 handler
+class HttpClientSingleton
+{
+    public static readonly HttpClient Instance = new(new SocketsHttpHandler
+    {
+        PooledConnectionLifetime = TimeSpan.FromMinutes(5)
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(30)
+    };
+}
+\`\`\`\n\n### 七、HttpClient 最佳实践 ⭐⭐⭐\n\n\`\`\`csharp\n// 1. ✅ 推荐：IHttpClientFactory + 命名/类型化客户端\n// services.AddHttpClient<IGitHubClient, GitHubClient>(c =>\n//     c.BaseAddress = new Uri(\"https://api.github.com/\"));\n\n// 2. ✅ 静态 HttpClient + 正确配置\n// (见 HttpClientSingleton)\n\n// 3. ❌ 错误：每次都 new HttpClient\n// using var c = new HttpClient(); // 频繁调用会耗尽 socket\n\n// 4. ✅ 短生命周期：using var client = new HttpClient(); 在 using 块内用完就释放\n// 也行（每次都新建连接）\n\n// 5. ✅ 长生命周期：HttpClient 是线程安全的，可以静态共享\nConsole.WriteLine(\"HttpClient 是线程安全的，重复使用没问题\");\n\`\`\`\n\n### 八、HttpClient 测试：HttpMessageHandler 模拟 ⭐⭐\n\n\`\`\`csharp\n
+
+// 使用：
+// var mock = new MockHandler(req =>
+// {
+//     var resp = new HttpResponseMessage(HttpStatusCode.OK)
+//     {
+//         Content = new StringContent("{\\"name\\":\\"alice\\"}")
+//     };
+//     return Task.FromResult(resp);
+// });
+// var client = new HttpClient(mock);
+// var user = await client.GetFromJsonAsync<User>("users/1");
+Console.WriteLine("测试用 MockHandler 替代真实 HTTP");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+// 测试时用 MockHttpMessageHandler 模拟响应
+class MockHandler : HttpMessageHandler
+{
+    private readonly Func<HttpRequestMessage, Task<HttpResponseMessage>> _handler;
+    public MockHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> h) { _handler = h; }
+
+    protected override Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        return _handler(request);
+    }
+}
+\`\`\`\n\n### 九、关键总结\n\n- \`PostAsJsonAsync\` / \`ReadFromJsonAsync\`：自动 JSON 序列化\n- \`DelegatingHandler\`：拦截器（日志、认证、重试）\n- \`Polly\`：重试、熔断、超时、降级\n- \`HttpCompletionOption.ResponseHeadersRead\`：流式下载\n- \`IProgress<T>\` + \`ReadAsync\`：下载进度\n- **不要**频繁 new HttpClient：用 IHttpClientFactory 或静态单例\n- \`PooledConnectionLifetime\`：避免 DNS 缓存问题\n- 测试用 \`HttpMessageHandler\` 模拟\n\n**HttpClient 三种使用模式**：\n1. \`IHttpClientFactory\`（DI 注入）⭐⭐⭐ 推荐\n2. 静态单例 + SocketsHttpHandler\n3. 短生命周期 using（次优）\n\n`,
   },
 
   // ============================================================
@@ -114,7 +346,256 @@ Socket 是网络编程的底层 API。本章讲解 TCP/UDP Socket 的基础用�
 
 ### 一、TCP Socket 服务端 ⭐⭐⭐
 
-\`\`\`csharp\nusing System.Net;\nusing System.Net.Sockets;\n\nasync Task TcpServerDemo()\n{\n    TcpListener listener = new(IPAddress.Loopback, 12345);\n    listener.Start();\n    Console.WriteLine(\"TCP 服务端监听 127.0.0.1:12345\");\n\n    // 接受一个客户端（演示）\n    using TcpClient client = await listener.AcceptTcpClientAsync();\n    Console.WriteLine($\"客户端已连接: {client.Client.RemoteEndPoint}\");\n\n    await using NetworkStream ns = client.GetStream();\n    byte[] buf = new byte[1024];\n    int n = await ns.ReadAsync(buf);\n    string msg = Encoding.UTF8.GetString(buf, 0, n);\n    Console.WriteLine($\"收到: {msg}\");\n\n    // 响应\n    string reply = $\"HTTP/1.0 200 OK\\r\\nContent-Length: 5\\r\\n\\r\\nhello\";\n    byte[] replyBytes = Encoding.UTF8.GetBytes(reply);\n    await ns.WriteAsync(replyBytes);\n\n    listener.Stop();\n}\n\n// 启动服务端（用 Task 避免阻塞）\nvar serverTask = TcpServerDemo();\nawait Task.Delay(200); // 等服务端起来\n\n// 客户端连接（演示）\nusing TcpClient cli = new();\nawait cli.ConnectAsync(IPAddress.Loopback, 12345);\nawait using NetworkStream ns = cli.GetStream();\nawait ns.WriteAsync(Encoding.UTF8.GetBytes(\"GET / HTTP/1.0\\r\\n\\r\\n\"));\n\nbyte[] rbuf = new byte[1024];\nint rn = await ns.ReadAsync(rbuf);\nConsole.WriteLine($\"响应: {Encoding.UTF8.GetString(rbuf, 0, rn).Substring(0, Math.Min(50, rn))}...\");\n\nawait serverTask;\nConsole.WriteLine(\"TCP 演示完成\");\n\`\`\`\n\n### 二、TCP 异步服务端（生产模式） ⭐⭐⭐\n\n\`\`\`csharp\nasync Task TcpServerProduction()\n{\n    var listener = new TcpListener(IPAddress.Any, 12346);\n    listener.Start();\n    Console.WriteLine(\"TCP 生产模式监听 :12346\");\n\n    // 接受循环\n    while (true)\n    {\n        TcpClient client = await listener.AcceptTcpClientAsync();\n        Console.WriteLine($\"连接: {client.Client.RemoteEndPoint}\");\n\n        // 每个连接独立 Task\n        _ = HandleClientAsync(client);\n    }\n}\n\nasync Task HandleClientAsync(TcpClient client)\n{\n    await using NetworkStream ns = client.GetStream();\n    byte[] buf = new byte[4096];\n    try\n    {\n        int n;\n        while ((n = await ns.ReadAsync(buf)) > 0)\n        {\n            string msg = Encoding.UTF8.GetString(buf, 0, n);\n            Console.WriteLine($\"[server] recv: {msg}\");\n            await ns.WriteAsync(Encoding.UTF8.GetBytes($\"echo: {msg}\"));\n        }\n    }\n    catch (Exception ex)\n    {\n        Console.WriteLine($\"[server] err: {ex.Message}\");\n    }\n    finally\n    {\n        client.Dispose();\n        Console.WriteLine(\"[server] connection closed\");\n    }\n}\n\n// 客户端测试\nasync Task TcpClientTest()\n{\n    using var c = new TcpClient();\n    await c.ConnectAsync(IPAddress.Loopback, 12346);\n    await using var ns = c.GetStream();\n\n    for (int i = 0; i < 3; i++)\n    {\n        string msg = $\"hello {i}\";\n        await ns.WriteAsync(Encoding.UTF8.GetBytes(msg));\n        byte[] buf = new byte[1024];\n        int n = await ns.ReadAsync(buf);\n        Console.WriteLine($\"[client] recv: {Encoding.UTF8.GetString(buf, 0, n)}\");\n    }\n}\n\nvar serverTask = TcpServerProduction();\nawait Task.Delay(200);\nawait TcpClientTest();\nawait Task.Delay(200);\nConsole.WriteLine(\"演示完成（生产服务端仍在运行，Ctrl+C 退出）\");\n\`\`\`\n\n### 三、UDP Socket ⭐⭐\n\n\`\`\`csharp\nasync Task UdpDemo()\n{\n    using UdpClient server = new(12347);\n    Console.WriteLine(\"UDP 服务端监听 :12347\");\n\n    // 异步接收\n    var serverTask = Task.Run(async () =>\n    {\n        UdpReceiveResult result = await server.ReceiveAsync();\n        string msg = Encoding.UTF8.GetString(result.Buffer);\n        Console.WriteLine($\"[UDP server] from {result.RemoteEndPoint}: {msg}\");\n    });\n\n    await Task.Delay(100);\n\n    // 客户端发送\n    using UdpClient client = new();\n    byte[] data = Encoding.UTF8.GetBytes(\"Hello UDP\");\n    await client.SendAsync(data, \"127.0.0.1\", 12347);\n    Console.WriteLine(\"[UDP client] sent\");\n\n    await serverTask;\n}\n\nawait UdpDemo();\nConsole.WriteLine(\"UDP 演示完成\");\n\`\`\`\n\n### 四、原始 Socket（高级） ⭐\n\n\`\`\`csharp\n// 直接用 Socket 类（比 TcpClient/UdpClient 更底层）\n// 通常不直接用，但有时需要\nusing Socket sock = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);\nConsole.WriteLine($\"Socket type: {sock.SocketType}\");\nConsole.WriteLine($\"Protocol:   {sock.ProtocolType}\");\nConsole.WriteLine($\"AddressFamily: {sock.AddressFamily}\");\n\n// 配置\nsock.NoDelay = true;       // 禁用 Nagle 算法（小包立即发）\nsock.SendBufferSize = 8192;\nsock.ReceiveBufferSize = 8192;\nsock.SendTimeout = 5000;\nsock.ReceiveTimeout = 5000;\n\nConsole.WriteLine($\"NoDelay = {sock.NoDelay}\");\nConsole.WriteLine($\"SendBuf = {sock.SendBufferSize}\");\nConsole.WriteLine($\"RecvBuf = {sock.ReceiveBufferSize}\");\n\n// 异步 IO\n// await sock.ConnectAsync(endpoint);\n// await sock.SendAsync(buffer);\n// int n = await sock.ReceiveAsync(buffer);\nConsole.WriteLine(\"Socket 支持完整异步 IO\");\n\`\`\`\n\n### 五、NetworkStream 详解 ⭐⭐\n\n\`\`\`csharp\n// NetworkStream 包装了 Socket，简化 IO\nasync Task NetStreamDemo()\n{\n    using var c = new TcpClient();\n    await c.ConnectAsync(IPAddress.Loopback, 80); // 假设有 HTTP 服务\n    // await using NetworkStream ns = c.GetStream();\n\n    Console.WriteLine(\"NetworkStream 属性：\");\n    Console.WriteLine(\"  CanRead    = true\");\n    Console.WriteLine(\"  CanWrite   = true\");\n    Console.WriteLine(\"  CanSeek    = false\");\n    Console.WriteLine(\"  ReadTimeout  - 读超时\");\n    Console.WriteLine(\"  WriteTimeout - 写超时\");\n    Console.WriteLine(\"  DataAvailable - 是否有数据\");\n}\n\nawait NetStreamDemo();\nConsole.WriteLine(\"NetworkStream 是单向只读或只写？错，双向流\");\n\`\`\`\n\n### 六、IPAddress 和 IPEndPoint ⭐\n\n\`\`\`csharp\nIPAddress ip1 = IPAddress.Parse(\"192.168.1.1\");\nIPAddress ip2 = IPAddress.Loopback;        // 127.0.0.1\nIPAddress ip3 = IPAddress.IPv6Loopback;    // ::1\nIPAddress ip4 = IPAddress.Any;             // 0.0.0.0\nIPAddress ip5 = IPAddress.IPv6Any;\n\nConsole.WriteLine($\"ip1 = {ip1}\");\nConsole.WriteLine($\"ip2 = {ip2}\");\nConsole.WriteLine($\"ip3 = {ip3}\");\n\nIPEndPoint ep1 = new IPEndPoint(IPAddress.Loopback, 8080);\nIPEndPoint ep2 = new IPEndPoint(IPAddress.Any, 9090);\n\nConsole.WriteLine($\"ep1 = {ep1}\");\nConsole.WriteLine($\"ep2 = {ep2}\");\n\n// 字节序\nbyte[] bytes = ip1.GetAddressBytes();\nConsole.WriteLine($\"192.168.1.1 bytes = [{string.Join(\",\", bytes)}]\");\n\n// 反向\nIPAddress fromBytes = new IPAddress(bytes);\nConsole.WriteLine($\"from bytes = {fromBytes}\");\n\n// DNS 解析\n// IPAddress[] addrs = await Dns.GetHostAddressesAsync(\"www.example.com\");\nConsole.WriteLine(\"Dns.GetHostAddressesAsync 异步解析\");\n\`\`\`\n\n### 七、Socket 状态与异常 ⭐\n\n\`\`\`csharp\n// 常见异常\ntry\n{\n    using var c = new TcpClient();\n    await c.ConnectAsync(IPAddress.Loopback, 9999); // 假设没服务\n}\ncatch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionRefused)\n{\n    Console.WriteLine(\"连接被拒绝（目标端口无服务）\");\n}\ncatch (SocketException ex)\n{\n    Console.WriteLine($\"Socket 错误: {ex.SocketErrorCode} - {ex.Message}\");\n}\n\n// 常见 SocketError\nforeach (var e in new[] {\n    SocketError.ConnectionRefused,\n    SocketError.TimedOut,\n    SocketError.NetworkUnreachable,\n    SocketError.HostUnreachable,\n    SocketError.HostNotFound\n})\n{\n    Console.WriteLine($\"  {e} = {(int)e}\");\n}\n\`\`\`\n\n### 八、选择指南 ⭐⭐⭐\n\n\`\`\`csharp\n// 实际项目选择：\nConsole.WriteLine(\"网络编程分层：\");\nConsole.WriteLine(\"  HTTP API    → HttpClient\");\nConsole.WriteLine(\"  WebSocket   → ClientWebSocket\");\nConsole.WriteLine(\"  gRPC        → Grpc.Net.Client\");\nConsole.WriteLine(\"  消息队列    → RabbitMQ.Client / Confluent.Kafka\");\nConsole.WriteLine(\"  实时通信    → SignalR Client\");\nConsole.WriteLine(\"  底层自定义  → Socket\");\nConsole.WriteLine(\"  TCP 协议    → TcpClient/TcpListener\");\nConsole.WriteLine(\"  UDP 协议    → UdpClient\");\n\`\`\`\n\n### 九、关键总结\n\n| 场景 | 选型 |\n| --- | --- |\n| HTTP 请求 | HttpClient |\n| WebSocket | ClientWebSocket |\n| TCP 协议 | TcpClient / TcpListener |\n| UDP 协议 | UdpClient |\n| 底层控制 | Socket |\n| 实时双向 | SignalR |\n| 异步 RPC | gRPC |\n\n- \`TcpClient\`/\`TcpListener\`：基于 TCP，自动管理连接\n- \`UdpClient\`：无连接协议，性能高但不可靠\n- \`Socket\`：底层，灵活性最大，复杂度最高\n- \`NetworkStream.ReadAsync/WriteAsync\`：TCP 流式 IO\n- 监听多个连接用 \`AcceptTcpClientAsync\` 循环\n- 每个连接独立 Task 处理（生产模式）\n- 异常：\`SocketException\`、\`SocketError\` 枚举\n- **生产推荐**：用 Kestrel + ASP.NET Core，Socket 写 WebSocket/自定义协议才用\n\n`,
+\`\`\`csharp\nusing System.Net;
+using System.Net.Sockets;
+
+using System.Text;
+async Task TcpServerDemo()
+{
+    TcpListener listener = new(IPAddress.Loopback, 12345);
+    listener.Start();
+    Console.WriteLine("TCP 服务端监听 127.0.0.1:12345");
+
+    // 接受一个客户端（演示）
+    using TcpClient client = await listener.AcceptTcpClientAsync();
+    Console.WriteLine($"客户端已连接: {client.Client.RemoteEndPoint}");
+
+    await using NetworkStream ns = client.GetStream();
+    byte[] buf = new byte[1024];
+    int n = await ns.ReadAsync(buf);
+    string msg = Encoding.UTF8.GetString(buf, 0, n);
+    Console.WriteLine($"收到: {msg}");
+
+    // 响应
+    string reply = $"HTTP/1.0 200 OK\\r\\nContent-Length: 5\\r\\n\\r\\nhello";
+    byte[] replyBytes = Encoding.UTF8.GetBytes(reply);
+    await ns.WriteAsync(replyBytes);
+
+    listener.Stop();
+}
+
+// 启动服务端（用 Task 避免阻塞）
+var serverTask = TcpServerDemo();
+await Task.Delay(200); // 等服务端起来
+
+// 客户端连接（演示）
+using TcpClient cli = new();
+await cli.ConnectAsync(IPAddress.Loopback, 12345);
+await using NetworkStream ns = cli.GetStream();
+await ns.WriteAsync(Encoding.UTF8.GetBytes("GET / HTTP/1.0\\r\\n\\r\\n"));
+
+byte[] rbuf = new byte[1024];
+int rn = await ns.ReadAsync(rbuf);
+Console.WriteLine($"响应: {Encoding.UTF8.GetString(rbuf, 0, rn).Substring(0, Math.Min(50, rn))}...");
+
+await serverTask;
+Console.WriteLine("TCP 演示完成");
+\`\`\`\n\n### 二、TCP 异步服务端（生产模式） ⭐⭐⭐\n\n\`\`\`csharp\nusing System.Net.Sockets;
+using System.Net;
+using System.Text;
+async Task TcpServerProduction()
+{
+    var listener = new TcpListener(IPAddress.Any, 12346);
+    listener.Start();
+    Console.WriteLine("TCP 生产模式监听 :12346");
+
+    // 接受循环
+    while (true)
+    {
+        TcpClient client = await listener.AcceptTcpClientAsync();
+        Console.WriteLine($"连接: {client.Client.RemoteEndPoint}");
+
+        // 每个连接独立 Task
+        _ = HandleClientAsync(client);
+    }
+}
+
+async Task HandleClientAsync(TcpClient client)
+{
+    await using NetworkStream ns = client.GetStream();
+    byte[] buf = new byte[4096];
+    try
+    {
+        int n;
+        while ((n = await ns.ReadAsync(buf)) > 0)
+        {
+            string msg = Encoding.UTF8.GetString(buf, 0, n);
+            Console.WriteLine($"[server] recv: {msg}");
+            await ns.WriteAsync(Encoding.UTF8.GetBytes($"echo: {msg}"));
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[server] err: {ex.Message}");
+    }
+    finally
+    {
+        client.Dispose();
+        Console.WriteLine("[server] connection closed");
+    }
+}
+
+// 客户端测试
+async Task TcpClientTest()
+{
+    using var c = new TcpClient();
+    await c.ConnectAsync(IPAddress.Loopback, 12346);
+    await using var ns = c.GetStream();
+
+    for (int i = 0; i < 3; i++)
+    {
+        string msg = $"hello {i}";
+        await ns.WriteAsync(Encoding.UTF8.GetBytes(msg));
+        byte[] buf = new byte[1024];
+        int n = await ns.ReadAsync(buf);
+        Console.WriteLine($"[client] recv: {Encoding.UTF8.GetString(buf, 0, n)}");
+    }
+}
+
+var serverTask = TcpServerProduction();
+await Task.Delay(200);
+await TcpClientTest();
+await Task.Delay(200);
+Console.WriteLine("演示完成（生产服务端仍在运行，Ctrl+C 退出）");
+\`\`\`\n\n### 三、UDP Socket ⭐⭐\n\n\`\`\`csharp\nusing System.Net.Sockets;
+using System.Text;
+async Task UdpDemo()
+{
+    using UdpClient server = new(12347);
+    Console.WriteLine("UDP 服务端监听 :12347");
+
+    // 异步接收
+    var serverTask = Task.Run(async () =>
+    {
+        UdpReceiveResult result = await server.ReceiveAsync();
+        string msg = Encoding.UTF8.GetString(result.Buffer);
+        Console.WriteLine($"[UDP server] from {result.RemoteEndPoint}: {msg}");
+    });
+
+    await Task.Delay(100);
+
+    // 客户端发送
+    using UdpClient client = new();
+    byte[] data = Encoding.UTF8.GetBytes("Hello UDP");
+    await client.SendAsync(data, "127.0.0.1", 12347);
+    Console.WriteLine("[UDP client] sent");
+
+    await serverTask;
+}
+
+await UdpDemo();
+Console.WriteLine("UDP 演示完成");
+\`\`\`\n\n### 四、原始 Socket（高级） ⭐\n\n\`\`\`csharp\n// 直接用 Socket 类（比 TcpClient/UdpClient 更底层）
+// 通常不直接用，但有时需要
+using System.Net.Sockets;
+using Socket sock = new(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+Console.WriteLine($"Socket type: {sock.SocketType}");
+Console.WriteLine($"Protocol:   {sock.ProtocolType}");
+Console.WriteLine($"AddressFamily: {sock.AddressFamily}");
+
+// 配置
+sock.NoDelay = true;       // 禁用 Nagle 算法（小包立即发）
+sock.SendBufferSize = 8192;
+sock.ReceiveBufferSize = 8192;
+sock.SendTimeout = 5000;
+sock.ReceiveTimeout = 5000;
+
+Console.WriteLine($"NoDelay = {sock.NoDelay}");
+Console.WriteLine($"SendBuf = {sock.SendBufferSize}");
+Console.WriteLine($"RecvBuf = {sock.ReceiveBufferSize}");
+
+// 异步 IO
+// await sock.ConnectAsync(endpoint);
+// await sock.SendAsync(buffer);
+// int n = await sock.ReceiveAsync(buffer);
+Console.WriteLine("Socket 支持完整异步 IO");
+\`\`\`\n\n### 五、NetworkStream 详解 ⭐⭐\n\n\`\`\`csharp\n// NetworkStream 包装了 Socket，简化 IO
+using System.Net.Sockets;
+using System.Net;
+async Task NetStreamDemo()
+{
+    using var c = new TcpClient();
+    try
+    {
+        await c.ConnectAsync(IPAddress.Loopback, 80); // 假设有 HTTP 服务
+    }
+    catch (SocketException ex)
+    {
+        // 本机 80 端口没有服务时会「连接拒绝」，这是正常现象
+        Console.WriteLine($"连接被拒绝（本机 80 端口无服务）：{ex.Message}");
+        return;
+    }
+    // await using NetworkStream ns = c.GetStream();
+
+    Console.WriteLine("NetworkStream 属性：");
+    Console.WriteLine("  CanRead    = true");
+    Console.WriteLine("  CanWrite   = true");
+    Console.WriteLine("  CanSeek    = false");
+    Console.WriteLine("  ReadTimeout  - 读超时");
+    Console.WriteLine("  WriteTimeout - 写超时");
+    Console.WriteLine("  DataAvailable - 是否有数据");
+}
+
+await NetStreamDemo();
+Console.WriteLine("NetworkStream 是单向只读或只写？错，双向流");
+\`\`\`\n\n### 六、IPAddress 和 IPEndPoint ⭐\n\n\`\`\`csharp\nusing System.Net;
+IPAddress ip1 = IPAddress.Parse("192.168.1.1");
+IPAddress ip2 = IPAddress.Loopback;        // 127.0.0.1
+IPAddress ip3 = IPAddress.IPv6Loopback;    // ::1
+IPAddress ip4 = IPAddress.Any;             // 0.0.0.0
+IPAddress ip5 = IPAddress.IPv6Any;
+
+Console.WriteLine($"ip1 = {ip1}");
+Console.WriteLine($"ip2 = {ip2}");
+Console.WriteLine($"ip3 = {ip3}");
+
+IPEndPoint ep1 = new IPEndPoint(IPAddress.Loopback, 8080);
+IPEndPoint ep2 = new IPEndPoint(IPAddress.Any, 9090);
+
+Console.WriteLine($"ep1 = {ep1}");
+Console.WriteLine($"ep2 = {ep2}");
+
+// 字节序
+byte[] bytes = ip1.GetAddressBytes();
+Console.WriteLine($"192.168.1.1 bytes = [{string.Join(",", bytes)}]");
+
+// 反向
+IPAddress fromBytes = new IPAddress(bytes);
+Console.WriteLine($"from bytes = {fromBytes}");
+
+// DNS 解析
+// IPAddress[] addrs = await Dns.GetHostAddressesAsync("www.example.com");
+Console.WriteLine("Dns.GetHostAddressesAsync 异步解析");
+\`\`\`\n\n### 七、Socket 状态与异常 ⭐\n\n\`\`\`csharp\n// 常见异常
+using System.Net.Sockets;
+using System.Net;
+try
+{
+    using var c = new TcpClient();
+    await c.ConnectAsync(IPAddress.Loopback, 9999); // 假设没服务
+}
+catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionRefused)
+{
+    Console.WriteLine("连接被拒绝（目标端口无服务）");
+}
+catch (SocketException ex)
+{
+    Console.WriteLine($"Socket 错误: {ex.SocketErrorCode} - {ex.Message}");
+}
+
+// 常见 SocketError
+foreach (var e in new[] {
+    SocketError.ConnectionRefused,
+    SocketError.TimedOut,
+    SocketError.NetworkUnreachable,
+    SocketError.HostUnreachable,
+    SocketError.HostNotFound
+})
+{
+    Console.WriteLine($"  {e} = {(int)e}");
+}
+\`\`\`\n\n### 八、选择指南 ⭐⭐⭐\n\n\`\`\`csharp\n// 实际项目选择：\nConsole.WriteLine(\"网络编程分层：\");\nConsole.WriteLine(\"  HTTP API    → HttpClient\");\nConsole.WriteLine(\"  WebSocket   → ClientWebSocket\");\nConsole.WriteLine(\"  gRPC        → Grpc.Net.Client\");\nConsole.WriteLine(\"  消息队列    → RabbitMQ.Client / Confluent.Kafka\");\nConsole.WriteLine(\"  实时通信    → SignalR Client\");\nConsole.WriteLine(\"  底层自定义  → Socket\");\nConsole.WriteLine(\"  TCP 协议    → TcpClient/TcpListener\");\nConsole.WriteLine(\"  UDP 协议    → UdpClient\");\n\`\`\`\n\n### 九、关键总结\n\n| 场景 | 选型 |\n| --- | --- |\n| HTTP 请求 | HttpClient |\n| WebSocket | ClientWebSocket |\n| TCP 协议 | TcpClient / TcpListener |\n| UDP 协议 | UdpClient |\n| 底层控制 | Socket |\n| 实时双向 | SignalR |\n| 异步 RPC | gRPC |\n\n- \`TcpClient\`/\`TcpListener\`：基于 TCP，自动管理连接\n- \`UdpClient\`：无连接协议，性能高但不可靠\n- \`Socket\`：底层，灵活性最大，复杂度最高\n- \`NetworkStream.ReadAsync/WriteAsync\`：TCP 流式 IO\n- 监听多个连接用 \`AcceptTcpClientAsync\` 循环\n- 每个连接独立 Task 处理（生产模式）\n- 异常：\`SocketException\`、\`SocketError\` 枚举\n- **生产推荐**：用 Kestrel + ASP.NET Core，Socket 写 WebSocket/自定义协议才用\n\n`,
   },
 ];
 

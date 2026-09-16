@@ -323,8 +323,9 @@ string position = (x, y) switch
     (> 0, > 0) => "第一象限",
     (< 0, > 0) => "第二象限",
     (< 0, < 0) => "第三象限",
-    (> 0, < 0) => "第四象限",
-    _ => "未知位置"
+    (> 0, < 0) => "第四象限"
+    // 上面 7 个分支已经穷尽了所有情况，不能再加 _ 兜底分支，
+    // 否则编译器报 CS8510「模式不可达」
 };
 Console.WriteLine($"({x}, {y}) 在 {position}");
 \`\`\`
@@ -473,8 +474,8 @@ int number;
 do
 {
     Console.Write("请输入一个 1-100 之间的整数：");
-    input = Console.ReadLine();
-} while (input == null || !int.TryParse(input, out number) || number < 1 || number > 100);
+    input = Console.ReadLine() ?? "50";  // 在线运行没有输入，给默认值避免死循环
+} while (!int.TryParse(input, out number) || number < 1 || number > 100);
 Console.WriteLine($"你输入了：{number}");
 
 // 实际场景：猜数字游戏
@@ -487,7 +488,7 @@ while (guess != target)
 {
     attempts++;
     Console.Write($"第 {attempts} 次猜测：");
-    string? guessStr = Console.ReadLine();
+    string? guessStr = Console.ReadLine() ?? "42";  // 无输入时默认猜 42，保证能结束
     if (int.TryParse(guessStr, out guess))
     {
         if (guess > target)
@@ -539,7 +540,7 @@ do
     Console.WriteLine("3. 取款");
     Console.WriteLine("4. 退出");
     Console.Write("请选择：");
-    choice = Console.ReadLine();
+    choice = Console.ReadLine() ?? "4";  // 在线运行没有输入，直接选 4 退出
 
     switch (choice)
     {
@@ -563,7 +564,7 @@ do
     if (choice != "4")
     {
         Console.WriteLine("按任意键继续...");
-        Console.ReadKey(true);
+        Console.ReadLine();  // 交互控制台里这里应该是 Console.ReadKey(true)
     }
 } while (choice != "4");
 \`\`\`
@@ -609,8 +610,22 @@ foreach (var p in people)
     Console.WriteLine($"{p.Name} 明年 {p.Age} 岁");
 }
 
-// 辅助类型定义
-record Person(string Name, int Age);
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 辅助类型定义（用可变属性，才能演示 foreach 中修改元素属性；
+// record 的位置参数是 init-only，不允许在外部改写）
+class Person
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+    public Person(string name, int age)
+    {
+        Name = name;
+        Age = age;
+    }
+}
 \`\`\`
 
 ### 五、嵌套循环
@@ -859,15 +874,15 @@ Console.WriteLine($"有效用户数：{validCount}");
 
 // 场景3：while 循环中使用 continue
 // ⚠️ 注意：continue 在 while 中要确保迭代变量被更新，否则会死循环
-int i = 0;
-while (i < 10)
+int n = 0;
+while (n < 10)
 {
-    i++;  // 迭代变量必须在 continue 之前更新
-    if (i % 3 == 0)
+    n++;  // 迭代变量必须在 continue 之前更新
+    if (n % 3 == 0)
     {
         continue;  // 跳过 3 的倍数
     }
-    Console.Write($"{i} ");  // 输出：1 2 4 5 7 8 10
+    Console.Write($"{n} ");  // 输出：1 2 4 5 7 8 10
 }
 \`\`\`
 

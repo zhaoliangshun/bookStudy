@@ -33,6 +33,25 @@ const chapters = [
 \`\`\`csharp
 // 问题：没有泛型时，代码重复或类型不安全
 
+// 使用 object 版本的问题
+var objStack = new ObjectStack();
+objStack.Push("hello");      // 混入不同类型
+objStack.Push(42);           // 装箱：int → object
+int num = (int)objStack.Pop(); // 拆箱：栈顶是 int，转换成功
+// ⚠️ 栈里还剩 "hello"，拆箱成 int 会抛 InvalidCastException：
+try
+{
+    int wrong = (int)objStack.Pop();
+}
+catch (InvalidCastException ex)
+{
+    Console.WriteLine($"拆箱失败：{ex.Message}");
+}
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 方案A：为每种类型写重复代码（糟糕）
 class IntStack
 {
@@ -58,13 +77,6 @@ class ObjectStack
     public void Push(object item) { _items[_count++] = item; }
     public object Pop() { return _items[--_count]; }
 }
-
-// 使用 object 版本的问题
-var objStack = new ObjectStack();
-objStack.Push(42);           // 装箱：int → object
-objStack.Push("hello");      // 混入不同类型
-int num = (int)objStack.Pop(); // 拆箱：需要强制转换，可能抛异常
-// int wrong = (int)objStack.Pop(); // 运行时异常！"hello" 不能转 int
 \`\`\`
 
 ### 二、泛型类
@@ -72,6 +84,25 @@ int num = (int)objStack.Pop(); // 拆箱：需要强制转换，可能抛异常
 泛型类用 \`<T>\` 定义类型参数，使用时指定具体类型：
 
 \`\`\`csharp
+
+
+// 创建具体类型的栈
+var intStack = new Stack<int>();      // T 被替换为 int
+intStack.Push(10);
+intStack.Push(20);
+intStack.Push(30);
+// intStack.Push("hello");  // 编译错误！类型不匹配
+Console.WriteLine($"弹出：{intStack.Pop()}");  // 30（无需类型转换）
+
+var stringStack = new Stack<string>();  // T 被替换为 string
+stringStack.Push("Hello");
+stringStack.Push("World");
+Console.WriteLine($"弹出：{stringStack.Pop()}");  // World
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 泛型栈：一个类解决所有类型
 class Stack<T>  // T 是类型参数（Type Parameter），习惯用 T 命名
 {
@@ -93,19 +124,6 @@ class Stack<T>  // T 是类型参数（Type Parameter），习惯用 T 命名
     public int Count => _count;
     public bool IsEmpty => _count == 0;
 }
-
-// 创建具体类型的栈
-var intStack = new Stack<int>();      // T 被替换为 int
-intStack.Push(10);
-intStack.Push(20);
-intStack.Push(30);
-// intStack.Push("hello");  // 编译错误！类型不匹配
-Console.WriteLine($"弹出：{intStack.Pop()}");  // 30（无需类型转换）
-
-var stringStack = new Stack<string>();  // T 被替换为 string
-stringStack.Push("Hello");
-stringStack.Push("World");
-Console.WriteLine($"弹出：{stringStack.Pop()}");  // World
 \`\`\`
 
 ### 三、泛型方法
@@ -159,6 +177,17 @@ Console.WriteLine($"最大字符串：{maxName}");  // David（按字母顺序�
 ### 四、泛型接口
 
 \`\`\`csharp
+
+
+var userRepo = new UserRepository();
+userRepo.Add("张三");
+userRepo.Add("李四");
+Console.WriteLine($"用户1：{userRepo.GetById(1)}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 泛型接口：定义泛型契约
 interface IRepository<T>
 {
@@ -201,11 +230,6 @@ class UserRepository : IRepository<string>
         Console.WriteLine($"删除用户 ID={id}");
     }
 }
-
-var userRepo = new UserRepository();
-userRepo.Add("张三");
-userRepo.Add("李四");
-Console.WriteLine($"用户1：{userRepo.GetById(1)}");
 \`\`\`
 
 ### 五、类型参数命名约定
@@ -225,6 +249,7 @@ Console.WriteLine($"用户1：{userRepo.GetById(1)}");
 // 泛型对比：性能与类型安全
 
 // 1. 类型安全：编译时检查
+using System.Collections;
 List<int> numbers = new List<int>();
 numbers.Add(42);
 // numbers.Add("hello");  // 编译错误！类型不匹配
@@ -285,18 +310,7 @@ PrintCollection(new List<double> { 1.1, 2.2, 3.3 });
 限制类型参数必须是值类型：
 
 \`\`\`csharp
-// 值类型约束：T 必须是值类型
-class ValueTypeProcessor<T> where T : struct
-{
-    // 可以安全使用 default(T)（值类型的默认值不是 null）
-    public T Default => default;  // 0 或 false 等
 
-    // 可以为 null 检查（Nullable<T>）
-    public bool IsDefault(T value)
-    {
-        return value.Equals(default(T));  // 值类型可以安全比较
-    }
-}
 
 var intProcessor = new ValueTypeProcessor<int>();
 Console.WriteLine($"默认值：{intProcessor.Default}");  // 0
@@ -310,6 +324,23 @@ T? GetFirstOrNull<T>(T[] items) where T : struct
     // 值类型约束下，T? 是 Nullable<T>
     return items.Length > 0 ? items[0] : null;
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 值类型约束：T 必须是值类型
+class ValueTypeProcessor<T> where T : struct
+{
+    // 可以安全使用 default(T)（值类型的默认值不是 null）
+    public T Default => default;  // 0 或 false 等
+
+    // 可以为 null 检查（Nullable<T>）
+    public bool IsDefault(T value)
+    {
+        return value.Equals(default(T));  // 值类型可以安全比较
+    }
+}
 \`\`\`
 
 ### 二、where T : class（引用类型约束）
@@ -317,21 +348,7 @@ T? GetFirstOrNull<T>(T[] items) where T : struct
 限制类型参数必须是引用类型：
 
 \`\`\`csharp
-// 引用类型约束：T 必须是 class
-class ReferenceTypeProcessor<T> where T : class
-{
-    // 可以与 null 比较
-    public bool IsNull(T? item)
-    {
-        return item == null;  // 引用类型可以为 null
-    }
 
-    // 可以安全使用 as 运算符
-    public T? TryConvert(object obj)
-    {
-        return obj as T;  // as 运算符要求引用类型
-    }
-}
 
 var stringProcessor = new ReferenceTypeProcessor<string>();
 Console.WriteLine($"null 检查：{stringProcessor.IsNull(null)}");  // True
@@ -347,11 +364,47 @@ T? FindByName<T>(IEnumerable<T> items, Func<T, string> nameSelector, string name
     }
     return null;  // 返回 null 需要引用类型约束
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 引用类型约束：T 必须是 class
+class ReferenceTypeProcessor<T> where T : class
+{
+    // 可以与 null 比较
+    public bool IsNull(T? item)
+    {
+        return item == null;  // 引用类型可以为 null
+    }
+
+    // 可以安全使用 as 运算符
+    public T? TryConvert(object obj)
+    {
+        return obj as T;  // as 运算符要求引用类型
+    }
+}
 \`\`\`
 
 ### 三、where T : new()（无参构造函数约束）
 
 \`\`\`csharp
+
+
+var factory = new Factory<Product>();
+Product product = factory.Create();  // 自动调用 new Product()
+Console.WriteLine($"创建产品：{product.Name}");
+
+Product[] products = factory.CreateArray(3);
+Console.WriteLine($"创建了 {products.Length} 个产品");
+
+// class NoDefaultCtor { public NoDefaultCtor(int x) { } }
+// var fail = new Factory<NoDefaultCtor>();  // 编译错误！没有无参构造函数
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // new() 约束：T 必须有公共无参构造函数
 class Factory<T> where T : new()
 {
@@ -376,21 +429,26 @@ class Product
     public string Name { get; set; } = "";
     public Product() { }  // 公共无参构造函数
 }
-
-var factory = new Factory<Product>();
-Product product = factory.Create();  // 自动调用 new Product()
-Console.WriteLine($"创建产品：{product.Name}");
-
-Product[] products = factory.CreateArray(3);
-Console.WriteLine($"创建了 {products.Length} 个产品");
-
-// class NoDefaultCtor { public NoDefaultCtor(int x) { } }
-// var fail = new Factory<NoDefaultCtor>();  // 编译错误！没有无参构造函数
 \`\`\`
 
 ### 四、where T : BaseClass（基类约束）
 
 \`\`\`csharp
+
+
+var dogShelter = new AnimalShelter<Dog>();
+Dog dog = dogShelter.Adopt("旺财");
+dog.Fetch();  // 可以调用 Dog 特有的方法
+dogShelter.MakeAllSpeak();
+
+var catShelter = new AnimalShelter<Cat>();
+catShelter.Adopt("咪咪");
+catShelter.MakeAllSpeak();
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 基类约束：T 必须是指定基类或其派生类
 class Animal
 {
@@ -430,20 +488,24 @@ class AnimalShelter<T> where T : Animal, new()
         }
     }
 }
-
-var dogShelter = new AnimalShelter<Dog>();
-Dog dog = dogShelter.Adopt("旺财");
-dog.Fetch();  // 可以调用 Dog 特有的方法
-dogShelter.MakeAllSpeak();
-
-var catShelter = new AnimalShelter<Cat>();
-catShelter.Adopt("咪咪");
-catShelter.MakeAllSpeak();
 \`\`\`
 
 ### 五、where T : IInterface（接口约束）
 
 \`\`\`csharp
+
+
+var userRepo = new GenericRepository<User>();
+userRepo.Add(u => u.Username = "zhangsan");
+userRepo.Add(u => u.Username = "lisi");
+
+foreach (var user in userRepo.GetAll())
+    Console.WriteLine($"用户：{user.Username}（ID={user.Id}）");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 接口约束：T 必须实现指定接口
 interface IEntity
 {
@@ -489,30 +551,12 @@ class GenericRepository<T> where T : IEntity, new()
 
     public IEnumerable<T> GetAll() => _items;
 }
-
-var userRepo = new GenericRepository<User>();
-userRepo.Add(u => u.Username = "zhangsan");
-userRepo.Add(u => u.Username = "lisi");
-
-foreach (var user in userRepo.GetAll())
-    Console.WriteLine($"用户：{user.Username}（ID={user.Id}）");
 \`\`\`
 
 ### 六、多重约束与特殊约束
 
 \`\`\`csharp
-// 多重约束：同时应用多个约束
-class AdvancedProcessor<T> where T : class, IComparable<T>, new()
-{
-    // 约束组合：引用类型 + 可比较 + 有构造函数
-    public T CreateAndCompare(T other)
-    {
-        T instance = new T();  // new() 约束
-        int result = instance.CompareTo(other);  // IComparable<T> 约束
-        Console.WriteLine($"比较结果：{result}");
-        return instance;
-    }
-}
+
 
 // unmanaged 约束：T 必须是非托管类型（简单值类型）
 unsafe void ProcessUnmanaged<T>(T[] data) where T : unmanaged
@@ -542,6 +586,23 @@ T GetDefault<T>()
 
 Console.WriteLine($"int 默认值：{GetDefault<int>()}");  // 0
 Console.WriteLine($"string 默认值：{GetDefault<string>() == null}");  // True
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 多重约束：同时应用多个约束
+class AdvancedProcessor<T> where T : class, IComparable<T>, new()
+{
+    // 约束组合：引用类型 + 可比较 + 有构造函数
+    public T CreateAndCompare(T other)
+    {
+        T instance = new T();  // new() 约束
+        int result = instance.CompareTo(other);  // IComparable<T> 约束
+        Console.WriteLine($"比较结果：{result}");
+        return instance;
+    }
+}
 \`\`\`
 
 ### 七、约束速查表
@@ -580,6 +641,29 @@ Console.WriteLine($"string 默认值：{GetDefault<string>() == null}");  // Tru
 ### 一、构建通用仓储（Repository Pattern）
 
 \`\`\`csharp
+
+
+// 使用通用仓储
+var userRepo = new Repository<User>();
+userRepo.Add(new User { Name = "张三", Email = "zhangsan@example.com" });
+userRepo.Add(new User { Name = "李四", Email = "lisi@example.com" });
+
+var orderRepo = new Repository<Order>();
+orderRepo.Add(new Order { CustomerName = "张三", TotalAmount = 299.99m });
+orderRepo.Add(new Order { CustomerName = "李四", TotalAmount = 599.99m });
+
+Console.WriteLine("所有用户：");
+foreach (var u in userRepo.GetAll())
+    Console.WriteLine($"  ID={u.Id}, 姓名={u.Name}, 邮箱={u.Email}");
+
+Console.WriteLine("\\n所有订单：");
+foreach (var o in orderRepo.GetAll())
+    Console.WriteLine($"  ID={o.Id}, 客户={o.CustomerName}, 金额={o.TotalAmount:C}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 通用仓储模式：一份代码处理所有实体类型
 interface IEntity
 {
@@ -651,28 +735,26 @@ class Repository<T> where T : IEntity
     // 统计
     public int Count => _items.Count;
 }
-
-// 使用通用仓储
-var userRepo = new Repository<User>();
-userRepo.Add(new User { Name = "张三", Email = "zhangsan@example.com" });
-userRepo.Add(new User { Name = "李四", Email = "lisi@example.com" });
-
-var orderRepo = new Repository<Order>();
-orderRepo.Add(new Order { CustomerName = "张三", TotalAmount = 299.99m });
-orderRepo.Add(new Order { CustomerName = "李四", TotalAmount = 599.99m });
-
-Console.WriteLine("所有用户：");
-foreach (var u in userRepo.GetAll())
-    Console.WriteLine($"  ID={u.Id}, 姓名={u.Name}, 邮箱={u.Email}");
-
-Console.WriteLine("\\n所有订单：");
-foreach (var o in orderRepo.GetAll())
-    Console.WriteLine($"  ID={o.Id}, 客户={o.CustomerName}, 金额={o.TotalAmount:C}");
 \`\`\`
 
 ### 二、通用工具类
 
 \`\`\`csharp
+
+
+// 使用通用工具
+var dict = new Dictionary<string, int> { ["a"] = 1, ["b"] = 2 };
+Console.WriteLine($"key 'a'：{GenericUtils.GetOrDefault(dict, "a")}");  // 1
+Console.WriteLine($"key 'c'：{GenericUtils.GetOrDefault(dict, "c")}");  // 0
+
+var numbers = Enumerable.Range(1, 100);
+var (pageItems, totalPages) = GenericUtils.Paginate(numbers, 3, 10);
+Console.WriteLine($"第3页，共{totalPages}页：{string.Join(", ", pageItems)}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 通用工具类：各种实用泛型方法
 static class GenericUtils
 {
@@ -725,20 +807,34 @@ static class GenericUtils
         return (pageItems, totalPages);
     }
 }
-
-// 使用通用工具
-var dict = new Dictionary<string, int> { ["a"] = 1, ["b"] = 2 };
-Console.WriteLine($"key 'a'：{GenericUtils.GetOrDefault(dict, "a")}");  // 1
-Console.WriteLine($"key 'c'：{GenericUtils.GetOrDefault(dict, "c")}");  // 0
-
-var numbers = Enumerable.Range(1, 100);
-var (pageItems, totalPages) = GenericUtils.Paginate(numbers, 3, 10);
-Console.WriteLine($"第3页，共{totalPages}页：{string.Join(", ", pageItems)}");
 \`\`\`
 
 ### 三、泛型工厂模式
 
 \`\`\`csharp
+
+
+var config = GenericFactory.Create<ServiceConfig>(cfg =>
+{
+    cfg.Url = "https://api.example.com";
+    cfg.Timeout = 60;
+});
+Console.WriteLine($"URL={config.Url}, 超时={config.Timeout}秒");
+
+// 使用注册型工厂
+GenericFactory.Register(() => new ServiceConfig
+{
+    Url = "https://default.example.com",
+    Timeout = 30
+});
+
+var defaultConfig = GenericFactory.Resolve<ServiceConfig>();
+Console.WriteLine($"默认URL={defaultConfig.Url}, 超时={defaultConfig.Timeout}秒");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 泛型工厂：根据类型创建对象
 static class GenericFactory
 {
@@ -774,28 +870,35 @@ class ServiceConfig
     public string Url { get; set; } = "";
     public int Timeout { get; set; } = 30;
 }
-
-var config = GenericFactory.Create<ServiceConfig>(cfg =>
-{
-    cfg.Url = "https://api.example.com";
-    cfg.Timeout = 60;
-});
-Console.WriteLine($"URL={config.Url}, 超时={config.Timeout}秒");
-
-// 使用注册型工厂
-GenericFactory.Register(() => new ServiceConfig
-{
-    Url = "https://default.example.com",
-    Timeout = 30
-});
-
-var defaultConfig = GenericFactory.Resolve<ServiceConfig>();
-Console.WriteLine($"默认URL={defaultConfig.Url}, 超时={defaultConfig.Timeout}秒");
 \`\`\`
 
 ### 四、泛型方法类型推断
 
 \`\`\`csharp
+
+
+// 类型推断示例
+var numbers = new[] { 1, 2, 3, 4, 5 };
+int first = GenericInference.First(numbers);  // T 推断为 int
+Console.WriteLine($"第一个：{first}");
+
+// 多元类型推断
+string result = GenericInference.Transform(42, n => $"数字：{n}");
+// T 推断为 int，TResult 推断为 string
+Console.WriteLine(result);
+
+// 链式转换
+int final = GenericInference.Chain(10,
+    x => x + 5,      // 加5
+    x => x * 2,      // 乘2
+    x => x - 3       // 减3
+);
+Console.WriteLine($"链式转换：10 → {final}");  // (10+5)*2-3 = 27
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 类型推断：编译器根据参数自动推断类型参数
 static class GenericInference
 {
@@ -820,29 +923,36 @@ static class GenericInference
         return current;
     }
 }
-
-// 类型推断示例
-var numbers = new[] { 1, 2, 3, 4, 5 };
-int first = GenericInference.First(numbers);  // T 推断为 int
-Console.WriteLine($"第一个：{first}");
-
-// 多元类型推断
-string result = GenericInference.Transform(42, n => $"数字：{n}");
-// T 推断为 int，TResult 推断为 string
-Console.WriteLine(result);
-
-// 链式转换
-int final = GenericInference.Chain(10,
-    x => x + 5,      // 加5
-    x => x * 2,      // 乘2
-    x => x - 3       // 减3
-);
-Console.WriteLine($"链式转换：10 → {final}");  // (10+5)*2-3 = 27
 \`\`\`
 
 ### 五、实战：缓存管理器
 
 \`\`\`csharp
+
+
+// 使用缓存管理器
+var cache = new CacheManager<string, int>(TimeSpan.FromSeconds(5));
+
+// 第一次访问：缓存未命中，执行工厂方法
+int value1 = cache.GetOrAdd("userCount", () =>
+{
+    Console.WriteLine("  从数据库查询用户数量...");
+    return 100;  // 模拟数据库查询
+});
+
+// 第二次访问：缓存命中，直接返回
+int value2 = cache.GetOrAdd("userCount", () =>
+{
+    Console.WriteLine("  从数据库查询用户数量...");
+    return 100;
+});
+
+Console.WriteLine($"缓存条目数：{cache.Count}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 泛型缓存管理器：统一管理不同类型的数据缓存
 class CacheManager<TKey, TValue> where TKey : notnull
 {
@@ -907,25 +1017,6 @@ class CacheManager<TKey, TValue> where TKey : notnull
 
     public int Count => _cache.Count;
 }
-
-// 使用缓存管理器
-var cache = new CacheManager<string, int>(TimeSpan.FromSeconds(5));
-
-// 第一次访问：缓存未命中，执行工厂方法
-int value1 = cache.GetOrAdd("userCount", () =>
-{
-    Console.WriteLine("  从数据库查询用户数量...");
-    return 100;  // 模拟数据库查询
-});
-
-// 第二次访问：缓存命中，直接返回
-int value2 = cache.GetOrAdd("userCount", () =>
-{
-    Console.WriteLine("  从数据库查询用户数量...");
-    return 100;
-});
-
-Console.WriteLine($"缓存条目数：{cache.Count}");
 \`\`\`
 
 ### 六、小结
@@ -952,6 +1043,25 @@ Console.WriteLine($"缓存条目数：{cache.Count}");
 ### 一、IComparable\<T\>：类型安全比较
 
 \`\`\`csharp
+
+
+var scores = new List<Score>
+{
+    new Score("张三", 95, new DateTime(2024, 3, 15)),
+    new Score("李四", 95, new DateTime(2024, 3, 10)),
+    new Score("王五", 88, new DateTime(2024, 3, 12)),
+    new Score("赵六", 100, new DateTime(2024, 3, 14))
+};
+
+scores.Sort();  // 使用 IComparable<Score> 排序
+Console.WriteLine("排行榜：");
+foreach (var s in scores)
+    Console.WriteLine($"  {s}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // IComparable<T>：实现类型安全的排序
 class Score : IComparable<Score>
 {
@@ -981,24 +1091,29 @@ class Score : IComparable<Score>
 
     public override string ToString() => $"{Player}: {Points}分 ({AchievedAt:yyyy-MM-dd})";
 }
-
-var scores = new List<Score>
-{
-    new Score("张三", 95, new DateTime(2024, 3, 15)),
-    new Score("李四", 95, new DateTime(2024, 3, 10)),
-    new Score("王五", 88, new DateTime(2024, 3, 12)),
-    new Score("赵六", 100, new DateTime(2024, 3, 14))
-};
-
-scores.Sort();  // 使用 IComparable<Score> 排序
-Console.WriteLine("排行榜：");
-foreach (var s in scores)
-    Console.WriteLine($"  {s}");
 \`\`\`
 
 ### 二、IEquatable\<T\>：类型安全相等比较
 
 \`\`\`csharp
+
+
+var emp1 = new Employee("E001", "张三");
+var emp2 = new Employee("E001", "张三（别名）");
+var emp3 = new Employee("E002", "李四");
+
+Console.WriteLine($"emp1 == emp2: {emp1 == emp2}");  // True（同工号）
+Console.WriteLine($"emp1 == emp3: {emp1 == emp3}");  // False（不同工号）
+
+// IEquatable<T> 在字典中的性能优势
+var dict = new Dictionary<Employee, string>();
+dict[emp1] = "部门A";
+Console.WriteLine($"emp2 的部门：{dict[emp2]}");  // 部门A（同工号匹配）
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // IEquatable<T>：避免装箱，提供类型安全的相等比较
 class Employee : IEquatable<Employee>
 {
@@ -1038,18 +1153,6 @@ class Employee : IEquatable<Employee>
     public static bool operator !=(Employee? left, Employee? right)
         => !(left == right);
 }
-
-var emp1 = new Employee("E001", "张三");
-var emp2 = new Employee("E001", "张三（别名）");
-var emp3 = new Employee("E002", "李四");
-
-Console.WriteLine($"emp1 == emp2: {emp1 == emp2}");  // True（同工号）
-Console.WriteLine($"emp1 == emp3: {emp1 == emp3}");  // False（不同工号）
-
-// IEquatable<T> 在字典中的性能优势
-var dict = new Dictionary<Employee, string>();
-dict[emp1] = "部门A";
-Console.WriteLine($"emp2 的部门：{dict[emp2]}");  // 部门A（同工号匹配）
 \`\`\`
 
 ### 三、IEnumerable\<T\> 与 IEnumerator\<T\>
@@ -1057,6 +1160,17 @@ Console.WriteLine($"emp2 的部门：{dict[emp2]}");  // 部门A（同工号匹�
 \`\`\`csharp
 // IEnumerable<T>：可枚举的集合
 // IEnumerator<T>：枚举器，遍历集合
+
+// 使用自定义集合
+var countdown = new Countdown(5);
+Console.WriteLine("倒计时：");
+foreach (int n in countdown)
+    Console.Write($"{n} ");  // 5 4 3 2 1 0
+Console.WriteLine();
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 
 // 自定义可枚举集合
 class Countdown : IEnumerable<int>
@@ -1111,13 +1225,6 @@ class Countdown : IEnumerable<int>
         public void Dispose() { }
     }
 }
-
-// 使用自定义集合
-var countdown = new Countdown(5);
-Console.WriteLine("倒计时：");
-foreach (int n in countdown)
-    Console.Write($"{n} ");  // 5 4 3 2 1 0
-Console.WriteLine();
 \`\`\`
 
 ### 四、泛型委托
@@ -1140,7 +1247,7 @@ Func<int, int, int> add = (a, b) => a + b;
 Console.WriteLine($"10 + 20 = {add(10, 20)}");
 
 Func<string, int> getLength = s => s.Length;
-Console.WriteLine($"\"Hello\" 长度：{getLength("Hello")}");
+Console.WriteLine($"\\"Hello\\" 长度：{getLength("Hello")}");
 
 // 3. Predicate<T>：返回 bool 的方法（等价于 Func<T, bool>）
 Predicate<int> isEven = n => n % 2 == 0;
@@ -1157,6 +1264,23 @@ Console.WriteLine($"按长度排序：{string.Join(", ", words)}");
 ### 五、EventHandler\<T\>
 
 \`\`\`csharp
+
+
+var orderService = new OrderService();
+var notification = new NotificationService();
+var log = new LogService();
+
+// 订阅事件
+orderService.OrderCreated += notification.OnOrderCreated;
+orderService.OrderCreated += log.OnOrderCreated;
+
+// 触发事件
+orderService.CreateOrder("ORD-001", 299.99m);
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // EventHandler<TEventArgs>：泛型事件处理委托
 // 自定义事件参数类
 class OrderEventArgs : EventArgs
@@ -1202,17 +1326,6 @@ class LogService
         Console.WriteLine($"[日志服务] {e.Timestamp:HH:mm:ss} - 订单 {e.OrderId}");
     }
 }
-
-var orderService = new OrderService();
-var notification = new NotificationService();
-var log = new LogService();
-
-// 订阅事件
-orderService.OrderCreated += notification.OnOrderCreated;
-orderService.OrderCreated += log.OnOrderCreated;
-
-// 触发事件
-orderService.CreateOrder("ORD-001", 299.99m);
 \`\`\`
 
 ### 六、小结
@@ -1259,6 +1372,16 @@ IEnumerable<object> objects = strings;  // 协变：string → object
 foreach (object obj in objects)
     Console.WriteLine(obj);  // 安全：每个 string 都是 object
 
+// 协变：IProducer<string> 可以赋值给 IProducer<object>
+IProducer<string> stringProducer = new StringProducer();
+IProducer<object> objectProducer = stringProducer;  // 协变转换
+object result = objectProducer.Produce();  // 返回 string，可以隐式转为 object
+Console.WriteLine(result);
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 自定义协变接口
 interface IProducer<out T>  // out 关键字标记协变
 {
@@ -1270,12 +1393,6 @@ class StringProducer : IProducer<string>
 {
     public string Produce() => "Hello from StringProducer";
 }
-
-// 协变：IProducer<string> 可以赋值给 IProducer<object>
-IProducer<string> stringProducer = new StringProducer();
-IProducer<object> objectProducer = stringProducer;  // 协变转换
-object result = objectProducer.Produce();  // 返回 string，可以隐式转为 object
-Console.WriteLine(result);
 \`\`\`
 
 ### 三、逆变（in 关键字）
@@ -1293,6 +1410,15 @@ Action<string> stringAction = objectAction;  // 逆变：object → string
 
 stringAction("Hello");  // 输出：处理：Hello
 
+// 逆变：IConsumer<object> 可以赋值给 IConsumer<string>
+IConsumer<object> objConsumer = new ObjectConsumer();
+IConsumer<string> strConsumer = objConsumer;  // 逆变转换
+strConsumer.Consume("Hello");  // 安全：能处理 object 的方法也能处理 string
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 自定义逆变接口
 interface IConsumer<in T>  // in 关键字标记逆变
 {
@@ -1307,11 +1433,6 @@ class ObjectConsumer : IConsumer<object>
         Console.WriteLine($"消费：{item}");
     }
 }
-
-// 逆变：IConsumer<object> 可以赋值给 IConsumer<string>
-IConsumer<object> objConsumer = new ObjectConsumer();
-IConsumer<string> strConsumer = objConsumer;  // 逆变转换
-strConsumer.Consume("Hello");  // 安全：能处理 object 的方法也能处理 string
 \`\`\`
 
 ### 四、内置协变与逆变类型
@@ -1350,6 +1471,21 @@ Func<string, object> func2 = func1;  // 逆变T(in) + 协变TResult(out)
 ### 五、何时使用协变与逆变
 
 \`\`\`csharp
+
+
+// 协变：IReadOnlyRepository<User> 可以赋值给 IReadOnlyRepository<object>
+IReadOnlyRepository<User> userRepo = new UserRepository();
+IReadOnlyRepository<object> objRepo = userRepo;  // 协变
+
+// 逆变：IEventHandler<LogEvent> 可以赋值给 IEventHandler<ErrorEvent>
+IEventHandler<LogEvent> logHandler = new LogEventHandler();
+IEventHandler<ErrorEvent> errorHandler = logHandler;  // 逆变
+errorHandler.Handle(new ErrorEvent { Message = "错误", StackTrace = "..." });
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 协变使用场景：只读集合、工厂、数据源
 interface IReadOnlyRepository<out T>
 {
@@ -1381,10 +1517,6 @@ class UserRepository : IReadOnlyRepository<User>
     public IEnumerable<User> GetAll() => _users;
 }
 
-// 协变：IReadOnlyRepository<User> 可以赋值给 IReadOnlyRepository<object>
-IReadOnlyRepository<User> userRepo = new UserRepository();
-IReadOnlyRepository<object> objRepo = userRepo;  // 协变
-
 // 逆变使用场景：比较器、处理器、消费者
 interface IEventHandler<in T>
 {
@@ -1409,11 +1541,6 @@ class LogEventHandler : IEventHandler<LogEvent>
         Console.WriteLine($"[日志] {eventData.Message}");
     }
 }
-
-// 逆变：IEventHandler<LogEvent> 可以赋值给 IEventHandler<ErrorEvent>
-IEventHandler<LogEvent> logHandler = new LogEventHandler();
-IEventHandler<ErrorEvent> errorHandler = logHandler;  // 逆变
-errorHandler.Handle(new ErrorEvent { Message = "错误", StackTrace = "..." });
 \`\`\`
 
 ### 六、不变（Invariant）——为什么 List\<T\> 不是协变
@@ -1562,6 +1689,16 @@ for (int i = 0; i < 10; i++)
 ### 五、泛型缓存：避免重复创建对象
 
 \`\`\`csharp
+
+
+var svc = new UserService();
+Console.WriteLine(svc.GetOrCreate(1).Name);  // 第一次创建
+Console.WriteLine(svc.GetOrCreate(1).Name);  // 命中缓存
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 场景：频繁创建同一 key 的对象 → 用 Dictionary 缓存
 // 注意：ConcurrentDictionary 提供线程安全版本
 class UserService
@@ -1583,11 +1720,8 @@ class UserService
         return u;
     }
 }
-record User { public int Id; public string Name = ""; }
 
-var svc = new UserService();
-Console.WriteLine(svc.GetOrCreate(1).Name);  // 第一次创建
-Console.WriteLine(svc.GetOrCreate(1).Name);  // 命中缓存
+record User { public int Id; public string Name = ""; }
 \`\`\`
 
 ### 六、泛型与依赖注入
@@ -1595,26 +1729,32 @@ Console.WriteLine(svc.GetOrCreate(1).Name);  // 命中缓存
 依赖注入（DI）容器底层重度依赖泛型。
 
 \`\`\`csharp
-// 简化版 DI 容器（只演示核心原理）
-class Container
-{
-    private readonly Dictionary<Type, Func<object>> _regs = new();
 
-    public void Register<T>(Func<T> factory) where T : class
-        => _regs[typeof(T)] = () => factory()!;
-
-    public T Resolve<T>() where T : class
-    {
-        if (_regs.TryGetValue(typeof(T), out var f)) return (T)f();
-        throw new InvalidOperationException($"未注册 {typeof(T).Name}");
-    }
-}
 
 var c = new Container();
 c.Register<Random>(() => new Random());
 c.Register<DateTime>(() => DateTime.Now);
 Console.WriteLine(c.Resolve<Random>().Next(100));
 Console.WriteLine(c.Resolve<DateTime>().ToString("HH:mm:ss"));
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 简化版 DI 容器（只演示核心原理）
+class Container
+{
+    private readonly Dictionary<Type, Func<object>> _regs = new();
+
+    public void Register<T>(Func<T> factory)
+        => _regs[typeof(T)] = () => factory()!;
+
+    public T Resolve<T>()
+    {
+        if (_regs.TryGetValue(typeof(T), out var f)) return (T)f()!;
+        throw new InvalidOperationException($"未注册 {typeof(T).Name}");
+    }
+}
 \`\`\`
 
 ### 七、泛型常用 API 速查

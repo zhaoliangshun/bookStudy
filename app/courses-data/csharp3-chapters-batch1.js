@@ -171,7 +171,10 @@ int Add(int a, int b) => a + b;
 Console.WriteLine($"1 + 2 = {Add(1, 2)}");
 
 // 可以 await 异步操作（编译器自动生成 async Main）
+// 沙箱里一开始没有 data.txt，先创建再读
+await File.WriteAllTextAsync("data.txt", "Hello, async I/O!");
 string text = await File.ReadAllTextAsync("data.txt");
+Console.WriteLine($"读到的内容: {text}");
 \`\`\`
 
 > ⭐ **顶级语句**：一个项目只能有一个文件使用顶级语句（通常是 \`Program.cs\`）。这是 .NET 6+ 控制台/Worker 服务的默认写法。
@@ -240,9 +243,10 @@ Console.WriteLine($"{{name}} 的值是 {name}");
 int count = 10;  // 初始化计数器为 10（行尾注释也可）
 
 /*
-   2. 块注释：以 /* 开头，以 */ 结束
+   2. 块注释：以「斜杠+星号」开头，以「星号+斜杠」结束
    可以跨多行，适合解释一段复杂逻辑
    也常用于临时屏蔽一段代码
+   注意：块注释不能嵌套，注释内部不能再写结束标记
 */
 Console.WriteLine("这行会执行");
 
@@ -280,14 +284,14 @@ Console.WriteLine();  // 空行，让输出更美观
 
 // 第二步：获取用户输入（Console.ReadLine() 读取一行文本）
 Console.Write("请输入姓名：");
-string name = Console.ReadLine();  // 从控制台读取用户输入
+string name = Console.ReadLine() ?? "张三";  // 在线运行没有交互输入，ReadLine 返回 null，用 ?? 给默认值
 
 Console.Write("请输入年龄：");
-string ageStr = Console.ReadLine();
+string ageStr = Console.ReadLine() ?? "25";
 int age = int.Parse(ageStr);       // 将字符串转换为整数类型
 
 Console.Write("请输入城市：");
-string city = Console.ReadLine();
+string city = Console.ReadLine() ?? "北京";
 
 // 第三步：输出格式化名片
 Console.WriteLine();  // 空行
@@ -382,7 +386,7 @@ ulong ul = 18_446_744_073_709_551_615UL; // 64 位，UL 后缀表示 ulong 字�
 \`\`\`csharp
 // 数字分隔符：用下划线 _ 提高可读性
 int oneMillion = 1_000_000;          // 一百万，比 1000000 更易读
-int creditCard = 1234_5678_9012_3456; // 信用卡号
+long creditCard = 1234_5678_9012_3456; // 信用卡号（超出 int 范围，用 long）
 long bigNumber = 0xFFFF_FFFF_FFFF;    // 十六进制也可以用分隔符
 
 // 二进制字面量（C# 7+）
@@ -442,7 +446,7 @@ bool isAdult = 18 >= 18;            // 比较表达式的结果也是 bool
 char grade = 'A';                   // 单个字符
 char digit = '9';                   // 数字字符
 char chinese = '中';                // 中文字符（Unicode）
-char symbol = '\'';                 // 转义字符：单引号
+char symbol = '\\'';                 // 转义字符：单引号（\\' 表示一个引号字符）
 
 // 转义字符
 Console.WriteLine("Tab:\\t这里有制表符");   // \\t 制表符
@@ -729,6 +733,18 @@ Console.WriteLine($"1 << 3 = {1 << 3}");  // 0001 → 1000（8），相当于 1*
 // >> 右移：所有位向右移动，左边补符号位（相当于除以 2^n）
 Console.WriteLine($"8 >> 2 = {8 >> 2}");  // 1000 → 0010（2），相当于 8/2²
 
+// 组合权限：用 | 运算符
+Permission userPerm = Permission.Read | Permission.Write;  // 0011
+Console.WriteLine($"用户权限：{userPerm}");  // Read, Write
+
+// 检查权限：用 & 运算符
+bool canRead = (userPerm & Permission.Read) == Permission.Read;    // True
+bool canDelete = (userPerm & Permission.Delete) == Permission.Delete; // False
+Console.WriteLine($"可读：{canRead}，可删：{canDelete}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 // 位运算实战：权限管理
 [Flags]  // 表示可以组合使用
 enum Permission
@@ -738,15 +754,6 @@ enum Permission
     Execute = 1 << 2, // 0100 = 4
     Delete = 1 << 3   // 1000 = 8
 }
-
-// 组合权限：用 | 运算符
-Permission userPerm = Permission.Read | Permission.Write;  // 0011
-Console.WriteLine($"用户权限：{userPerm}");  // Read, Write
-
-// 检查权限：用 & 运算符
-bool canRead = (userPerm & Permission.Read) == Permission.Read;    // True
-bool canDelete = (userPerm & Permission.Delete) == Permission.Delete; // False
-Console.WriteLine($"可读：{canRead}，可删：{canDelete}");
 \`\`\`
 
 ### 五、赋值运算符
@@ -1312,17 +1319,19 @@ if (input != null)
 // Console.ReadKey()：读取单个按键，无需按回车
 // 适合菜单选择、确认操作等场景
 
+// ⚠️ 在线运行环境没有交互控制台，ReadKey 会抛异常，这里用 ReadLine 模拟；
+// 在真实的终端程序里直接用 ReadKey 即可
 Console.WriteLine("请按任意键继续...");
-Console.ReadKey();                         // 读取按键，默认显示按键字符
-Console.WriteLine();                       // 换行
+Console.ReadLine();
+Console.WriteLine();
 
 Console.WriteLine("请按 Y 或 N 确认：");
-ConsoleKeyInfo key = Console.ReadKey(true); // true 表示不显示按键字符
-Console.WriteLine();                       // 手动换行
+string? answer = Console.ReadLine();
+Console.WriteLine();
 
-if (key.Key == ConsoleKey.Y)
+if (answer is "Y" or "y")
     Console.WriteLine("你选择了 是");
-else if (key.Key == ConsoleKey.N)
+else if (answer is "N" or "n")
     Console.WriteLine("你选择了 否");
 else
     Console.WriteLine("无效按键");
@@ -1341,8 +1350,12 @@ else
 
 Console.WriteLine("这行会被清除");
 Console.WriteLine("按任意键清屏...");
-Console.ReadKey(true);
-Console.Clear();                           // 清空控制台
+Console.ReadLine();                       // 交互控制台里这里应该是 Console.ReadKey(true)
+try
+{
+    Console.Clear();                       // 清空控制台（输出被重定向时可能不支持）
+}
+catch (IOException) { }
 Console.WriteLine("屏幕已清空！");
 \`\`\`
 
@@ -1406,18 +1419,26 @@ Console.Write("请选择：");
 // Console.Beep()：发出系统提示音
 // Console.Beep(frequency, duration)：指定频率和持续时间
 
-// 简单提示音
-Console.Beep();                            // 默认频率和时长的提示音
+// ⚠️ Beep 在 macOS / Linux 或无声卡的环境会抛 PlatformNotSupportedException，
+// 包一层安全调用
+void TryBeep(int frequency = 800, int duration = 200)
+{
+    try { Console.Beep(frequency, duration); }
+    catch (PlatformNotSupportedException)
+    {
+        Console.WriteLine($"（当前环境不支持蜂鸣：{frequency}Hz）");
+    }
+}
 
-// 自定义频率和时长
-Console.Beep(800, 200);                    // 800Hz，持续 200 毫秒
+TryBeep();                    // 默认频率和时长的提示音
+TryBeep(800, 200);            // 800Hz，持续 200 毫秒
 
 // 简便音阶（趣味）
-Console.Beep(262, 200);  // Do
-Console.Beep(294, 200);  // Re
-Console.Beep(330, 200);  // Mi
-Console.Beep(349, 200);  // Fa
-Console.Beep(392, 200);  // Sol
+TryBeep(262, 200);  // Do
+TryBeep(294, 200);  // Re
+TryBeep(330, 200);  // Mi
+TryBeep(349, 200);  // Fa
+TryBeep(392, 200);  // Sol
 \`\`\`
 
 ### 六、数值格式化 ⭐⭐

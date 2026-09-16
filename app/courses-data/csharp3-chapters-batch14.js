@@ -30,6 +30,8 @@ const chapters = [
 // 适合一次性读写整个文件内容
 
 // 1. ReadAllText：读取整个文件为字符串
+if (!File.Exists("/tmp/demo.txt"))              // 沙箱里 /tmp 一开始是空的，先准备文件
+    File.WriteAllText("/tmp/demo.txt", "Hello, 世界!");
 string content = File.ReadAllText("/tmp/demo.txt");  // 读取整个文件内容
 // 如果文件不存在，抛出 FileNotFoundException
 // 如果文件太大（如几百 MB），会占用大量内存，不推荐
@@ -116,7 +118,7 @@ string oldName = "/tmp/old_name.txt";
 string newName = "/tmp/new_name.txt";
 File.WriteAllText(oldName, "测试内容");
 
-File.Move(oldName, newName);                         // 移动或重命名文件
+File.Move(oldName, newName, overwrite: true);        // 移动或重命名（目标已存在时要加 overwrite，否则抛 IOException）
 Console.WriteLine($"文件已移动: {oldName} → {newName}");
 // 如果目标文件已存在，抛出 IOException
 // 跨磁盘移动时会先复制再删除源文件
@@ -125,8 +127,9 @@ Console.WriteLine($"文件已移动: {oldName} → {newName}");
 FileAttributes attrs = File.GetAttributes(newName);  // 获取文件属性
 Console.WriteLine($"属性: {attrs}");
 
-// 设置只读属性
-File.SetAttributes(newName, FileAttributes.ReadOnly); // 设置为只读
+// 设置只读属性（演示完马上改回来，否则重复运行时无法覆盖该文件）
+File.SetAttributes(newName, FileAttributes.ReadOnly);
+File.SetAttributes(newName, FileAttributes.Normal);
 
 // 6. File.GetCreationTime / GetLastWriteTime：获取时间信息
 DateTime created = File.GetCreationTime(newName);     // 创建时间
@@ -141,6 +144,7 @@ Console.WriteLine($"创建: {created}, 修改: {modified}, 访问: {accessed}");
 // 编码是文件读写中容易出错的地方，必须显式指定
 
 // 1. 默认编码：UTF-8（无 BOM）
+using System.Text;
 File.WriteAllText("/tmp/utf8.txt", "中文内容");      // 默认 UTF-8 无 BOM
 // 在 Windows 记事本中可能显示乱码（因为无 BOM）
 
@@ -148,13 +152,16 @@ File.WriteAllText("/tmp/utf8.txt", "中文内容");      // 默认 UTF-8 无 BOM
 File.WriteAllText("/tmp/utf8_bom.txt", "中文内容", Encoding.UTF8);  // UTF-8 with BOM
 // BOM（Byte Order Mark）是文件开头的几个字节，用于标识编码
 
-// 3. 使用其他编码
-File.WriteAllText("/tmp/gbk.txt", "中文内容", Encoding.GetEncoding("GBK"));  // GBK 编码
-// 需要注册编码提供者：Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+// 3. 使用其他编码（GBK 等中文代码页需要 NuGet 包 System.Text.Encoding.CodePages，
+//    沙箱没有安装，拿不到时安全降级为 UTF-8）
+Encoding gbkEnc;
+try { gbkEnc = Encoding.GetEncoding("GBK"); }
+catch (ArgumentException) { Console.WriteLine("（当前环境不支持 GBK，改用 UTF-8 演示）"); gbkEnc = Encoding.UTF8; }
+File.WriteAllText("/tmp/gbk.txt", "中文内容", gbkEnc);
 
 // 4. 读取时指定编码（必须与写入时一致）
 string utf8Content = File.ReadAllText("/tmp/utf8.txt", Encoding.UTF8);
-string gbkContent = File.ReadAllText("/tmp/gbk.txt", Encoding.GetEncoding("GBK"));
+string gbkContent = File.ReadAllText("/tmp/gbk.txt", gbkEnc);  // 读写必须用同一编码
 
 // 5. 自动检测编码（不保证 100% 准确）
 // 使用 StreamReader 可以自动检测 BOM
@@ -237,8 +244,12 @@ Console.WriteLine($"卷分隔符: {Path.VolumeSeparatorChar}");          // : �
 // 异步方法名以 Async 结尾
 
 // 1. ReadAllTextAsync：异步读取
+using System.Text;
 async Task AsyncReadDemoAsync()
 {
+    // 沙箱里可能还没有这些文件，先准备
+    if (!File.Exists("/tmp/demo.txt")) await File.WriteAllTextAsync("/tmp/demo.txt", "Hello, 异步 I/O!");
+    if (!File.Exists("/tmp/utf8.txt")) await File.WriteAllTextAsync("/tmp/utf8.txt", "UTF-8 内容");
     string content = await File.ReadAllTextAsync("/tmp/demo.txt");
     // 异步读取，不阻塞调用线程
     Console.WriteLine($"异步读取: {content}");
@@ -386,6 +397,7 @@ Stream 是 .NET I/O 的核心抽象，表示字节序列。FileStream、MemorySt
 // 核心方法：Read、Write、Seek、Flush、Dispose
 
 // 1. Stream 基础属性
+using System.Text;
 async Task StreamBasicsAsync()
 {
     // 创建一个文件流演示
@@ -432,6 +444,7 @@ await StreamBasicsAsync();
 // 比 File 静态方法更灵活，支持分块读写、定位等
 
 // 1. 创建 FileStream
+using System.Text;
 async Task FileStreamDemoAsync()
 {
     string path = "/tmp/filestream_demo.txt";
@@ -443,11 +456,13 @@ async Task FileStreamDemoAsync()
         await fs.WriteAsync(data);                   // 写入
     }
 
-    // 方式二：File.Open 静态方法
-    await using var fs2 = File.Open(path, FileMode.Open, FileAccess.Read);
-    using var reader = new StreamReader(fs2);
-    string content = await reader.ReadToEndAsync();
-    Console.WriteLine($"读取: {content}");
+    // 方式二：File.Open 静态方法（读完及时释放句柄，Unix 上句柄没关就不能再打开同一文件）
+    await using (var fs2 = File.Open(path, FileMode.Open, FileAccess.Read))
+    {
+        using var reader = new StreamReader(fs2);
+        string content = await reader.ReadToEndAsync();
+        Console.WriteLine($"读取: {content}");
+    }
 
     // 方式三：File.Create（创建新文件）
     using var fs3 = File.Create("/tmp/create_demo.txt");
@@ -455,7 +470,11 @@ async Task FileStreamDemoAsync()
     fs3.Write(init);
 
     // 方式四：File.OpenRead / File.OpenWrite（快捷方式）
-    using var readStream = File.OpenRead(path);      // 只读
+    // 同一文件同时开读、写两个句柄会冲突，用完一个再用另一个
+    using (var readStream = File.OpenRead(path))     // 只读
+    {
+        Console.WriteLine($"只读流长度: {readStream.Length}");
+    }
     using var writeStream = File.OpenWrite(path);    // 只写
 }
 
@@ -491,6 +510,7 @@ await FileStreamDemoAsync();
 // 适合临时数据、测试、序列化等场景
 
 // 1. 创建 MemoryStream
+using System.Text;
 async Task MemoryStreamDemoAsync()
 {
     // 创建空内存流
@@ -543,6 +563,7 @@ await MemoryStreamDemoAsync();
 // 它们封装了 Stream，提供字符级别的读写
 
 // 1. StreamWriter：写入文本
+using System.Text;
 async Task StreamWriterDemoAsync()
 {
     string path = "/tmp/streamwriter_demo.txt";
@@ -595,6 +616,7 @@ await StreamWriterDemoAsync();
 // 适合读写基本类型（int、float、double 等）的二进制表示
 
 // 1. BinaryWriter：写入二进制数据
+using System.Text;
 async Task BinaryWriterDemoAsync()
 {
     string path = "/tmp/binary_demo.dat";
@@ -646,6 +668,7 @@ await BinaryWriterDemoAsync();
 // 适合频繁小数据读写的场景
 
 // 1. 基本用法
+using System.Text;
 async Task BufferedStreamDemoAsync()
 {
     string path = "/tmp/buffered_demo.txt";
@@ -683,6 +706,7 @@ async Task BufferedStreamDemoAsync()
 // 配合加密算法（如 AES）实现数据加密
 
 // 1. AES 加密文件
+using System.Security.Cryptography;
 async Task CryptoStreamEncryptDemoAsync()
 {
     string inputFile = "/tmp/plain.txt";
@@ -880,6 +904,7 @@ Console.WriteLine($"当前工作目录: {currentDir}");
 string srcDir = "/tmp/move_src";
 string dstDir = "/tmp/move_dst";
 Directory.CreateDirectory(srcDir);
+if (Directory.Exists(dstDir)) Directory.Delete(dstDir, true);  // 目标已存在时 Move 会抛异常，先清掉（也保证重复运行不报错）
 Directory.Move(srcDir, dstDir);                    // 移动/重命名目录
 Console.WriteLine($"目录已移动: {srcDir} → {dstDir}");
 
@@ -1163,11 +1188,11 @@ await FileSystemWatcherDemoAsync();
 ### 一、JsonSerializer.Serialize / Deserialize ⭐⭐⭐
 
 \`\`\`csharp
-// 1. 定义数据模型
-record Person(string Name, int Age, string[]? Hobbies = null);
-record Address(string Street, string City, string Country);
+
 
 // 2. Serialize：将对象序列化为 JSON 字符串
+using System.Text.Json;
+using System.Text;
 var person = new Person("张三", 30, new[] { "编程", "阅读", "跑步" });
 string json = JsonSerializer.Serialize(person);    // 默认序列化
 Console.WriteLine($"序列化: {json}");
@@ -1184,9 +1209,11 @@ async Task SerializeToFileAsync()
     var data = new Person("王五", 28, new[] { "摄影" });
     string filePath = "/tmp/person.json";
 
-    // 写入文件
-    using var stream = File.Create(filePath);
-    await JsonSerializer.SerializeAsync(stream, data);  // 异步序列化到流
+    // 写入文件（写完及时释放句柄，否则下一步打不开同一文件）
+    using (var stream = File.Create(filePath))
+    {
+        await JsonSerializer.SerializeAsync(stream, data);  // 异步序列化到流
+    }
     Console.WriteLine("序列化到文件完成");
 
     // 从文件读取
@@ -1212,6 +1239,15 @@ writer.Flush();
 
 string manualJson = Encoding.UTF8.GetString(ms.ToArray());
 Console.WriteLine($"手动写入: {manualJson}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 1. 定义数据模型
+record Person(string Name, int Age, string[]? Hobbies = null);
+
+record Address(string Street, string City, string Country);
 \`\`\`
 
 ### 二、JsonSerializerOptions：配置选项 ⭐⭐⭐
@@ -1220,6 +1256,8 @@ Console.WriteLine($"手动写入: {manualJson}");
 // JsonSerializerOptions 控制序列化/反序列化的行为
 
 // 1. 常用配置
+using System.Text.Json;
+using System.Text.Json.Serialization;
 var options = new JsonSerializerOptions
 {
     // 命名策略：将 C# 属性名转为 camelCase
@@ -1264,6 +1302,9 @@ Console.WriteLine($"自定义选项:\\n{json}");
 // 在 ASP.NET Core 中配置：
 // services.ConfigureHttpJsonOptions(o => { ... });
 // services.Configure<JsonSerializerOptions>(o => { ... });
+
+// 演示用的数据类型
+record Person(string Name, int Age, string[]? Hobbies);
 \`\`\`
 
 ### 三、JsonDocument：只读 JSON 解析 ⭐⭐⭐
@@ -1273,6 +1314,7 @@ Console.WriteLine($"自定义选项:\\n{json}");
 // 适合一次性解析 JSON 结构，不需要映射到具体类型
 
 // 1. 基本用法
+using System.Text.Json;
 string json = @"
 {
     ""name"": ""张三"",
@@ -1337,6 +1379,8 @@ if (root.TryGetProperty("age", out JsonElement ageElem))
 // 与 JsonDocument 不同，JsonNode 是可变的
 
 // 1. 解析 JSON 为 JsonNode
+using System.Text.Json;
+using System.Text.Json.Nodes;
 string json = @"
 {
     ""name"": ""张三"",
@@ -1383,6 +1427,35 @@ Console.WriteLine($"新对象: {newObj.ToJsonString()}");
 \`\`\`csharp
 // 自定义转换器让你控制特定类型的序列化/反序列化逻辑
 
+// 2. 使用自定义转换器
+using System.Text.Json;
+using System.Text.Json.Serialization;
+var options = new JsonSerializerOptions();
+options.Converters.Add(new UnixTimestampConverter());
+
+var obj = new { Name = "测试", CreatedAt = DateTime.Now };
+string json = JsonSerializer.Serialize(obj, options);
+Console.WriteLine($"Unix 时间戳: {json}");
+// {"Name":"测试","CreatedAt":1752600000}
+
+// 3. 在属性上使用 JsonConverter 特性
+// class MyClass
+// {
+//     [JsonConverter(typeof(UnixTimestampConverter))]
+//     public DateTime CreatedAt { get; set; }
+// }
+
+// 5. 自定义转换器适用场景
+// - 特殊日期格式（如 Unix 时间戳、自定义格式）
+// - 枚举映射（如字符串 ↔ 数字）
+// - 多态序列化（基类/接口序列化）
+// - 加密/解密字段
+// - 兼容旧版 JSON 格式
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 1. 场景：将 DateTime 序列化为 Unix 时间戳
 class UnixTimestampConverter : JsonConverter<DateTime>
 {
@@ -1400,22 +1473,6 @@ class UnixTimestampConverter : JsonConverter<DateTime>
         return DateTimeOffset.FromUnixTimeSeconds(unixTimestamp).DateTime;
     }
 }
-
-// 2. 使用自定义转换器
-var options = new JsonSerializerOptions();
-options.Converters.Add(new UnixTimestampConverter());
-
-var obj = new { Name = "测试", CreatedAt = DateTime.Now };
-string json = JsonSerializer.Serialize(obj, options);
-Console.WriteLine($"Unix 时间戳: {json}");
-// {"Name":"测试","CreatedAt":1752600000}
-
-// 3. 在属性上使用 JsonConverter 特性
-// class MyClass
-// {
-//     [JsonConverter(typeof(UnixTimestampConverter))]
-//     public DateTime CreatedAt { get; set; }
-// }
 
 // 4. 场景：自定义枚举序列化
 // 将枚举序列化为描述字符串
@@ -1440,13 +1497,6 @@ class EnumDescriptionConverter<T> : JsonConverter<T> where T : Enum
         writer.WriteStringValue(value.ToString().ToLower());
     }
 }
-
-// 5. 自定义转换器适用场景
-// - 特殊日期格式（如 Unix 时间戳、自定义格式）
-// - 枚举映射（如字符串 ↔ 数字）
-// - 多态序列化（基类/接口序列化）
-// - 加密/解密字段
-// - 兼容旧版 JSON 格式
 \`\`\`
 
 ### 六、JSON 序列化最佳实践 ⭐⭐
@@ -1463,6 +1513,8 @@ class EnumDescriptionConverter<T> : JsonConverter<T> where T : Enum
 // 2. 处理循环引用
 // System.Text.Json 默认不支持循环引用
 // 需要设置 ReferenceHandler
+using System.Text.Json;
+using System.Text.Json.Serialization;
 var options = new JsonSerializerOptions
 {
     ReferenceHandler = ReferenceHandler.Preserve    // 保留引用（生成 $id/$ref）
@@ -1533,6 +1585,7 @@ Console.WriteLine("推荐使用源生成器（AOT 友好）");
 // Regex 类提供正则表达式的匹配、替换、分割等操作
 
 // 1. IsMatch：检查是否匹配
+using System.Text.RegularExpressions;
 string text = "我的邮箱是 zhangsan@example.com，电话是 138-1234-5678";
 
 bool hasEmail = Regex.IsMatch(text, @"\\w+@\\w+\\.\\w+");  // 是否包含邮箱格式
@@ -1596,6 +1649,7 @@ Console.WriteLine($"分割结果: [{string.Join(" | ", parts)}]");
 // \\b ：单词边界
 // \\B ：非单词边界
 
+using System.Text.RegularExpressions;
 Console.WriteLine("=== 锚点 ===");
 Console.WriteLine(Regex.IsMatch("hello world", @"^hello"));   // true（以 hello 开头）
 Console.WriteLine(Regex.IsMatch("hello world", @"world$"));   // true（以 world 结尾）
@@ -1663,6 +1717,7 @@ Console.WriteLine(Regex.IsMatch("world", @"(\\w)\\1"));       // false（没有�
 
 \`\`\`csharp
 // 1. 邮箱验证
+using System.Text.RegularExpressions;
 string emailPattern = @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$";
 Console.WriteLine($"邮箱验证:");
 Console.WriteLine($"  zhangsan@example.com: {Regex.IsMatch("zhangsan@example.com", emailPattern)}");  // true
@@ -1714,6 +1769,7 @@ Console.WriteLine($"中文提取: {string.Join(", ", chineseMatches.Select(m => 
 
 \`\`\`csharp
 // 1. IgnoreCase：忽略大小写
+using System.Text.RegularExpressions;
 string text = "Hello World";
 Console.WriteLine($"忽略大小写: {Regex.IsMatch(text, @"hello", RegexOptions.IgnoreCase)}");  // true
 Console.WriteLine($"区分大小写: {Regex.IsMatch(text, @"hello")}");  // false
@@ -1753,6 +1809,7 @@ Console.WriteLine($"内联忽略大小写: {Regex.IsMatch("HELLO", @"(?i)hello")
 
 \`\`\`csharp
 // 1. 提取 URL 中的域名
+using System.Text.RegularExpressions;
 string ExtractDomain(string url)
 {
     var match = Regex.Match(url, @"https?://([^/]+)");
@@ -1784,10 +1841,10 @@ Console.WriteLine($"驼峰转下划线: {CamelToSnake("userNameAndAge")}");  // 
 // 5. 验证并提取 JSON 中的字段（简单场景）
 string ExtractJsonField(string json, string field)
 {
-    var match = Regex.Match(json, @$"""{field}"":\s*""([^""]*)""");  // 匹配字符串值
+    var match = Regex.Match(json, $@"""{field}"":\\s*""([^""]*)""");  // 匹配字符串值
     return match.Success ? match.Groups[1].Value : "";
 }
-Console.WriteLine($"提取 JSON: {ExtractJsonField(@"{\\"name\\":\\"张三\\",\\"age\\":30}", "name")}");  // 张三
+Console.WriteLine($"提取 JSON: {ExtractJsonField(@"{""name"":""张三"",""age"":30}", "name")}");  // 张三
 
 // 6. 日志解析
 string ParseLogLine(string logLine)
@@ -1806,7 +1863,7 @@ Console.WriteLine(ParseLogLine("[2026-07-18 14:30:00] [ERROR] 数据库连接失
 
 ### 六、何时使用/避免正则 ⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ✅ 适合使用正则的场景：
 // 1. 模式匹配和验证（邮箱、手机号、URL 等）
 // 2. 文本提取（从 HTML 中提取链接、从日志中提取关键信息）
@@ -1893,7 +1950,12 @@ Console.OutputEncoding = Encoding.UTF8;
 
 Console.WriteLine($"UTF-8  编码中字: {BitConverter.ToString(Encoding.UTF8.GetBytes("中"))}");
 Console.WriteLine($"UTF-16 编码中字: {BitConverter.ToString(Encoding.Unicode.GetBytes("中"))}");
-Console.WriteLine($"GBK    编码中字: {BitConverter.ToString(Encoding.GetEncoding("GBK").GetBytes("中"))}");
+// GBK 等中文代码页需要额外的 NuGet 包（System.Text.Encoding.CodePages），
+// 沙箱里没有安装，这里安全获取：
+string gbkHex;
+try { gbkHex = BitConverter.ToString(Encoding.GetEncoding("GBK").GetBytes("中")); }
+catch (ArgumentException) { gbkHex = "（当前环境不支持 GBK）"; }
+Console.WriteLine($"GBK    编码中字: {gbkHex}");
 \`\`\`
 
 ### 二、常见编码速查 ⭐⭐⭐
@@ -1917,6 +1979,7 @@ Console.WriteLine($"GBK    编码中字: {BitConverter.ToString(Encoding.GetEnco
 
 \`\`\`csharp
 // 1. 获取编码实例
+using System.Text;
 Encoding utf8 = Encoding.UTF8;             // 推荐：UTF-8 with BOM
 Encoding utf8NoBom = new UTF8Encoding(false); // UTF-8 无 BOM
 Encoding unicode = Encoding.Unicode;      // UTF-16 LE（.NET 默认）
@@ -1932,13 +1995,17 @@ Console.WriteLine($"UTF-8 字节数: {bytes.Length}");
 // 3. 获取所有支持的编码
 Console.WriteLine($"系统共支持 {Encoding.GetEncodings().Length} 种编码");
 
-// 4. 通过代码页获取
-Encoding gbk = Encoding.GetEncoding(936);  // 936 = GBK
+// 4. 通过代码页获取（GBK=936 需要额外 NuGet 包，沙箱里拿不到时安全降级）
+Encoding gbk;
+try { gbk = Encoding.GetEncoding(936); }
+catch (NotSupportedException) { Console.WriteLine("（当前环境不支持代码页 936/GBK）"); gbk = Encoding.UTF8; }
 \`\`\`
 
 ### 四、StreamReader / StreamWriter 的编码 ⭐⭐⭐
 
 \`\`\`csharp
+using System.Text;
+
 // 默认 UTF-8 with BOM
 using (var sw = new StreamWriter("utf8.txt"))
 {
@@ -1967,11 +2034,20 @@ Console.WriteLine(content);
 // "中" 的 UTF-8 字节是 E4 B8 AD，GBK 解析为 "涓"
 
 // 解决：读写都用相同编码
+using System.Text;
 string chinese = "中文测试";
 
 // 错误：用 UTF-8 写，GBK 读
 File.WriteAllText("wrong.txt", chinese, Encoding.UTF8);
-string garbled = File.ReadAllText("wrong.txt", Encoding.GetEncoding("GBK"));
+string garbled;
+try
+{
+    garbled = File.ReadAllText("wrong.txt", Encoding.GetEncoding("GBK"));  // 沙箱可能没有 GBK
+}
+catch (ArgumentException)
+{
+    garbled = File.ReadAllText("wrong.txt", Encoding.Latin1);  // 用 Latin-1 模拟「用错编码读取」
+}
 Console.WriteLine($"乱码: {garbled}");  // 输出乱码
 
 // 正确：用 UTF-8 写，UTF-8 读
@@ -1999,6 +2075,7 @@ else if (bom.SequenceEqual(new byte[] { 0xFF, 0xFE }))
 // .NET 的 Encoding.UTF8 默认带 BOM
 // Web 和 Unix 工具通常不要 BOM
 // 建议：跨平台文件用 UTF-8 without BOM
+using System.Text;
 Encoding utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 File.WriteAllText("nobom.txt", "test", utf8NoBom);
 
@@ -2010,16 +2087,17 @@ File.WriteAllText("nobom.txt", "test", utf8NoBom);
 
 \`\`\`csharp
 // 1. 配置文件用 UTF-8（不要 GBK）
+using System.Text;
 Encoding configEncoding = Encoding.UTF8;
-File.WriteAllText("appsettings.json", "{\"name\":\"张三\"}", configEncoding);
+File.WriteAllText("appsettings.json", "{\\"name\\":\\"张三\\"}", configEncoding);
 
 // 2. CSV 文件：UTF-8 with BOM，让 Excel 正确识别中文
 Encoding csvEncoding = new UTF8Encoding(true);
-File.WriteAllText("data.csv", "名称,年龄\n张三,25\n李四,30", csvEncoding);
+File.WriteAllText("data.csv", "名称,年龄\\n张三,25\\n李四,30", csvEncoding);
 
 // 3. 日志文件：UTF-8 without BOM，方便 Linux 工具处理
 Encoding logEncoding = new UTF8Encoding(false);
-File.WriteAllText("app.log", "用户登录\n", logEncoding);
+File.WriteAllText("app.log", "用户登录\\n", logEncoding);
 \`\`\`
 
 ### 八、最佳实践

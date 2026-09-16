@@ -31,9 +31,7 @@ const chapters = [
 委托用 \`delegate\` 关键字定义，声明了方法的签名（返回类型和参数）：
 
 \`\`\`csharp
-// 定义委托类型：声明方法签名
-// 返回类型 + 委托名 + 参数列表
-delegate int MathOperation(int a, int b);  // 接受两个 int，返回 int
+  // 接受两个 int，返回 int
 
 // 定义符合委托签名的方法
 int Add(int a, int b)
@@ -65,6 +63,14 @@ Console.WriteLine($"Subtract(10, 5) = {op(10, 5)}");  // 5
 
 op = Multiply;
 Console.WriteLine($"Multiply(10, 5) = {op(10, 5)}");  // 50
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 定义委托类型：声明方法签名
+// 返回类型 + 委托名 + 参数列表
+delegate int MathOperation(int a, int b);
 \`\`\`
 
 ### 二、多播委托（Multicast Delegate）
@@ -72,8 +78,7 @@ Console.WriteLine($"Multiply(10, 5) = {op(10, 5)}");  // 50
 委托可以绑定多个方法，调用时依次执行：
 
 \`\`\`csharp
-// 定义无参数无返回值的委托
-delegate void LogDelegate(string message);
+
 
 void LogToConsole(string message)
 {
@@ -107,6 +112,13 @@ logger("用户登录通知");
 // 获取调用列表
 Delegate[] delegates = logger.GetInvocationList();
 Console.WriteLine($"\\n委托链中有 {delegates.Length} 个方法");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 定义无参数无返回值的委托
+delegate void LogDelegate(string message);
 \`\`\`
 
 ### 三、委托作为方法参数
@@ -114,8 +126,7 @@ Console.WriteLine($"\\n委托链中有 {delegates.Length} 个方法");
 委托作为参数是实现回调模式的核心方式：
 
 \`\`\`csharp
-// 委托作为参数：实现策略模式和回调
-delegate bool FilterDelegate(int number);
+
 
 // 过滤方法：接受委托参数决定过滤逻辑
 List<int> FilterNumbers(List<int> numbers, FilterDelegate filter)
@@ -146,9 +157,6 @@ Console.WriteLine($"奇数：{string.Join(", ", odds)}");
 var large = FilterNumbers(numbers, IsGreaterThan5);
 Console.WriteLine($"大于5：{string.Join(", ", large)}");
 
-// 实际应用：自定义排序
-delegate int CompareDelegate<T>(T a, T b);
-
 void Sort<T>(List<T> items, CompareDelegate<T> compare)
 {
     // 简单冒泡排序
@@ -163,6 +171,16 @@ void Sort<T>(List<T> items, CompareDelegate<T> compare)
         }
     }
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 委托作为参数：实现策略模式和回调
+delegate bool FilterDelegate(int number);
+
+// 实际应用：自定义排序
+delegate int CompareDelegate<T>(T a, T b);
 \`\`\`
 
 ### 四、匿名方法
@@ -172,9 +190,6 @@ void Sort<T>(List<T> items, CompareDelegate<T> compare)
 \`\`\`csharp
 // 匿名方法：用 delegate 关键字直接定义方法体
 // 语法：delegate(参数) { 方法体 }
-
-// 传统方式：需要先定义方法，再赋值
-delegate int Operation(int a, int b);
 
 // 匿名方法方式：无需单独定义方法
 Operation op = delegate(int a, int b)
@@ -205,13 +220,19 @@ List<int> Filter(List<int> items, Predicate<int> predicate)
 var numbers = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
 var result = Filter(numbers, delegate(int n) { return n > 5 && n % 2 == 0; });
 Console.WriteLine($"大于5的偶数：{string.Join(", ", result)}");  // 6, 8, 10
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 传统方式：需要先定义方法，再赋值
+delegate int Operation(int a, int b);
 \`\`\`
 
 ### 五、委托调用列表
 
 \`\`\`csharp
-// 委托调用列表：查看委托链中所有方法
-delegate void NotifyDelegate(string message);
+
 
 void Notify1(string msg) => Console.WriteLine($"通知1：{msg}");
 void Notify2(string msg) => Console.WriteLine($"通知2：{msg}");
@@ -235,6 +256,13 @@ foreach (NotifyDelegate d in list)
 {
     d("逐个调用测试");  // 每个方法独立调用
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 委托调用列表：查看委托链中所有方法
+delegate void NotifyDelegate(string message);
 \`\`\`
 
 ### 六、小结
@@ -494,7 +522,7 @@ Func<string, int> length = s => s.Length;
 Func<double, double, double> hypotenuse = (a, b) => Math.Sqrt(a * a + b * b);
 
 Console.WriteLine($"10 是偶数：{isEven(10)}");
-Console.WriteLine($"\"Hello\" 长度：{length("Hello")}");
+Console.WriteLine($"\\"Hello\\" 长度：{length("Hello")}");
 Console.WriteLine($"斜边长度：{hypotenuse(3, 4):F2}");  // 5.00
 
 // 语句 Lambda：适合多行逻辑，需要 return
@@ -626,6 +654,7 @@ Console.WriteLine($"静态 Lambda：{staticLambda(5)}");  // 10
 // 用于 LINQ to SQL、Entity Framework 等场景
 
 // 普通 Lambda 编译为委托
+using System.Linq.Expressions;
 Func<int, bool> isEvenDelegate = n => n % 2 == 0;
 
 // 表达式树 Lambda：用 Expression<T> 包装
@@ -640,7 +669,6 @@ Func<int, bool> compiled = isEvenExpr.Compile();
 Console.WriteLine($"编译后执行：{compiled(10)}");  // True
 
 // 手动构建表达式树
-using System.Linq.Expressions;
 
 // 构建 x => x + 1 的表达式树
 ParameterExpression param = Expression.Parameter(typeof(int), "x");
@@ -655,8 +683,17 @@ Console.WriteLine($"执行：{addOneExpr.Compile()(5)}");  // 6
 
 \`\`\`csharp
 // 1. 简单逻辑用表达式 Lambda，复杂逻辑用语句 Lambda
+// 演示数据
+var people = new[]
+{
+    new { Name = \"张三\", Age = 20 },
+    new { Name = \"李四\", Age = 15 },
+    new { Name = \"王五\", Age = 32 }
+};
+
 // 好：简洁清晰
 var adults = people.Where(p => p.Age >= 18);
+Console.WriteLine($"成年人：{string.Join(\", \", adults.Select(p => p.Name))}");
 
 // 避免：过于复杂的 Lambda
 // var result = data.Where(x => x.A > 0 && x.B < 100 && x.C.Contains("key")...);
@@ -705,6 +742,25 @@ names.ForEach(Console.WriteLine);  // 方法组，等价于 n => Console.WriteLi
 事件用 \`event\` 关键字声明，必须是委托类型：
 
 \`\`\`csharp
+
+
+// 使用事件
+var button = new Button { Text = "确定" };
+
+// 订阅事件：用 += 运算符
+button.Clicked += () => Console.WriteLine("  事件处理：保存数据");
+button.Clicked += () => Console.WriteLine("  事件处理：关闭窗口");
+
+// 触发事件
+button.Click();
+
+// 取消订阅：用 -= 运算符
+// button.Clicked -= handler;
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 定义事件发布者
 class Button
 {
@@ -724,19 +780,6 @@ class Button
         Clicked?.Invoke();
     }
 }
-
-// 使用事件
-var button = new Button { Text = "确定" };
-
-// 订阅事件：用 += 运算符
-button.Clicked += () => Console.WriteLine("  事件处理：保存数据");
-button.Clicked += () => Console.WriteLine("  事件处理：关闭窗口");
-
-// 触发事件
-button.Click();
-
-// 取消订阅：用 -= 运算符
-// button.Clicked -= handler;
 \`\`\`
 
 ### 二、EventHandler 与 EventArgs
@@ -747,6 +790,20 @@ button.Click();
 // 标准事件模式：EventHandler 和 EventArgs
 // sender：事件的发送者（通常用 this）
 // EventArgs：事件参数（包含事件相关信息）
+
+var processor = new OrderProcessor();
+
+// 订阅标准事件
+processor.OrderCreated += (sender, e) =>
+{
+    Console.WriteLine($"[监听器] 收到事件，发送者：{sender?.GetType().Name}");
+};
+
+processor.CreateOrder(new Order("ORD-001", 299.99m));
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 
 class Order
 {
@@ -780,21 +837,31 @@ class OrderProcessor
         OnOrderCreated(order);  // 通知订阅者
     }
 }
-
-var processor = new OrderProcessor();
-
-// 订阅标准事件
-processor.OrderCreated += (sender, e) =>
-{
-    Console.WriteLine($"[监听器] 收到事件，发送者：{sender?.GetType().Name}");
-};
-
-processor.CreateOrder(new Order("ORD-001", 299.99m));
 \`\`\`
 
 ### 三、EventHandler\<TEventArgs\> 与自定义事件参数
 
 \`\`\`csharp
+
+
+// 使用
+var orderService = new OrderService();
+var emailService = new EmailService();
+var smsService = new SmsService();
+
+// 订阅事件
+orderService.OrderCreated += emailService.OnOrderCreated;
+orderService.OrderCreated += smsService.OnOrderCreated;
+
+// 触发
+orderService.CreateOrder("ORD-001", 299.99m);
+Console.WriteLine();
+orderService.CreateOrder("ORD-002", 5000m);
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 自定义事件参数类：继承 EventArgs
 class OrderEventArgs : EventArgs
 {
@@ -846,25 +913,31 @@ class SmsService
         }
     }
 }
-
-// 使用
-var orderService = new OrderService();
-var emailService = new EmailService();
-var smsService = new SmsService();
-
-// 订阅事件
-orderService.OrderCreated += emailService.OnOrderCreated;
-orderService.OrderCreated += smsService.OnOrderCreated;
-
-// 触发
-orderService.CreateOrder("ORD-001", 299.99m);
-Console.WriteLine();
-orderService.CreateOrder("ORD-002", 5000m);
 \`\`\`
 
 ### 四、事件最佳实践
 
 \`\`\`csharp
+
+
+var sensor = new TemperatureSensor();
+sensor.TemperatureChanged += (sender, e) =>
+{
+    Console.WriteLine($"温度变化：{e.OldTemperature:F1}°C → {e.NewTemperature:F1}°C");
+    Console.WriteLine($"变化量：{e.Change:F1}°C");
+
+    if (e.NewTemperature > 30)
+        Console.WriteLine("  警告：温度过高！");
+};
+
+sensor.Temperature = 25.5;
+sensor.Temperature = 32.0;
+sensor.Temperature = 32.0;  // 温度未变化，不触发事件
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 事件设计最佳实践
 class TemperatureSensor
 {
@@ -909,20 +982,6 @@ class TemperatureChangedEventArgs : EventArgs
         NewTemperature = newTemp;
     }
 }
-
-var sensor = new TemperatureSensor();
-sensor.TemperatureChanged += (sender, e) =>
-{
-    Console.WriteLine($"温度变化：{e.OldTemperature:F1}°C → {e.NewTemperature:F1}°C");
-    Console.WriteLine($"变化量：{e.Change:F1}°C");
-
-    if (e.NewTemperature > 30)
-        Console.WriteLine("  警告：温度过高！");
-};
-
-sensor.Temperature = 25.5;
-sensor.Temperature = 32.0;
-sensor.Temperature = 32.0;  // 温度未变化，不触发事件
 \`\`\`
 
 ### 五、INotifyPropertyChanged 接口
@@ -930,6 +989,22 @@ sensor.Temperature = 32.0;  // 温度未变化，不触发事件
 \`\`\`csharp
 // INotifyPropertyChanged：数据绑定和 MVVM 的核心接口
 using System.ComponentModel;
+
+var person = new Person();
+
+// 订阅属性变更通知
+person.PropertyChanged += (sender, e) =>
+{
+    Console.WriteLine($"属性 '{e.PropertyName}' 已变更");
+};
+
+person.Name = "张三";
+person.Age = 28;
+person.Name = "李四";
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 
 class Person : INotifyPropertyChanged
 {
@@ -973,18 +1048,6 @@ class Person : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
-
-var person = new Person();
-
-// 订阅属性变更通知
-person.PropertyChanged += (sender, e) =>
-{
-    Console.WriteLine($"属性 '{e.PropertyName}' 已变更");
-};
-
-person.Name = "张三";
-person.Age = 28;
-person.Name = "李四";
 \`\`\`
 
 ### 六、事件 vs 委托
@@ -1177,6 +1240,27 @@ foreach (var action in syncActions)
 ### 五、避免闭包导致的内存泄漏
 
 \`\`\`csharp
+
+
+var manager = new ResourceManager();
+byte[] data = new byte[1024 * 1024];  // 1 MB 数据
+manager.RegisterResource(data);
+
+// 即使 data = null，闭包仍然持有原始数组的引用
+data = null;
+GC.Collect();  // 大数组仍不会被回收（被闭包引用）
+
+manager.Cleanup();  // 清理后，数组才可以被回收
+
+// 最佳实践：使用弱引用或及时取消订阅
+// 1. 及时取消事件订阅
+// 2. 使用 IDisposable 模式清理
+// 3. 避免长期持有带捕获的委托
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 闭包可能导致内存泄漏：长生命周期对象持有短生命周期对象的引用
 class ResourceManager
 {
@@ -1200,21 +1284,6 @@ class ResourceManager
         Console.WriteLine("所有资源已清理");
     }
 }
-
-var manager = new ResourceManager();
-byte[] data = new byte[1024 * 1024];  // 1 MB 数据
-manager.RegisterResource(data);
-
-// 即使 data = null，闭包仍然持有原始数组的引用
-data = null;
-GC.Collect();  // 大数组仍不会被回收（被闭包引用）
-
-manager.Cleanup();  // 清理后，数组才可以被回收
-
-// 最佳实践：使用弱引用或及时取消订阅
-// 1. 及时取消事件订阅
-// 2. 使用 IDisposable 模式清理
-// 3. 避免长期持有带捕获的委托
 \`\`\`
 
 ### 六、静态 Lambda 避免闭包

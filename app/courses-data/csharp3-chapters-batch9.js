@@ -182,15 +182,6 @@ Console.WriteLine($"按长度：{string.Join(", ", names)}");
 names.Sort(StringComparer.OrdinalIgnoreCase);
 Console.WriteLine($"忽略大小写：{string.Join(", ", names)}");
 
-// 复杂对象排序
-class Product
-{
-    public string Name { get; set; } = "";
-    public decimal Price { get; set; }
-    public int Stock { get; set; }
-    public override string ToString() => $"{Name}(¥{Price}, 库存{Stock})";
-}
-
 List<Product> products = new List<Product>
 {
     new Product { Name = "键盘", Price = 299, Stock = 50 },
@@ -202,6 +193,19 @@ List<Product> products = new List<Product>
 products.Sort((a, b) => a.Price.CompareTo(b.Price));
 Console.WriteLine("按价格排序：");
 products.ForEach(p => Console.WriteLine($"  {p}"));
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 复杂对象排序
+class Product
+{
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }
+    public int Stock { get; set; }
+    public override string ToString() => $"{Name}(¥{Price}, 库存{Stock})";
+}
 \`\`\`
 
 ### 七、BinarySearch 二分查找
@@ -434,6 +438,22 @@ foreach (var kvp in prices)
 ### 五、自定义键类型
 
 \`\`\`csharp
+
+
+var personDict = new Dictionary<Person, string>();
+var p1 = new Person("P001", "张三");
+var p2 = new Person("P001", "张三（别名）");  // 同 ID
+
+personDict[p1] = "部门A";
+Console.WriteLine($"p2 的部门：{personDict[p2]}");  // 部门A（同 ID 匹配）
+
+var nameDict = new Dictionary<Person, string>(new PersonNameComparer());
+nameDict[p1] = "部门A";
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 自定义类型作为字典键：必须重写 Equals 和 GetHashCode
 class Person
 {
@@ -458,13 +478,6 @@ class Person
     public override string ToString() => $"{Name}({Id})";
 }
 
-var personDict = new Dictionary<Person, string>();
-var p1 = new Person("P001", "张三");
-var p2 = new Person("P001", "张三（别名）");  // 同 ID
-
-personDict[p1] = "部门A";
-Console.WriteLine($"p2 的部门：{personDict[p2]}");  // 部门A（同 ID 匹配）
-
 // 使用 IEqualityComparer 自定义比较规则
 class PersonNameComparer : IEqualityComparer<Person>
 {
@@ -479,9 +492,6 @@ class PersonNameComparer : IEqualityComparer<Person>
         return obj.Name.GetHashCode();
     }
 }
-
-var nameDict = new Dictionary<Person, string>(new PersonNameComparer());
-nameDict[p1] = "部门A";
 \`\`\`
 
 ### 六、SortedDictionary\<TKey, TValue\>
@@ -883,6 +893,10 @@ foreach (string item in linkedList)
     Console.Write($"{item} ");  // C, A, X, Y, D
 Console.WriteLine();
 
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 实际应用：LRU 缓存（最近最少使用）
 class LRUCache<K, V> where K : notnull
 {
@@ -917,7 +931,7 @@ class LRUCache<K, V> where K : notnull
 
 ### 五、何时使用哪个
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 场景选择指南：
 
 // Queue：按顺序处理任务
@@ -1087,6 +1101,18 @@ foreach (int n in generator)  // 重新执行！
 ### 五、自定义迭代器
 
 \`\`\`csharp
+
+
+Console.WriteLine("斐波那契数列（前10个）：");
+var fib = new FibonacciSequence(10);
+foreach (int n in fib)
+    Console.Write($"{n} ");  // 1 1 2 3 5 8 13 21 34 55
+Console.WriteLine();
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 自定义迭代器：实现 IEnumerable<T>
 class FibonacciSequence : IEnumerable<int>
 {
@@ -1114,12 +1140,6 @@ class FibonacciSequence : IEnumerable<int>
         return GetEnumerator();
     }
 }
-
-Console.WriteLine("斐波那契数列（前10个）：");
-var fib = new FibonacciSequence(10);
-foreach (int n in fib)
-    Console.Write($"{n} ");  // 1 1 2 3 5 8 13 21 34 55
-Console.WriteLine();
 \`\`\`
 
 ### 六、迭代器方法带参数
@@ -1375,6 +1395,7 @@ foreach (var kvp in concurrentDict)
 
 \`\`\`csharp
 // ConcurrentQueue：线程安全队列
+using System.Collections.Concurrent;
 var queue = new ConcurrentQueue<int>();
 
 // Enqueue：入队
@@ -1421,6 +1442,7 @@ var workItems = new ConcurrentQueue<string>();
 // 生产者-消费者模式的标准实现
 
 // 创建有界集合（最多 3 个元素）
+using System.Collections.Concurrent;
 var blocking = new BlockingCollection<int>(boundedCapacity: 3);
 
 // 生产者任务

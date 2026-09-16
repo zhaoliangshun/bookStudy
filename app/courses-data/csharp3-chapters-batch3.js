@@ -144,11 +144,11 @@ void PrintHeader(string title)
 // 返回值类型不属于签名，不能靠返回值区分重载
 
 // 不同的签名（合法）
-void Process(int a) { }           // 签名为 Process(int)
-void Process(string a) { }        // 签名为 Process(string)
-void Process(int a, int b) { }    // 签名为 Process(int, int)
-void Process(int a, string b) { } // 签名为 Process(int, string)
-void Process(string a, int b) { } // 签名为 Process(string, int)（顺序不同）
+           // 签名为 Demo.Process(int)
+        // 签名为 Demo.Process(string)
+    // 签名为 Demo.Process(int, int)
+ // 签名为 Demo.Process(int, string)
+ // 签名为 Demo.Process(string, int)（顺序不同）
 
 // 非法：只有返回值不同
 // int GetValue() { return 0; }
@@ -156,11 +156,27 @@ void Process(string a, int b) { } // 签名为 Process(string, int)（顺序不�
 
 // 方法签名是方法重载的基础
 // 调用时编译器根据实参类型和数量匹配最合适的方法
-Process(42);           // 调用 Process(int)
-Process("hello");      // 调用 Process(string)
-Process(10, 20);       // 调用 Process(int, int)
-Process(10, "hello");  // 调用 Process(int, string)
-Process("hello", 10);  // 调用 Process(string, int)
+Demo.Process(42);           // 调用 Demo.Process(int)
+Demo.Process("hello");      // 调用 Demo.Process(string)
+Demo.Process(10, 20);       // 调用 Demo.Process(int, int)
+Demo.Process(10, "hello");  // 调用 Demo.Process(int, string)
+Demo.Process("hello", 10);  // 调用 Demo.Process(string, int)
+
+// 说明：顶级语句里的局部函数不能重名，无法演示重载；
+// 所以重载的方法统一放进静态类 Demo，调用时写 Demo.方法名。
+
+static class Demo
+{
+    public static void Process(int a) { }
+
+    public static void Process(string a) { }
+
+    public static void Process(int a, int b) { }
+
+    public static void Process(int a, string b) { }
+
+    public static void Process(string a, int b) { }
+}
 \`\`\`
 
 ### 五、表达式体方法（Expression-bodied Methods）⭐
@@ -464,13 +480,6 @@ else
 // 适用于大型结构体，避免复制开销
 // 调用时 in 关键字可省略（编译器自动识别）
 
-// 大型结构体示例
-struct LargeStruct
-{
-    public int A, B, C, D, E, F, G, H, I, J;
-    public int Sum() => A + B + C + D + E + F + G + H + I + J;
-}
-
 // in 参数：只读引用，避免复制 40 字节
 void PrintSum(in LargeStruct data)
 {
@@ -485,6 +494,17 @@ PrintSum(in large);      // 也可以显式写
 // 性能对比：in 避免复制大型结构体
 // 对于小型值类型（int、double 等），in 反而可能降低性能
 // 因为引用传递需要解引用，开销比直接复制大
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 大型结构体示例
+struct LargeStruct
+{
+    public int A, B, C, D, E, F, G, H, I, J;
+    public int Sum() => A + B + C + D + E + F + G + H + I + J;
+}
 \`\`\`
 
 ### 五、params 关键字 ⭐
@@ -621,7 +641,7 @@ void Example(int required, string optional = "default", params int[] extra)
 
 Example(10);                           // 只传必选
 Example(10, "自定义");                  // 传必选 + 可选
-Example(10, extra: 1, 2, 3);           // 命名参数 + params
+Example(10, extra: new[] { 1, 2, 3 });  // 命名参数 + params（命名参数后不能再跟未命名实参）
 Example(10, "自定义", 1, 2, 3, 4, 5);  // 全部传参
 
 // 非法写法
@@ -674,64 +694,81 @@ Example(10, "自定义", 1, 2, 3, 4, 5);  // 全部传参
 // 返回值类型不能用于区分重载
 
 // 打印不同类型的数据
-void Print(int value)
-{
-    Console.WriteLine($"整数：{value}");
-}
-
-void Print(string value)
-{
-    Console.WriteLine($"字符串：{value}");
-}
-
-void Print(double value)
-{
-    Console.WriteLine($"浮点数：{value:F2}");
-}
-
-void Print(bool value)
-{
-    Console.WriteLine($"布尔值：{value}");
-}
 
 // 调用时编译器根据参数类型自动选择匹配的方法
-Print(42);              // 调用 Print(int)
-Print("Hello");         // 调用 Print(string)
-Print(3.14159);         // 调用 Print(double)
-Print(true);            // 调用 Print(bool)
+Demo.Print(42);              // 调用 Demo.Print(int)
+Demo.Print("Hello");         // 调用 Demo.Print(string)
+Demo.Print(3.14159);         // 调用 Demo.Print(double)
+Demo.Print(true);            // 调用 Demo.Print(bool)
+
+// 说明：顶级语句里的局部函数不能重名，无法演示重载；
+// 所以重载的方法统一放进静态类 Demo，调用时写 Demo.方法名。
+
+static class Demo
+{
+    public static void Print(int value)
+    {
+        Console.WriteLine($"整数：{value}");
+    }
+
+    public static void Print(string value)
+    {
+        Console.WriteLine($"字符串：{value}");
+    }
+
+    public static void Print(double value)
+    {
+        Console.WriteLine($"浮点数：{value:F2}");
+    }
+
+    public static void Print(bool value)
+    {
+        Console.WriteLine($"布尔值：{value}");
+    }
+}
 \`\`\`
 
 ### 二、参数数量重载
 
 \`\`\`csharp
 // 通过不同参数数量进行重载
-int Add(int a, int b)
-{
-    return a + b;
-}
 
-int Add(int a, int b, int c)
-{
-    return a + b + c;
-}
-
-int Add(int a, int b, int c, int d)
-{
-    return a + b + c + d;
-}
-
-Console.WriteLine($"Add(1, 2) = {Add(1, 2)}");           // 3
-Console.WriteLine($"Add(1, 2, 3) = {Add(1, 2, 3)}");     // 6
-Console.WriteLine($"Add(1, 2, 3, 4) = {Add(1, 2, 3, 4)}"); // 10
+Console.WriteLine($"Demo.Add(1, 2) = {Demo.Add(1, 2)}");           // 3
+Console.WriteLine($"Demo.Add(1, 2, 3) = {Demo.Add(1, 2, 3)}");     // 6
+Console.WriteLine($"Demo.Add(1, 2, 3, 4) = {Demo.Add(1, 2, 3, 4)}"); // 10
 
 // 实际场景：格式化日期
-string FormatDate(DateTime date) => date.ToString("yyyy-MM-dd");
-string FormatDate(DateTime date, string format) => date.ToString(format);
-string FormatDate(int year, int month, int day) => new DateTime(year, month, day).ToString("yyyy-MM-dd");
 
-Console.WriteLine(FormatDate(DateTime.Now));              // 2024-01-15
-Console.WriteLine(FormatDate(DateTime.Now, "yyyy年MM月dd日")); // 2024年01月15日
-Console.WriteLine(FormatDate(2024, 1, 15));              // 2024-01-15
+Console.WriteLine(Demo.FormatDate(DateTime.Now));              // 2024-01-15
+Console.WriteLine(Demo.FormatDate(DateTime.Now, "yyyy年MM月dd日")); // 2024年01月15日
+Console.WriteLine(Demo.FormatDate(2024, 1, 15));              // 2024-01-15
+
+// 说明：顶级语句里的局部函数不能重名，无法演示重载；
+// 所以重载的方法统一放进静态类 Demo，调用时写 Demo.方法名。
+
+static class Demo
+{
+    public static int Add(int a, int b)
+    {
+        return a + b;
+    }
+
+    public static int Add(int a, int b, int c)
+    {
+        return a + b + c;
+    }
+
+    public static int Add(int a, int b, int c, int d)
+    {
+        return a + b + c + d;
+    }
+
+    public static string FormatDate(DateTime date) => date.ToString("yyyy-MM-dd");
+
+    public static string FormatDate(DateTime date, string format) => date.ToString(format);
+
+    public static string FormatDate(int year, int month, int day) => new DateTime(year, month, day).ToString("yyyy-MM-dd");
+}
 \`\`\`
 
 ### 三、重载决策（Overload Resolution）
@@ -740,17 +777,14 @@ Console.WriteLine(FormatDate(2024, 1, 15));              // 2024-01-15
 // 编译器如何选择重载方法？
 // 规则：选择"最匹配"的版本，原则是转换最少
 
-void Show(int x) => Console.WriteLine($"int: {x}");
-void Show(double x) => Console.WriteLine($"double: {x}");
-void Show(string x) => Console.WriteLine($"string: {x}");
-
-Show(10);           // 精确匹配 int → 调用 Show(int)
-Show(3.14);         // 精确匹配 double → 调用 Show(double)
-Show("hello");      // 精确匹配 string → 调用 Show(string)
+using System.Diagnostics;
+Demo.Show(10);           // 精确匹配 int → 调用 Demo.Show(int)
+Demo.Show(3.14);         // 精确匹配 double → 调用 Demo.Show(double)
+Demo.Show("hello");      // 精确匹配 string → 调用 Demo.Show(string)
 
 // 隐式转换匹配
-Show(10f);          // float 可隐式转换为 double，调用 Show(double)
-Show('A');          // char 可隐式转换为 int，调用 Show(int)
+Demo.Show(10f);          // float 可隐式转换为 double，调用 Demo.Show(double)
+Demo.Show('A');          // char 可隐式转换为 int，调用 Demo.Show(int)
 
 // 重载决策的优先级：
 // 1. 精确匹配（类型完全相同）
@@ -759,12 +793,26 @@ Show('A');          // char 可隐式转换为 int，调用 Show(int)
 // 4. params 数组
 
 // 歧义重载（编译错误）
-void Process(int a, double b) => Console.WriteLine("int, double");
-void Process(double a, int b) => Console.WriteLine("double, int");
 
-Process(1, 2.0);   // 明确：int, double
-Process(1.0, 2);   // 明确：double, int
-// Process(1, 2);  // 歧义！两个重载都能匹配，编译器无法选择
+Demo.Process(1, 2.0);   // 明确：int, double
+Demo.Process(1.0, 2);   // 明确：double, int
+// Demo.Process(1, 2);  // 歧义！两个重载都能匹配，编译器无法选择
+
+// 说明：顶级语句里的局部函数不能重名，无法演示重载；
+// 所以重载的方法统一放进静态类 Demo，调用时写 Demo.方法名。
+
+static class Demo
+{
+    public static void Show(int x) => Console.WriteLine($"int: {x}");
+
+    public static void Show(double x) => Console.WriteLine($"double: {x}");
+
+    public static void Show(string x) => Console.WriteLine($"string: {x}");
+
+    public static void Process(int a, double b) => Console.WriteLine("int, double");
+
+    public static void Process(double a, int b) => Console.WriteLine("double, int");
+}
 \`\`\`
 
 ### 四、重载 vs 可选参数
@@ -784,38 +832,52 @@ LogMessage("文件保存", "SUCCESS");
 LogMessage("错误", "ERROR", false);
 
 // 场景2：不同参数组合含义不同 → 用重载
-void Search(string keyword)
-{
-    Console.WriteLine($"全文搜索：{keyword}");
-}
-void Search(string keyword, string category)
-{
-    Console.WriteLine($"分类搜索：{category} > {keyword}");
-}
-void Search(string keyword, DateTime fromDate, DateTime toDate)
-{
-    Console.WriteLine($"日期范围搜索：{keyword}（{fromDate:d} 到 {toDate:d}）");
-}
 
-Search("C#");
-Search("C#", "编程");
-Search("C#", DateTime.Now.AddDays(-7), DateTime.Now);
+Demo.Search("C#");
+Demo.Search("C#", "编程");
+Demo.Search("C#", DateTime.Now.AddDays(-7), DateTime.Now);
 
 // 场景3：参数类型不同 → 用重载
-void Display(int value) => Console.WriteLine($"数值：{value}");
-void Display(string value) => Console.WriteLine($"文本：{value}");
-void Display(DateTime value) => Console.WriteLine($"日期：{value:yyyy-MM-dd}");
 
 // 场景4：需要完全不同的实现逻辑 → 用重载
-void SaveToFile(string path, string content)
+
+// 说明：顶级语句里的局部函数不能重名，无法演示重载；
+// 所以重载的方法统一放进静态类 Demo，调用时写 Demo.方法名。
+
+static class Demo
 {
-    Console.WriteLine($"保存文本到文件：{path}");
-    // 文本文件写入逻辑
-}
-void SaveToFile(string path, byte[] data)
-{
-    Console.WriteLine($"保存二进制到文件：{path}（{data.Length} 字节）");
-    // 二进制文件写入逻辑
+    public static void Search(string keyword)
+    {
+        Console.WriteLine($"全文搜索：{keyword}");
+    }
+
+    public static void Search(string keyword, string category)
+    {
+        Console.WriteLine($"分类搜索：{category} > {keyword}");
+    }
+
+    public static void Search(string keyword, DateTime fromDate, DateTime toDate)
+    {
+        Console.WriteLine($"日期范围搜索：{keyword}（{fromDate:d} 到 {toDate:d}）");
+    }
+
+    public static void Display(int value) => Console.WriteLine($"数值：{value}");
+
+    public static void Display(string value) => Console.WriteLine($"文本：{value}");
+
+    public static void Display(DateTime value) => Console.WriteLine($"日期：{value:yyyy-MM-dd}");
+
+    public static void SaveToFile(string path, string content)
+    {
+        Console.WriteLine($"保存文本到文件：{path}");
+        // 文本文件写入逻辑
+    }
+
+    public static void SaveToFile(string path, byte[] data)
+    {
+        Console.WriteLine($"保存二进制到文件：{path}（{data.Length} 字节）");
+        // 二进制文件写入逻辑
+    }
 }
 \`\`\`
 
@@ -834,30 +896,43 @@ void SaveToFile(string path, byte[] data)
 // 最完整的版本作为核心实现，其他重载调用它
 
 // 核心方法（参数最多）
-string FormatMessage(string text, string prefix, string suffix, bool uppercase)
-{
-    string result = $"{prefix}{text}{suffix}";
-    return uppercase ? result.ToUpper() : result;
-}
 
 // 简化重载 → 调用核心方法
-string FormatMessage(string text, string prefix, string suffix)
-    => FormatMessage(text, prefix, suffix, false);  // 默认不大写
+  // 默认不大写
 
-string FormatMessage(string text, string prefix)
-    => FormatMessage(text, prefix, "", false);  // 默认无后缀
+  // 默认无后缀
 
-string FormatMessage(string text)
-    => FormatMessage(text, "", "", false);  // 默认无前缀无后缀
+  // 默认无前缀无后缀
 
 // 使用
-Console.WriteLine(FormatMessage("hello"));                    // hello
-Console.WriteLine(FormatMessage("hello", "[", "]"));         // [hello]
-Console.WriteLine(FormatMessage("hello", "[", "]", true));   // [HELLO]
+Console.WriteLine(Demo.FormatMessage("hello"));                    // hello
+Console.WriteLine(Demo.FormatMessage("hello", "[", "]"));         // [hello]
+Console.WriteLine(Demo.FormatMessage("hello", "[", "]", true));   // [HELLO]
 
 // 2. 避免过多重载（3-5 个为宜）
 // 3. 确保重载行为一致，不要让用户感到意外
 // 4. 如果可选参数能满足需求，优先用可选参数
+
+// 说明：顶级语句里的局部函数不能重名，无法演示重载；
+// 所以重载的方法统一放进静态类 Demo，调用时写 Demo.方法名。
+
+static class Demo
+{
+    public static string FormatMessage(string text, string prefix, string suffix, bool uppercase)
+    {
+        string result = $"{prefix}{text}{suffix}";
+        return uppercase ? result.ToUpper() : result;
+    }
+
+    public static string FormatMessage(string text, string prefix, string suffix)
+        => FormatMessage(text, prefix, suffix, false);
+
+    public static string FormatMessage(string text, string prefix)
+        => FormatMessage(text, prefix, "", false);
+
+    public static string FormatMessage(string text)
+        => FormatMessage(text, "", "", false);
+}
 \`\`\`
 
 ### 六、小结
@@ -1026,6 +1101,14 @@ string GetGrade(int score)
 // 在类和记录中，属性可以用表达式体
 // 但本章聚焦于方法，这里简要展示
 
+var person = new Person { FirstName = "张", LastName = "三" };
+Console.WriteLine(person.FullName);    // 张 三
+Console.WriteLine(person.DisplayName); // 张 三
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 示例：Person 类
 class Person
 {
@@ -1041,10 +1124,6 @@ class Person
     // 表达式体方法
     public bool HasName() => !string.IsNullOrEmpty(FirstName);
 }
-
-var person = new Person { FirstName = "张", LastName = "三" };
-Console.WriteLine(person.FullName);    // 张 三
-Console.WriteLine(person.DisplayName); // 张 三
 \`\`\`
 
 ### 五、局部函数 vs 私有方法 vs Lambda
@@ -1124,7 +1203,7 @@ IEnumerable<int> EvenNumbers(int max)
 
     return Generate();  // 延迟执行
 
-    static IEnumerable<int> Generate()
+    IEnumerable<int> Generate()  // 注意：这里不能用 static，否则无法访问外层参数 max
     {
         for (int i = 0; i <= max; i += 2)
         {
@@ -1344,21 +1423,13 @@ int BinarySearchIterative(int[] arr, int target)
 ### 五、经典递归：树遍历
 
 \`\`\`csharp
-// 树节点定义
-class TreeNode
-{
-    public int Value { get; set; }
-    public TreeNode? Left { get; set; }
-    public TreeNode? Right { get; set; }
 
-    public TreeNode(int value) => Value = value;
-}
 
 // 构建示例树
 //        5
-//       / \
+//       / 
 //      3   8
-//     / \   \
+//     /    
 //    1   4   10
 TreeNode root = new(5)
 {
@@ -1411,6 +1482,20 @@ int TreeHeight(TreeNode? node)
     return 1 + Math.Max(leftHeight, rightHeight);
 }
 Console.WriteLine($"树的高度：{TreeHeight(root)}");  // 3
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 树节点定义
+class TreeNode
+{
+    public int Value { get; set; }
+    public TreeNode? Left { get; set; }
+    public TreeNode? Right { get; set; }
+
+    public TreeNode(int value) => Value = value;
+}
 \`\`\`
 
 ### 六、递归 vs 迭代

@@ -107,7 +107,7 @@ void Trigger(string type)
         case "io": throw new IOException("IO 错误");
         case "fmt": throw new FormatException("格式错误");
         case "ovf": throw new OverflowException("溢出");
-        case "div": int x = 1 / 0; break; // DivideByZeroException
+        case "div": int zero = 0; int x = 1 / zero; break; // DivideByZeroException
     }
 }
 
@@ -161,7 +161,13 @@ catch (Exception ex)
 ### 七、try 块的范围 ⭐⭐
 
 \`\`\`csharp
-// ❌ 不好：try 包含太多代码
+// 演示用的辅助方法（模拟真实操作）
+void Connect() => Console.WriteLine("连接数据库");
+void Login() => throw new LoginException("用户名或密码错误");
+void Query() => Console.WriteLine("查询数据");
+void Disconnect() => Console.WriteLine("断开连接");
+
+// ❌ 不好：try 包含太多代码，异常来源不明确
 try
 {
     Connect();
@@ -169,14 +175,22 @@ try
     Query();
     Disconnect();
 }
-catch (Exception ex) { /* 不确定哪儿抛的 */ }
+catch (Exception ex) { Console.WriteLine($"捕获异常，但不知道是哪一步抛的：{ex.Message}"); }
 
 // ✅ 好：try 只包可能抛异常的最小代码块
 Connect();
 try { Login(); }
-catch (LoginException) { /* 处理登录失败 */ }
+catch (LoginException ex) { Console.WriteLine($"登录失败：{ex.Message}"); }
 Query();
 Disconnect();
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+class LoginException : Exception
+{
+    public LoginException(string message) : base(message) { }
+}
 \`\`\`
 
 ### 八、try-catch 的性能成本 ⭐
@@ -184,15 +198,29 @@ Disconnect();
 \`\`\`csharp
 // 异常抛出有性能成本（构造堆栈），不要用异常控制正常流程
 
+var dict = new Dictionary<string, int> { ["a"] = 1, ["b"] = 2 };
+string key = "c";
+
 // ❌ 错：用异常做判断
 try
 {
-    int v = dict[key];
+    int v1 = dict[key];
+    Console.WriteLine($"找到：{v1}");
 }
-catch (KeyNotFoundException) { return false; }
+catch (KeyNotFoundException)
+{
+    Console.WriteLine("用异常判断「不存在」：语义模糊且有性能开销");
+}
 
 // ✅ 对：用 TryXxx 模式
-if (dict.TryGetValue(key, out int v)) { /* ... */ } else { return false; }
+if (dict.TryGetValue(key, out int v2))
+{
+    Console.WriteLine($"找到：{v2}");
+}
+else
+{
+    Console.WriteLine("用 TryGetValue 判断「不存在」：无异常开销，推荐");
+}
 \`\`\`
 
 ### 九、聚合异常：AggregateException ⭐
@@ -224,6 +252,7 @@ catch (Exception ex)
 ### 十、ExceptionDispatchInfo 跨线程抛 ⭐⭐
 
 \`\`\`csharp
+using System.Runtime.ExceptionServices;
 Exception? caught = null;
 var t = Task.Run(() =>
 {
@@ -278,6 +307,26 @@ catch (InvalidOperationException ex)
 ### 一、最简单的自定义异常 ⭐⭐
 
 \`\`\`csharp
+
+
+void FindOrder(int id)
+{
+    if (id <= 0) throw new OrderNotFoundException(id);
+}
+
+try
+{
+    FindOrder(0);
+}
+catch (OrderNotFoundException ex)
+{
+    Console.WriteLine($"业务异常：{ex.Message}, OrderId={ex.OrderId}");
+}
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // 推荐：以 Exception 结尾
 public class OrderNotFoundException : Exception
 {
@@ -295,25 +344,26 @@ public class OrderNotFoundException : Exception
         OrderId = orderId;
     }
 }
-
-void FindOrder(int id)
-{
-    if (id <= 0) throw new OrderNotFoundException(id);
-}
-
-try
-{
-    FindOrder(0);
-}
-catch (OrderNotFoundException ex)
-{
-    Console.WriteLine($"业务异常：{ex.Message}, OrderId={ex.OrderId}");
-}
 \`\`\`
 
 ### 二、推荐：实现三个标准构造函数 ⭐⭐
 
 \`\`\`csharp
+
+
+// 使用自定义异常
+try
+{
+    throw new BusinessException("ERR_001", "余额不足");
+}
+catch (BusinessException ex)
+{
+    Console.WriteLine($"[{ex.ErrorCode}] {ex.Message}");
+}
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 public class BusinessException : Exception
 {
     public string ErrorCode { get; }
@@ -333,10 +383,7 @@ public class BusinessException : Exception
 ### 三、异常链：包装底层异常 ⭐⭐⭐
 
 \`\`\`csharp
-public class DataAccessException : Exception
-{
-    public DataAccessException(string message, Exception inner) : base(message, inner) { }
-}
+
 
 void SaveToDb()
 {
@@ -361,11 +408,35 @@ catch (DataAccessException ex)
     Console.WriteLine($"上层: {ex.Message}");
     Console.WriteLine($"底层: {ex.InnerException?.GetType().Name}: {ex.InnerException?.Message}");
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+public class DataAccessException : Exception
+{
+    public DataAccessException(string message, Exception inner) : base(message, inner) { }
+}
 \`\`\`
 
 ### 四、异常的序列化 ⭐
 
 \`\`\`csharp
+
+
+// 使用自定义异常
+try
+{
+    throw new NetworkException("连接超时") { };
+}
+catch (NetworkException ex)
+{
+    Console.WriteLine($"网络异常：{ex.Message}");
+}
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 // 自定义异常如果需要跨 AppDomain 序列化，加 [Serializable]
 [Serializable]
 public class NetworkException : Exception
@@ -396,24 +467,7 @@ public class NetworkException : Exception
 ### 五、领域异常设计模式 ⭐⭐⭐
 
 \`\`\`csharp
-// 1. 业务异常：用户/调用方可恢复
-public class InsufficientBalanceException : Exception
-{
-    public decimal Balance { get; }
-    public decimal Required { get; }
-    public InsufficientBalanceException(decimal balance, decimal required)
-        : base($"余额 {balance} 不足，需要 {required}")
-    {
-        Balance = balance; Required = required;
-    }
-}
 
-// 2. 系统异常：基础设施问题，调用方通常无法处理
-public class DatabaseUnavailableException : Exception
-{
-    public DatabaseUnavailableException(string message) : base(message) { }
-    public DatabaseUnavailableException(string message, Exception inner) : base(message, inner) { }
-}
 
 void Transfer(decimal balance, decimal amount)
 {
@@ -434,17 +488,35 @@ catch (DatabaseUnavailableException ex)
 {
     Console.WriteLine($"系统：{ex.Message}"); // 记录日志 + 5xx
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 1. 业务异常：用户/调用方可恢复
+public class InsufficientBalanceException : Exception
+{
+    public decimal Balance { get; }
+    public decimal Required { get; }
+    public InsufficientBalanceException(decimal balance, decimal required)
+        : base($"余额 {balance} 不足，需要 {required}")
+    {
+        Balance = balance; Required = required;
+    }
+}
+
+// 2. 系统异常：基础设施问题，调用方通常无法处理
+public class DatabaseUnavailableException : Exception
+{
+    public DatabaseUnavailableException(string message) : base(message) { }
+    public DatabaseUnavailableException(string message, Exception inner) : base(message, inner) { }
+}
 \`\`\`
 
 ### 六、用 Result 模式替代异常 ⭐⭐
 
 \`\`\`csharp
-// 某些场景下用 Result 对象比抛异常更友好
-public record Result<T>(bool IsSuccess, T? Value, string? Error)
-{
-    public static Result<T> Ok(T value) => new(true, value, null);
-    public static Result<T> Fail(string error) => new(false, default, error);
-}
+
 
 Result<int> ParseIntSafe(string s)
 {
@@ -455,6 +527,17 @@ Result<int> ParseIntSafe(string s)
 var r = ParseIntSafe("abc");
 if (r.IsSuccess) Console.WriteLine($"值={r.Value}");
 else Console.WriteLine($"错={r.Error}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 某些场景下用 Result 对象比抛异常更友好
+public record Result<T>(bool IsSuccess, T? Value, string? Error)
+{
+    public static Result<T> Ok(T value) => new(true, value, null);
+    public static Result<T> Fail(string error) => new(false, default, error);
+}
 \`\`\`
 
 > **💡 建议**：高频失败（如解析、查找）用 \`TryXxx\` 或 \`Result<T>\`；低频、不可恢复的失败用异常。
@@ -514,6 +597,8 @@ C# 提供了多种 try 变体和 using 语法糖，让资源管理、异常处�
 ### 一、using 语句（老语法） ⭐⭐⭐
 
 \`\`\`csharp
+using System.Text;
+
 // 经典 using
 using (var fs = new FileStream("/tmp/test.txt", FileMode.Create))
 using (var sw = new StreamWriter(fs, Encoding.UTF8, leaveOpen: false))
@@ -527,6 +612,7 @@ Console.WriteLine("资源已释放");
 
 \`\`\`csharp
 // C# 8+ 引入：using 声明，作用域结束时自动释放
+using System.Text;
 {
     using var fs = new FileStream("/tmp/test2.txt", FileMode.Create);
     using var sw = new StreamWriter(fs, Encoding.UTF8, leaveOpen: false);
@@ -540,6 +626,7 @@ Console.WriteLine("OK");
 
 \`\`\`csharp
 // .NET Core 3+ 引入异步释放
+using System.Text;
 await using var fs = new FileStream("/tmp/test3.txt", FileMode.Create,
     FileAccess.Write, FileShare.None, 4096, useAsync: true);
 byte[] data = Encoding.UTF8.GetBytes("async dispose");
@@ -551,6 +638,24 @@ Console.WriteLine("写入完成");
 ### 四、自定义可释放对象 ⭐⭐⭐
 
 \`\`\`csharp
+
+
+{
+    using var r = new MyResource("A");
+    r.Use();
+}
+Console.WriteLine("---");
+{
+    using var r = new MyResource("B");
+    r.Use();
+    r.Dispose(); // 显式释放（幂等）
+    r.Dispose(); // 二次释放安全
+}
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 class MyResource : IDisposable
 {
     public string Name { get; }
@@ -578,23 +683,24 @@ class MyResource : IDisposable
         Dispose();
     }
 }
-
-{
-    using var r = new MyResource("A");
-    r.Use();
-}
-Console.WriteLine("---");
-{
-    using var r = new MyResource("B");
-    r.Use();
-    r.Dispose(); // 显式释放（幂等）
-    r.Dispose(); // 二次释放安全
-}
 \`\`\`
 
 ### 五、释放模式：完整版 ⭐⭐
 
 \`\`\`csharp
+
+
+{
+    await using var fh = new FileHandler("/tmp/handler.txt");
+    Console.WriteLine("文件已打开");
+}
+// 块结束时自动 await DisposeAsync()
+Console.WriteLine("已释放");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 class FileHandler : IDisposable, IAsyncDisposable
 {
     private FileStream? _fs;
@@ -625,13 +731,6 @@ class FileHandler : IDisposable, IAsyncDisposable
         GC.SuppressFinalize(this);
     }
 }
-
-{
-    await using var fh = new FileHandler("/tmp/handler.txt");
-    Console.WriteLine("文件已打开");
-}
-// 块结束时自动 await DisposeAsync()
-Console.WriteLine("已释放");
 \`\`\`
 
 ### 六、try-finally vs using ⭐
@@ -689,13 +788,16 @@ catch (HttpRequestException ex)
 
 \`\`\`csharp
 // C# 9+：catch 后变量作用域更宽
-try { /* ... */ }
+try { throw new InvalidOperationException(\"演示异常\"); }
 catch (Exception ex)
 {
     Log(ex);
     // 后续代码仍能引用 ex
     Console.WriteLine(ex.Message);
 }
+
+// 辅助方法（局部函数）
+void Log(Exception ex) => Console.WriteLine($\"[日志] {ex.GetType().Name}: {ex.Message}\");
 \`\`\`
 
 ### 九、迭代器的 try/finally ⭐⭐
@@ -766,11 +868,15 @@ Process();
     title: '第五十八章 ILogger 日志框架',
     content: `## 第五十八章　ILogger 日志框架
 
+> ⚠️ 本章示例依赖 \`Microsoft.Extensions.Logging\` NuGet 包，在线运行沙箱没有安装该包，
+> 所以代码统一标记为「C# 片段」（不提供在线运行）。把代码复制到本地项目
+> \`dotnet add package Microsoft.Extensions.Logging\` 后即可运行。
+
 \`Microsoft.Extensions.Logging\` 是 .NET 官方日志抽象。它不直接写日志，而是通过 provider 写入到目标（控制台、文件、数据库等）。
 
 ### 一、日志级别 ⭐⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using Microsoft.Extensions.Logging;
 
 // 日志级别（从轻到重）
@@ -789,7 +895,7 @@ Console.WriteLine($"Critical    = {LogLevel.Critical}");
 
 ### 二、创建 Logger 最简方式 ⭐⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -816,7 +922,7 @@ logger.LogCritical("Critical 消息");
 
 ### 三、结构化日志 ⭐⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 ILogger logger = loggerFactory.CreateLogger("Demo");
 
 // 简单消息
@@ -831,7 +937,7 @@ logger.LogInformation("订单 {OrderId} 金额 {Amount:C}", 100, 99.99m);
 
 ### 四、占位符与作用域 ⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 占位符支持 {Property} 语法
 logger.LogInformation("用户 {UserId} 来自 {City}", 1001, "杭州");
 logger.LogInformation("计算 {A} + {B} = {Result}", 1, 2, 3);
@@ -851,7 +957,7 @@ using (logger.BeginScope("OrderId:{OrderId}", 1001))
 
 ### 五、EventId 与分类 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // EventId：给日志分组
 var loginEvent = new EventId(1001, "UserLogin");
 var logoutEvent = new EventId(1002, "UserLogout");
@@ -866,7 +972,7 @@ orderLogger.LogInformation("订单处理开始");
 
 ### 六、配置日志过滤器 ⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using var lf = LoggerFactory.Create(builder =>
 {
     builder.AddConsole();
@@ -884,7 +990,17 @@ log.LogInformation("OrderService 的 info");
 
 ### 七、LoggerMessage 高性能源生成器 ⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
+
+
+ILogger logger = loggerFactory.CreateLogger("App");
+logger.UserLogin(1001);
+logger.OrderTimeout(99, 5000);
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // .NET 6+ 引入源生成器版本，零反射
 public static partial class Log
 {
@@ -894,17 +1010,13 @@ public static partial class Log
     [LoggerMessage(EventId = 1002, Level = LogLevel.Warning, Message = "订单 {OrderId} 超时 {Timeout}ms")]
     public static partial void OrderTimeout(this ILogger logger, int orderId, int timeout);
 }
-
-ILogger logger = loggerFactory.CreateLogger("App");
-logger.UserLogin(1001);
-logger.OrderTimeout(99, 5000);
 \`\`\`
 
 > **💡 优势**：编译期生成、无反射、性能比 \`LogInformation\` 高数倍。
 
 ### 八、添加多个 Provider ⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using var lf = LoggerFactory.Create(builder =>
 {
     builder.AddConsole();
@@ -920,7 +1032,7 @@ log.LogInformation("会同时输出到控制台和调试器");
 
 ### 九、从配置加载（appsettings.json） ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 实际项目用 Configuration 加载
 // dotnet add package Microsoft.Extensions.Configuration.Json
 /*
@@ -939,7 +1051,7 @@ log.LogInformation("会同时输出到控制台和调试器");
 
 ### 十、记录异常 ⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 try
 {
     throw new InvalidOperationException("测试异常");
@@ -1008,7 +1120,72 @@ Console.WriteLine($"合计 = {sum}");
 
 ### 二、Stopwatch 高级用法 ⭐⭐
 
-\`\`\`csharp\n// 多次测量取最佳\nvoid Bench(Action act, int n = 5)\n{\n    var times = new List<long>();\n    for (int i = 0; i < n; i++)\n    {\n        var sw = Stopwatch.StartNew();\n        act();\n        sw.Stop();\n        times.Add(sw.ElapsedMilliseconds);\n    }\n    Console.WriteLine($\"min={times.Min()}ms, max={times.Max()}ms, avg={times.Average():F1}ms\");\n}\n\nBench(() =>\n{\n    long s = 0;\n    for (int i = 0; i < 1_000_000; i++) s += i;\n});\n\n// 获取高精度时间戳（不依赖 Stopwatch）\nlong ticks = Stopwatch.GetTimestamp();\ndouble seconds = (double)ticks / Stopwatch.Frequency;\nConsole.WriteLine($\"高精度：{seconds * 1e6:F2} us\");\n\`\`\`\n\n### 三、Process 性能监控 ⭐⭐\n\n\`\`\`csharp\nusing var p = Process.GetCurrentProcess();\nConsole.WriteLine($\"进程名     = {p.ProcessName}\");\nConsole.WriteLine($\"PID        = {p.Id}\");\nConsole.WriteLine($\"内存(工作集) = {p.WorkingSet64 / 1024 / 1024} MB\");\nConsole.WriteLine($\"内存(虚拟)  = {p.VirtualMemorySize64 / 1024 / 1024} MB\");\nConsole.WriteLine($\"线程数      = {p.Threads.Count}\");\nConsole.WriteLine($\"启动时间    = {p.StartTime:yyyy-MM-dd HH:mm:ss}\");\nConsole.WriteLine($\"CPU 时间    = {p.TotalProcessorTime.TotalSeconds:F2} s\");\n\n// GC 信息\nConsole.WriteLine($\"GC 0 代     = {GC.GetGeneration(p)}\");\nConsole.WriteLine($\"GC 总分配   = {GC.GetTotalMemory(false) / 1024} KB\");\n\`\`\`\n\n### 四、GC 性能监控 ⭐⭐⭐\n\n\`\`\`csharp\nlong before = GC.GetTotalMemory(true);\n// 大量分配\nvar list = new List<byte[]>();\nfor (int i = 0; i < 100; i++) list.Add(new byte[10_000]);\nlong after = GC.GetTotalMemory(false);\nConsole.WriteLine($\"分配 = {(after - before) / 1024} KB\");\n\n// 强制 GC\nGC.Collect();\nGC.WaitForPendingFinalizers();\nGC.Collect();\nConsole.WriteLine($\"GC 后 = {GC.GetTotalMemory(true) / 1024} KB\");\n\n// 各代 GC 次数\nConsole.WriteLine($\"Gen0 = {GC.CollectionCount(0)}\");\nConsole.WriteLine($\"Gen1 = {GC.CollectionCount(1)}\");\nConsole.WriteLine($\"Gen2 = {GC.CollectionCount(2)}\");\n\nlist = null;\nGC.Collect();\nConsole.WriteLine($\"释放后 Gen0 = {GC.CollectionCount(0)}\");\n\`\`\`\n\n### 五、PerformanceCounter（Windows 特定） ⭐\n\n\`\`\`csharp\n// Windows 性能计数器（仅 Windows）\n// dotnet add package System.Diagnostics.PerformanceCounter\nConsole.WriteLine(\"Windows 性能计数器：CPU、内存、IO 等\");\n\`\`\`\n\n### 六、Trace 和 Debug 输出 ⭐\n\n\`\`\`csharp\nusing System.Diagnostics;\n\nTrace.WriteLine(\"Trace 输出\");\nTrace.WriteLineIf(true, \"条件 Trace\");\nDebug.WriteLine(\"Debug 输出（仅 Debug 构建）\");\n\n// 输出到 Listeners\nTrace.Listeners.Add(new TextWriterTraceListener(Console.Out));\nTrace.WriteLine(\"通过 listener 输出\");\n\nTrace.Flush();\n\`\`\`\n\n### 七、EventSource：结构化追踪 ⭐⭐⭐\n\n\`\`\`csharp\n[EventSource(Name = \"MyApp\")]\npublic class MyEventSource : EventSource\n{\n    public static readonly MyEventSource Log = new();\n\n    [Event(1, Level = EventLevel.Informational)]\n    public void RequestStart(string url) => WriteEvent(1, url);\n\n    [Event(2, Level = EventLevel.Informational)]\n    public void RequestEnd(string url, long elapsedMs) => WriteEvent(2, url, elapsedMs);\n}\n\nMyEventSource.Log.RequestStart(\"https://example.com\");\nvar sw = Stopwatch.StartNew();\nThread.Sleep(50);\nsw.Stop();\nMyEventSource.Log.RequestEnd(\"https://example.com\", sw.ElapsedMilliseconds);\n\nConsole.WriteLine(\"EventSource 已发送事件\");\n\`\`\`\n\n### 八、Activity：分布式追踪 ⭐⭐\n\n\`\`\`csharp\nusing System.Diagnostics;\n\n// .NET 5+ 引入的 OpenTelemetry 兼容追踪\nusing var activity = new Activity(\"ProcessOrder\").Start();\nactivity?.SetTag(\"order.id\", 1001);\nactivity?.SetTag(\"order.amount\", 99.99);\n\n// 嵌套\nusing (var sub = new Activity(\"Validate\").Start())\n{\n    sub?.SetTag(\"validation.type\", \"schema\");\n    Thread.Sleep(20);\n}\n\nusing (var sub2 = new Activity(\"Save\").Start())\n{\n    sub2?.SetTag(\"db.system\", \"postgresql\");\n    Thread.Sleep(30);\n}\n\nConsole.WriteLine($\"TraceId = {Activity.Current?.TraceId}\");\nConsole.WriteLine($\"SpanId  = {Activity.Current?.SpanId}\");\nConsole.WriteLine($\"Duration = {Activity.Current?.Duration.TotalMilliseconds:F1}ms\");\n\`\`\`\n\n### 九、dotnet-counters：实时监控 ⭐⭐\n\n\`\`\`bash\n# 在终端运行：\n# dotnet tool install -g dotnet-counters\n# dotnet counters monitor --process-id <PID>\n#\n# 输出：\n#   [System.Runtime]\n#     cpu-usage                                    12.5\n#     working-set                              32.5 MB\n#     gc-heap-size                              8.2 MB\n#     gen0-gc-count                                 5\n#     gen1-gc-count                                 2\n#     gen2-gc-count                                 0\nConsole.WriteLine(\"命令行工具：dotnet-counters, dotnet-trace, dotnet-dump\");\n\`\`\`\n\n### 十、dotnet-trace 和 dotnet-dump ⭐\n\n\`\`\`bash\n# 收集调用栈采样：\n# dotnet trace collect --process-id <PID> --duration 00:00:30\n#\n# 内存转储：\n# dotnet dump collect --process-id <PID>\n# dotnet dump analyze core_xxx.dump\n# > dumpheap -stat\n# > gcroot <address>\nConsole.WriteLine(\"性能诊断三件套：counters / trace / dump\");\n\`\`\`\n\n### 十一、关键总结\n\n- \`Stopwatch\`：精确测量时间\n- \`Process\`：进程信息（CPU、内存、线程）\n- \`GC\` 类：GC 统计\n- \`EventSource\`：结构化追踪事件\n- \`Activity\`：分布式追踪（OpenTelemetry 兼容）\n- \`dotnet-counters\`：实时监控\n- \`dotnet-trace\`：CPU 采样\n- \`dotnet-dump\`：内存分析\n\n`,
+\`\`\`csharp\n// 多次测量取最佳
+using System.Diagnostics;
+void Bench(Action act, int n = 5)
+{
+    var times = new List<long>();
+    for (int i = 0; i < n; i++)
+    {
+        var sw = Stopwatch.StartNew();
+        act();
+        sw.Stop();
+        times.Add(sw.ElapsedMilliseconds);
+    }
+    Console.WriteLine($"min={times.Min()}ms, max={times.Max()}ms, avg={times.Average():F1}ms");
+}
+
+Bench(() =>
+{
+    long s = 0;
+    for (int i = 0; i < 1_000_000; i++) s += i;
+});
+
+// 获取高精度时间戳（不依赖 Stopwatch）
+long ticks = Stopwatch.GetTimestamp();
+double seconds = (double)ticks / Stopwatch.Frequency;
+Console.WriteLine($"高精度：{seconds * 1e6:F2} us");
+\`\`\`\n\n### 三、Process 性能监控 ⭐⭐\n\n\`\`\`csharp\nusing System.Diagnostics;
+using var p = Process.GetCurrentProcess();
+
+Console.WriteLine($"进程名     = {p.ProcessName}");
+Console.WriteLine($"PID        = {p.Id}");
+Console.WriteLine($"内存(工作集) = {p.WorkingSet64 / 1024 / 1024} MB");
+Console.WriteLine($"内存(虚拟)  = {p.VirtualMemorySize64 / 1024 / 1024} MB");
+Console.WriteLine($"线程数      = {p.Threads.Count}");
+Console.WriteLine($"启动时间    = {p.StartTime:yyyy-MM-dd HH:mm:ss}");
+Console.WriteLine($"CPU 时间    = {p.TotalProcessorTime.TotalSeconds:F2} s");
+
+// GC 信息
+Console.WriteLine($"GC 0 代     = {GC.GetGeneration(p)}");
+Console.WriteLine($"GC 总分配   = {GC.GetTotalMemory(false) / 1024} KB");
+\`\`\`\n\n### 四、GC 性能监控 ⭐⭐⭐\n\n\`\`\`csharp\nlong before = GC.GetTotalMemory(true);\n// 大量分配\nvar list = new List<byte[]>();\nfor (int i = 0; i < 100; i++) list.Add(new byte[10_000]);\nlong after = GC.GetTotalMemory(false);\nConsole.WriteLine($\"分配 = {(after - before) / 1024} KB\");\n\n// 强制 GC\nGC.Collect();\nGC.WaitForPendingFinalizers();\nGC.Collect();\nConsole.WriteLine($\"GC 后 = {GC.GetTotalMemory(true) / 1024} KB\");\n\n// 各代 GC 次数\nConsole.WriteLine($\"Gen0 = {GC.CollectionCount(0)}\");\nConsole.WriteLine($\"Gen1 = {GC.CollectionCount(1)}\");\nConsole.WriteLine($\"Gen2 = {GC.CollectionCount(2)}\");\n\nlist = null;\nGC.Collect();\nConsole.WriteLine($\"释放后 Gen0 = {GC.CollectionCount(0)}\");\n\`\`\`\n\n### 五、PerformanceCounter（Windows 特定） ⭐\n\n\`\`\`csharp\n// Windows 性能计数器（仅 Windows）\n// dotnet add package System.Diagnostics.PerformanceCounter\nConsole.WriteLine(\"Windows 性能计数器：CPU、内存、IO 等\");\n\`\`\`\n\n### 六、Trace 和 Debug 输出 ⭐\n\n\`\`\`csharp\nusing System.Diagnostics;\n\nTrace.WriteLine(\"Trace 输出\");\nTrace.WriteLineIf(true, \"条件 Trace\");\nDebug.WriteLine(\"Debug 输出（仅 Debug 构建）\");\n\n// 输出到 Listeners\nTrace.Listeners.Add(new TextWriterTraceListener(Console.Out));\nTrace.WriteLine(\"通过 listener 输出\");\n\nTrace.Flush();\n\`\`\`\n\n### 七、EventSource：结构化追踪 ⭐⭐⭐\n\n\`\`\`csharp\n
+
+using System.Diagnostics;
+using System.Diagnostics.Tracing;
+MyEventSource.Log.RequestStart("https://example.com");
+var sw = Stopwatch.StartNew();
+Thread.Sleep(50);
+sw.Stop();
+MyEventSource.Log.RequestEnd("https://example.com", sw.ElapsedMilliseconds);
+
+Console.WriteLine("EventSource 已发送事件");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+[EventSource(Name = "MyApp")]
+public class MyEventSource : EventSource
+{
+    public static readonly MyEventSource Log = new();
+
+    [Event(1, Level = EventLevel.Informational)]
+    public void RequestStart(string url) => WriteEvent(1, url);
+
+    [Event(2, Level = EventLevel.Informational)]
+    public void RequestEnd(string url, long elapsedMs) => WriteEvent(2, url, elapsedMs);
+}
+\`\`\`\n\n### 八、Activity：分布式追踪 ⭐⭐\n\n\`\`\`csharp\nusing System.Diagnostics;\n\n// .NET 5+ 引入的 OpenTelemetry 兼容追踪\nusing var activity = new Activity(\"ProcessOrder\").Start();\nactivity?.SetTag(\"order.id\", 1001);\nactivity?.SetTag(\"order.amount\", 99.99);\n\n// 嵌套\nusing (var sub = new Activity(\"Validate\").Start())\n{\n    sub?.SetTag(\"validation.type\", \"schema\");\n    Thread.Sleep(20);\n}\n\nusing (var sub2 = new Activity(\"Save\").Start())\n{\n    sub2?.SetTag(\"db.system\", \"postgresql\");\n    Thread.Sleep(30);\n}\n\nConsole.WriteLine($\"TraceId = {Activity.Current?.TraceId}\");\nConsole.WriteLine($\"SpanId  = {Activity.Current?.SpanId}\");\nConsole.WriteLine($\"Duration = {Activity.Current?.Duration.TotalMilliseconds:F1}ms\");\n\`\`\`\n\n### 九、dotnet-counters：实时监控 ⭐⭐\n\n\`\`\`bash\n# 在终端运行：\n# dotnet tool install -g dotnet-counters\n# dotnet counters monitor --process-id <PID>\n#\n# 输出：\n#   [System.Runtime]\n#     cpu-usage                                    12.5\n#     working-set                              32.5 MB\n#     gc-heap-size                              8.2 MB\n#     gen0-gc-count                                 5\n#     gen1-gc-count                                 2\n#     gen2-gc-count                                 0\nConsole.WriteLine(\"命令行工具：dotnet-counters, dotnet-trace, dotnet-dump\");\n\`\`\`\n\n### 十、dotnet-trace 和 dotnet-dump ⭐\n\n\`\`\`bash\n# 收集调用栈采样：\n# dotnet trace collect --process-id <PID> --duration 00:00:30\n#\n# 内存转储：\n# dotnet dump collect --process-id <PID>\n# dotnet dump analyze core_xxx.dump\n# > dumpheap -stat\n# > gcroot <address>\nConsole.WriteLine(\"性能诊断三件套：counters / trace / dump\");\n\`\`\`\n\n### 十一、关键总结\n\n- \`Stopwatch\`：精确测量时间\n- \`Process\`：进程信息（CPU、内存、线程）\n- \`GC\` 类：GC 统计\n- \`EventSource\`：结构化追踪事件\n- \`Activity\`：分布式追踪（OpenTelemetry 兼容）\n- \`dotnet-counters\`：实时监控\n- \`dotnet-trace\`：CPU 采样\n- \`dotnet-dump\`：内存分析\n\n`,
   },
 
   // ============================================================
@@ -1025,7 +1202,63 @@ Console.WriteLine($"合计 = {sum}");
 
 ### 一、xUnit 项目结构 ⭐⭐
 
-\`\`\`bash\n# 创建 xUnit 项目\n# dotnet new xunit -n MyApp.Tests\n# cd MyApp.Tests\n# dotnet add reference ../MyApp/MyApp.csproj\n# dotnet test\nConsole.WriteLine(\"xUnit 是 .NET 官方推荐的测试框架\");\n\`\`\`\n\n### 二、Fact 与 Theory ⭐⭐⭐\n\n\`\`\`csharp\n// 顶级语句不能直接写 Fact 演示，下面展示测试类写法\n// (在 xUnit 项目中)\n\n/*\npublic class CalculatorTests\n{\n    [Fact]\n    public void Add_TwoNumbers_ReturnsSum()\n    {\n        // Arrange（准备）\n        var calc = new Calculator();\n\n        // Act（执行）\n        int result = calc.Add(2, 3);\n\n        // Assert（断言）\n        Assert.Equal(5, result);\n    }\n\n    [Theory]\n    [InlineData(1, 2, 3)]\n    [InlineData(-1, 1, 0)]\n    [InlineData(0, 0, 0)]\n    [InlineData(100, 200, 300)]\n    public void Add_ManyCases(int a, int b, int expected)\n    {\n        var calc = new Calculator();\n        Assert.Equal(expected, calc.Add(a, b));\n    }\n}\n*/\n\n// 这里用 Record + 字典模拟断言\nrecord TestCase(string Name, int A, int B, int Expected);\nvar cases = new[]\n{\n    new TestCase(\"2+3\", 2, 3, 5),\n    new TestCase(\"-1+1\", -1, 1, 0),\n    new TestCase(\"0+0\", 0, 0, 0)\n};\n\nint Add(int a, int b) => a + b;\n\nint passed = 0;\nforeach (var c in cases)\n{\n    int actual = Add(c.A, c.B);\n    bool ok = actual == c.Expected;\n    if (ok) passed++;\n    Console.WriteLine($\"{(ok ? \"✓\" : \"✗\")} {c.Name}: 期望 {c.Expected} 实际 {actual}\");\n}\nConsole.WriteLine($\"通过 {passed}/{cases.Length}\");\n\`\`\`\n\n### 三、Assert 常用 API ⭐⭐⭐\n\n\`\`\`csharp\n// xUnit Assert 类的常见方法（演示语法）\nvoid Demo()\n{\n    Assert.Equal(5, 5);                    // 相等\n    Assert.NotEqual(1, 2);                 // 不等\n    Assert.True(true);                     // true\n    Assert.False(false);                   // false\n    Assert.Null(null);                     // null\n    Assert.NotNull(\"x\");                   // 非 null\n    Assert.Contains(\"hello\", \"hello world\"); // 包含子串\n    Assert.StartsWith(\"He\", \"Hello\");      // 前缀\n    Assert.Empty(new int[0]);              // 空集合\n    Assert.NotEmpty(new[] { 1 });          // 非空\n    Assert.InRange(5, 1, 10);              // 范围内\n    Assert.Throws<InvalidOperationException>(() => throw new InvalidOperationException());\n    await Assert.ThrowsAsync<HttpRequestException>(async () => { await Task.Yield(); throw new HttpRequestException(); });\n}\n\nConsole.WriteLine(\"Assert API 已就绪\");\n\`\`\`\n\n### 四、生命周期：构造函数与 IDisposable ⭐⭐\n\n\`\`\`csharp\n/*\npublic class DatabaseTests : IDisposable\n{\n    private readonly Database _db;\n\n    public DatabaseTests()\n    {\n        // 每个测试方法前都执行（构造函数 = Setup）\n        _db = new Database(\":memory:\");\n        _db.InitSchema();\n    }\n\n    public void Dispose()\n    {\n        // 每个测试方法后都执行\n        _db.Dispose();\n    }\n\n    [Fact]\n    public void Insert_Works()\n    {\n        _db.Insert(\"key\", \"value\");\n        Assert.Equal(\"value\", _db.Get(\"key\"));\n    }\n}\n*/\n\nConsole.WriteLine(\"每个测试方法 new 一个新实例，结束后 Dispose()\");\n\`\`\`\n\n### 五、IClassFixture：跨测试共享资源 ⭐⭐\n\n\`\`\`csharp\n/*\npublic class DatabaseFixture : IDisposable\n{\n    public Database Db { get; }\n    public DatabaseFixture() { Db = new Database(\":memory:\"); Db.InitSchema(); }\n    public void Dispose() => Db.Dispose();\n}\n\npublic class UserTests : IClassFixture<DatabaseFixture>\n{\n    private readonly Database _db;\n    public UserTests(DatabaseFixture fixture) { _db = fixture.Db; }\n\n    [Fact]\n    public void AddUser() { _db.AddUser(\"alice\"); Assert.Equal(1, _db.UserCount); }\n}\n*/\n\nConsole.WriteLine(\"IClassFixture：所有测试共享一个 fixture 实例\");\n\`\`\`\n\n### 六、CollectionFixture：跨类共享 ⭐\n\n\`\`\`csharp\n/*\n[CollectionDefinition(\"Database collection\")]\npublic class DatabaseCollection : ICollectionFixture<DatabaseFixture> { }\n\n[Collection(\"Database collection\")]\npublic class UserTests { /* uses shared Db */ }\n\n[Collection(\"Database collection\")]\npublic class OrderTests { /* uses shared Db */ }\n*/\n\nConsole.WriteLine(\"ICollectionFixture：多个测试类共享同一 fixture\");\n\`\`\`\n\n### 七、Mock：Moq 框架 ⭐⭐\n\n\`\`\`csharp\n// dotnet add package Moq\n/*\npublic interface IEmailSender { void Send(string to, string body); }\n\n[Fact]\npublic void Register_SendsWelcome()\n{\n    // Arrange\n    var mock = new Mock<IEmailSender>();\n    var service = new UserService(mock.Object);\n\n    // Act\n    service.Register(\"alice@example.com\");\n\n    // Assert\n    mock.Verify(s => s.Send(\"alice@example.com\", It.IsAny<string>()), Times.Once);\n}\n*/\n\nConsole.WriteLine(\"Moq：模拟接口，验证调用\");\n\`\`\`\n\n### 八、测试命名规范 ⭐\n\n\`\`\`csharp\n// 推荐：MethodName_StateUnderTest_ExpectedBehavior\n// [Fact]\n// public void Add_NegativeAndPositive_ReturnsSum()\n// [Fact]\n// public void Parse_EmptyString_ThrowsArgumentException()\n// [Fact]\n// public void Transfer_InsufficientBalance_ThrowsException()\nConsole.WriteLine(\"命名：方法_条件_期望\");\n\`\`\`\n\n### 九、运行测试 ⭐⭐\n\n\`\`\`bash\n# 终端命令：\n# dotnet test                       # 运行所有测试\n# dotnet test --filter \"FullyQualifiedName~Add\"   # 按名过滤\n# dotnet test --logger \"console;verbosity=detailed\"\n# dotnet test /p:CollectCoverage=true /p:CoverageReportFormat=cobertura\n# dotnet tool install -g dotnet-coverage\nConsole.WriteLine(\"dotnet test 是测试入口\");\n\`\`\`\n\n### 十、关键总结\n\n- \`[Fact]\`：单个测试\n- \`[Theory] + [InlineData(...)\`：参数化测试\n- \`Assert.Equal/True/Throws/Contains/...\`：断言\n- 构造函数 = \`SetUp\`，\`Dispose\` = \`TearDown\`\n- \`IClassFixture<T>\`：类内共享资源\n- \`ICollectionFixture<T>\`：跨类共享\n- \`Mock<T>\`（Moq）：模拟依赖\n- 命名：\`方法_场景_期望\`\n- 覆盖率：coverlet + reportgenerator\n\n**测试金字塔**：\n- 70% 单元测试（快、独立）\n- 20% 集成测试（DB、外部服务）\n- 10% E2E 测试（浏览器、用户旅程）\n\n`,
+\`\`\`bash\n# 创建 xUnit 项目\n# dotnet new xunit -n MyApp.Tests\n# cd MyApp.Tests\n# dotnet add reference ../MyApp/MyApp.csproj\n# dotnet test\nConsole.WriteLine(\"xUnit 是 .NET 官方推荐的测试框架\");\n\`\`\`\n\n### 二、Fact 与 Theory ⭐⭐⭐\n\n\`\`\`csharp\n// 顶级语句不能直接写 Fact 演示，下面展示测试类写法
+// (在 xUnit 项目中)
+
+/*
+public class CalculatorTests
+{
+    [Fact]
+    public void Add_TwoNumbers_ReturnsSum()
+    {
+        // Arrange（准备）
+        var calc = new Calculator();
+
+        // Act（执行）
+        int result = calc.Add(2, 3);
+
+        // Assert（断言）
+        Assert.Equal(5, result);
+    }
+
+    [Theory]
+    [InlineData(1, 2, 3)]
+    [InlineData(-1, 1, 0)]
+    [InlineData(0, 0, 0)]
+    [InlineData(100, 200, 300)]
+    public void Add_ManyCases(int a, int b, int expected)
+    {
+        var calc = new Calculator();
+        Assert.Equal(expected, calc.Add(a, b));
+    }
+}
+*/
+
+var cases = new[]
+{
+    new TestCase("2+3", 2, 3, 5),
+    new TestCase("-1+1", -1, 1, 0),
+    new TestCase("0+0", 0, 0, 0)
+};
+
+int Add(int a, int b) => a + b;
+
+int passed = 0;
+foreach (var c in cases)
+{
+    int actual = Add(c.A, c.B);
+    bool ok = actual == c.Expected;
+    if (ok) passed++;
+    Console.WriteLine($"{(ok ? "✓" : "✗")} {c.Name}: 期望 {c.Expected} 实际 {actual}");
+}
+Console.WriteLine($"通过 {passed}/{cases.Length}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+// 这里用 Record + 字典模拟断言
+record TestCase(string Name, int A, int B, int Expected);
+\`\`\`\n\n### 三、Assert 常用 API ⭐⭐⭐\n\n\`\`\`csharp-snippet\n// xUnit Assert 类的常见方法（演示语法）\nvoid Demo()\n{\n    Assert.Equal(5, 5);                    // 相等\n    Assert.NotEqual(1, 2);                 // 不等\n    Assert.True(true);                     // true\n    Assert.False(false);                   // false\n    Assert.Null(null);                     // null\n    Assert.NotNull(\"x\");                   // 非 null\n    Assert.Contains(\"hello\", \"hello world\"); // 包含子串\n    Assert.StartsWith(\"He\", \"Hello\");      // 前缀\n    Assert.Empty(new int[0]);              // 空集合\n    Assert.NotEmpty(new[] { 1 });          // 非空\n    Assert.InRange(5, 1, 10);              // 范围内\n    Assert.Throws<InvalidOperationException>(() => throw new InvalidOperationException());\n    await Assert.ThrowsAsync<HttpRequestException>(async () => { await Task.Yield(); throw new HttpRequestException(); });\n}\n\nConsole.WriteLine(\"Assert API 已就绪\");\n\`\`\`\n\n### 四、生命周期：构造函数与 IDisposable ⭐⭐\n\n\`\`\`csharp\n/*\npublic class DatabaseTests : IDisposable\n{\n    private readonly Database _db;\n\n    public DatabaseTests()\n    {\n        // 每个测试方法前都执行（构造函数 = Setup）\n        _db = new Database(\":memory:\");\n        _db.InitSchema();\n    }\n\n    public void Dispose()\n    {\n        // 每个测试方法后都执行\n        _db.Dispose();\n    }\n\n    [Fact]\n    public void Insert_Works()\n    {\n        _db.Insert(\"key\", \"value\");\n        Assert.Equal(\"value\", _db.Get(\"key\"));\n    }\n}\n*/\n\nConsole.WriteLine(\"每个测试方法 new 一个新实例，结束后 Dispose()\");\n\`\`\`\n\n### 五、IClassFixture：跨测试共享资源 ⭐⭐\n\n\`\`\`csharp\n/*\npublic class DatabaseFixture : IDisposable\n{\n    public Database Db { get; }\n    public DatabaseFixture() { Db = new Database(\":memory:\"); Db.InitSchema(); }\n    public void Dispose() => Db.Dispose();\n}\n\npublic class UserTests : IClassFixture<DatabaseFixture>\n{\n    private readonly Database _db;\n    public UserTests(DatabaseFixture fixture) { _db = fixture.Db; }\n\n    [Fact]\n    public void AddUser() { _db.AddUser(\"alice\"); Assert.Equal(1, _db.UserCount); }\n}\n*/\n\nConsole.WriteLine(\"IClassFixture：所有测试共享一个 fixture 实例\");\n\`\`\`\n\n### 六、CollectionFixture：跨类共享 ⭐\n\n\`\`\`csharp-snippet\n/*\n[CollectionDefinition(\"Database collection\")]\npublic class DatabaseCollection : ICollectionFixture<DatabaseFixture> { }\n\n[Collection(\"Database collection\")]\npublic class UserTests { /* uses shared Db */ }\n\n[Collection(\"Database collection\")]\npublic class OrderTests { /* uses shared Db */ }\n*/\n\nConsole.WriteLine(\"ICollectionFixture：多个测试类共享同一 fixture\");\n\`\`\`\n\n### 七、Mock：Moq 框架 ⭐⭐\n\n\`\`\`csharp\n// dotnet add package Moq\n/*\npublic interface IEmailSender { void Send(string to, string body); }\n\n[Fact]\npublic void Register_SendsWelcome()\n{\n    // Arrange\n    var mock = new Mock<IEmailSender>();\n    var service = new UserService(mock.Object);\n\n    // Act\n    service.Register(\"alice@example.com\");\n\n    // Assert\n    mock.Verify(s => s.Send(\"alice@example.com\", It.IsAny<string>()), Times.Once);\n}\n*/\n\nConsole.WriteLine(\"Moq：模拟接口，验证调用\");\n\`\`\`\n\n### 八、测试命名规范 ⭐\n\n\`\`\`csharp\n// 推荐：MethodName_StateUnderTest_ExpectedBehavior\n// [Fact]\n// public void Add_NegativeAndPositive_ReturnsSum()\n// [Fact]\n// public void Parse_EmptyString_ThrowsArgumentException()\n// [Fact]\n// public void Transfer_InsufficientBalance_ThrowsException()\nConsole.WriteLine(\"命名：方法_条件_期望\");\n\`\`\`\n\n### 九、运行测试 ⭐⭐\n\n\`\`\`bash\n# 终端命令：\n# dotnet test                       # 运行所有测试\n# dotnet test --filter \"FullyQualifiedName~Add\"   # 按名过滤\n# dotnet test --logger \"console;verbosity=detailed\"\n# dotnet test /p:CollectCoverage=true /p:CoverageReportFormat=cobertura\n# dotnet tool install -g dotnet-coverage\nConsole.WriteLine(\"dotnet test 是测试入口\");\n\`\`\`\n\n### 十、关键总结\n\n- \`[Fact]\`：单个测试\n- \`[Theory] + [InlineData(...)\`：参数化测试\n- \`Assert.Equal/True/Throws/Contains/...\`：断言\n- 构造函数 = \`SetUp\`，\`Dispose\` = \`TearDown\`\n- \`IClassFixture<T>\`：类内共享资源\n- \`ICollectionFixture<T>\`：跨类共享\n- \`Mock<T>\`（Moq）：模拟依赖\n- 命名：\`方法_场景_期望\`\n- 覆盖率：coverlet + reportgenerator\n\n**测试金字塔**：\n- 70% 单元测试（快、独立）\n- 20% 集成测试（DB、外部服务）\n- 10% E2E 测试（浏览器、用户旅程）\n\n`,
   },
 ];
 

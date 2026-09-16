@@ -736,6 +736,17 @@ Memory<int> slice = memory.Slice(2, 5);  // 索引 2-6：{3, 4, 5, 6, 7}
 Span<int> span = slice.Span;
 Console.WriteLine($"Memory 切片：{string.Join(", ", span.ToArray())}");
 
+var processor = new DataProcessor(new byte[] { 1, 2, 3 });
+processor.Process();
+
+// ReadOnlyMemory<T>：只读版本
+ReadOnlyMemory<char> textMem = "Hello, Span!".AsMemory();
+Console.WriteLine($"Memory 长度：{textMem.Length}");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // Memory<T> 可以存储在字段中
 class DataProcessor
 {
@@ -752,13 +763,6 @@ class DataProcessor
         Console.WriteLine($"处理 {span.Length} 字节");
     }
 }
-
-var processor = new DataProcessor(new byte[] { 1, 2, 3 });
-processor.Process();
-
-// ReadOnlyMemory<T>：只读版本
-ReadOnlyMemory<char> textMem = "Hello, Span!".AsMemory();
-Console.WriteLine($"Memory 长度：{textMem.Length}");
 \`\`\`
 
 ### 六、Span<T> vs Memory<T> vs Array
@@ -911,6 +915,7 @@ foreach (object item in arrayList)
 // 拆箱（Unboxing）：object → 值类型，需要类型检查和内存复制
 
 // 装箱示例
+using System.Collections;
 int number = 42;
 object boxed = number;  // 装箱：在堆上分配内存，复制值
 Console.WriteLine($"装箱后的值：{boxed}");
@@ -957,6 +962,7 @@ foreach (int item in genericList)
 ### 四、ArrayList 的其他操作
 
 \`\`\`csharp
+using System.Collections;
 ArrayList list = new ArrayList { 5, 2, 8, 1, 9, 3 };
 
 // 排序
@@ -1002,6 +1008,7 @@ Console.WriteLine($"清空后数量：{list.Count}");
 // 4. 没有编译时类型检查
 
 // ❌ 旧式写法（ArrayList）
+using System.Collections;
 ArrayList oldList = new ArrayList();
 oldList.Add(123);
 oldList.Add("hello");  // 可以混入不同类型

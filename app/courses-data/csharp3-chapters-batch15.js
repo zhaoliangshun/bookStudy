@@ -28,11 +28,12 @@ const chapters = [
 
 ### 一、命名空间声明 ⭐⭐⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 命名空间用于避免类型名称冲突，逻辑上组织代码
 // 命名空间可以嵌套
 
 // 1. 传统命名空间声明
+using MyCompany.MyProject.Data;
 namespace MyCompany.MyProject.Data
 {
     public class UserRepository
@@ -50,7 +51,7 @@ var repo = new MyCompany.MyProject.Data.UserRepository();
 repo.Save("张三");
 
 // 使用 using 指令简化
-using MyCompany.MyProject.Data;
+
 var repo2 = new UserRepository();                  // 不需要全限定名
 
 // 3. 文件作用域命名空间（C# 10+，推荐）
@@ -82,6 +83,12 @@ Outer.Inner.NestedClass.Hello();
 // 1. using 命名空间（传统用法）
 using System;
 using System.Collections.Generic;
+using static System.Math;
+using static System.Console;
+using IO = System.IO;
+using StringList = System.Collections.Generic.List<string>;
+using System;
+using System.Collections.Generic;
 
 // 2. using static：导入静态成员（C# 6+）
 using static System.Math;                          // 导入 Math 的所有静态方法
@@ -92,11 +99,11 @@ WriteLine($"PI = {PI}");                           // 无需 Math.PI、Console.W
 WriteLine($"Sqrt(16) = {Sqrt(16)}");              // 无需 Math.Sqrt
 
 // 3. using alias：命名空间别名
-using IO = System.IO;                              // 命名空间别名
+                              // 命名空间别名
 var file = IO.File.ReadAllText("/tmp/test.txt");
 
 // 4. using alias：类型别名
-using StringList = System.Collections.Generic.List<string>;  // 类型别名
+  // 类型别名
 StringList list = new() { "a", "b", "c" };
 WriteLine($"StringList: {string.Join(", ", list)}");
 
@@ -274,24 +281,29 @@ Console.WriteLine($"BaseType: {personType.BaseType?.Name}");  // 基类
 // GetConstructors：获取构造函数
 // GetEvents：获取事件
 // GetInterfaces：获取实现的接口
+
+// 反射演示用的类型
+public class Person
+{
+    public string Name { get; set; } = "";
+    private int _age;
+
+    public void SetAge(int age) => _age = age;
+    public int GetAge() => _age;
+
+    private void SecretMethod() => Console.WriteLine("私有方法（反射可以调用）");
+
+    public override string ToString() => $"Person(Name={Name}, Age={_age})";
+}
 \`\`\`
 
 ### 二、获取属性和方法 ⭐⭐⭐
 
 \`\`\`csharp
-// 定义示例类型
-class Person
-{
-    public int Id { get; set; }
-    public string Name { get; set; } = "";
-    private int _age;
 
-    public int GetAge() => _age;
-    public void SetAge(int age) => _age = age;
-    private void SecretMethod() => Console.WriteLine("私有方法");
-}
 
 // 1. GetProperties：获取属性
+using System.Reflection;
 Type personType = typeof(Person);
 PropertyInfo[] props = personType.GetProperties();  // 获取所有公开属性
 Console.WriteLine("属性:");
@@ -331,12 +343,29 @@ foreach (FieldInfo field in fields)
 {
     Console.WriteLine($"  {field.FieldType.Name} {field.Name}");
 }
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+// 定义示例类型
+class Person
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    private int _age;
+
+    public int GetAge() => _age;
+    public void SetAge(int age) => _age = age;
+    private void SecretMethod() => Console.WriteLine("私有方法");
+}
 \`\`\`
 
 ### 三、动态创建对象和调用方法 ⭐⭐⭐
 
 \`\`\`csharp
 // 1. Activator.CreateInstance：动态创建对象
+using System.Reflection;
 Type personType = typeof(Person);
 
 // 创建实例（调用无参构造函数）
@@ -367,6 +396,20 @@ secretMethod?.Invoke(personObj, null);             // 输出: 私有方法
 // 假设有 public Person(string name, int age)
 // ConstructorInfo? ctor = personType.GetConstructor(new[] { typeof(string), typeof(int) });
 // object? person = ctor?.Invoke(new object[] { "李四", 25 });
+
+// 反射演示用的类型
+public class Person
+{
+    public string Name { get; set; } = "";
+    private int _age;
+
+    public void SetAge(int age) => _age = age;
+    public int GetAge() => _age;
+
+    private void SecretMethod() => Console.WriteLine("私有方法（反射可以调用）");
+
+    public override string ToString() => $"Person(Name={Name}, Age={_age})";
+}
 \`\`\`
 
 ### 四、程序集加载 ⭐⭐
@@ -444,6 +487,20 @@ Console.WriteLine($"反射调用: {sw.ElapsedMilliseconds}ms");
 // ✅ 适合：框架开发、ORM、序列化、依赖注入容器
 // ❌ 不适合：性能敏感的代码、业务逻辑
 Console.WriteLine("反射适合框架层，不适合性能敏感的业务代码");
+
+// 反射演示用的类型
+public class Person
+{
+    public string Name { get; set; } = "";
+    private int _age;
+
+    public void SetAge(int age) => _age = age;
+    public int GetAge() => _age;
+
+    private void SecretMethod() => Console.WriteLine("私有方法（反射可以调用）");
+
+    public override string ToString() => $"Person(Name={Name}, Age={_age})";
+}
 \`\`\`
 
 ### 六、关键总结
@@ -485,7 +542,37 @@ Console.WriteLine("反射适合框架层，不适合性能敏感的业务代码"
 ### 一、使用内置特性 ⭐⭐⭐
 
 \`\`\`csharp
+#define DEMO  // 必须在文件第一行
+
 // .NET 提供了大量内置特性
+
+new MyService().DoWork();
+
+// 3. [Conditional]：条件编译
+
+DebugHelper.DebugLog("调试信息");                  // 未定义 DEMO 时不编译此调用
+
+// 4. 其他常用特性
+// [Serializable] - 标记可序列化
+// [Flags] - 枚举可作为位标志
+// [DebuggerDisplay] - 自定义调试器显示
+// [EditorBrowsable] - 控制 IntelliSense 可见性
+// [MethodImpl(MethodImplOptions.AggressiveInlining)] - 建议内联
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+class DebugHelper
+{
+    [System.Diagnostics.Conditional("DEMO")]       // 只在定义了 DEMO 符号时编译
+    public static void DebugLog(string message)
+    {
+        Console.WriteLine($"[DEBUG] {message}");
+    }
+}
 
 // 1. [Obsolete]：标记已过时
 class LegacyApi
@@ -531,34 +618,26 @@ class MyService
         // 输出: [Program.cs:42] DoWork: 开始工作
     }
 }
-
-new MyService().DoWork();
-
-// 3. [Conditional]：条件编译
-#define DEBUG  // 或通过项目配置定义
-
-class DebugHelper
-{
-    [System.Diagnostics.Conditional("DEBUG")]       // 只在 DEBUG 模式下编译
-    public static void DebugLog(string message)
-    {
-        Console.WriteLine($"[DEBUG] {message}");
-    }
-}
-
-DebugHelper.DebugLog("调试信息");                  // Release 模式下不编译此调用
-
-// 4. 其他常用特性
-// [Serializable] - 标记可序列化
-// [Flags] - 枚举可作为位标志
-// [DebuggerDisplay] - 自定义调试器显示
-// [EditorBrowsable] - 控制 IntelliSense 可见性
-// [MethodImpl(MethodImplOptions.AggressiveInlining)] - 建议内联
 \`\`\`
 
 ### 二、自定义特性 ⭐⭐⭐
 
 \`\`\`csharp
+using System.Reflection;
+
+// 通过反射读取自定义特性
+var serviceType = typeof(MyService);
+foreach (var author in serviceType.GetCustomAttributes<AuthorAttribute>())
+{
+    Console.WriteLine($"类作者：{author.Name} {author.Email} v{author.Version}");
+}
+
+var method = serviceType.GetMethod("ProcessData")!;
+var methodAuthor = method.GetCustomAttribute<AuthorAttribute>();
+Console.WriteLine($"方法作者：{methodAuthor?.Name}");
+
+new MyService().ProcessData();
+
 // 1. 定义自定义特性
 // 特性类必须以 Attribute 结尾
 [AttributeUsage(
@@ -592,6 +671,9 @@ public class MyService
     }
 }
 
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 // 3. 定义更多自定义特性
 [AttributeUsage(AttributeTargets.Method)]
 public class LogExecutionAttribute : Attribute
@@ -609,10 +691,13 @@ public enum LogLevel { Debug, Info, Warning, Error }
 // 通过反射读取特性
 
 // 1. 读取类上的特性
+using System.Reflection;
 Type serviceType = typeof(MyService);
 
 // 获取特定特性
-AuthorAttribute? author = serviceType.GetCustomAttribute<AuthorAttribute>();
+// AllowMultiple = true 时可能有多个同名特性，GetCustomAttribute 会抛 AmbiguousMatchException，
+// 用 GetCustomAttributes 取第一个更稳妥
+AuthorAttribute? author = serviceType.GetCustomAttributes<AuthorAttribute>().FirstOrDefault();
 if (author != null)
 {
     Console.WriteLine($"作者: {author.Name}");
@@ -650,12 +735,49 @@ foreach (var attr in allAttributes)
 {
     Console.WriteLine($"  {attr.GetType().Name}");
 }
+
+// 上一节定义的自定义特性（这里补齐，保证本段代码能独立运行）
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Property,
+    AllowMultiple = true, Inherited = true)]
+public class AuthorAttribute : Attribute
+{
+    public string Name { get; }
+    public string Email { get; set; } = "";
+    public string Version { get; set; } = "1.0";
+
+    public AuthorAttribute(string name) => Name = name;
+}
+
+[Author("张三", Email = "zhangsan@example.com", Version = "2.0")]
+[Author("李四")]
+public class MyService
+{
+    [Author("王五")]
+    public void ProcessData() => Console.WriteLine("处理数据...");
+}
 \`\`\`
 
 ### 四、特性实战：验证框架 ⭐⭐
 
 \`\`\`csharp
 // 构建一个简单的验证框架
+
+// 4. 测试验证
+using System.Reflection;
+var user = new User { Name = "", Age = 150 };
+var errors = Validator.Validate(user);
+Console.WriteLine("验证结果:");
+foreach (var error in errors)
+{
+    Console.WriteLine($"  ❌ {error}");
+}
+// 输出:
+//   ❌ Name 是必填项
+//   ❌ Age 必须在 1 到 120 之间
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 
 // 1. 定义验证特性
 [AttributeUsage(AttributeTargets.Property)]
@@ -729,18 +851,6 @@ class Validator
         return errors;
     }
 }
-
-// 4. 测试验证
-var user = new User { Name = "", Age = 150 };
-var errors = Validator.Validate(user);
-Console.WriteLine("验证结果:");
-foreach (var error in errors)
-{
-    Console.WriteLine($"  ❌ {error}");
-}
-// 输出:
-//   ❌ Name 是必填项
-//   ❌ Age 必须在 1 到 120 之间
 \`\`\`
 
 ### 五、关键总结
@@ -858,8 +968,6 @@ if (ch is 'A' or 'B' or 'C')                      // 逻辑或
 // 1. 属性模式（Property Pattern）
 // 匹配对象的属性值
 
-record Person(string Name, int Age, string? City = null);
-
 Person person = new("张三", 30, "北京");
 
 // 属性模式匹配
@@ -872,10 +980,6 @@ string description = person switch
     _ => "其他"
 };
 Console.WriteLine($"{person.Name}: {description}");
-
-// 嵌套属性模式
-record Address(string Street, string City);
-record Employee(string Name, Address Address);
 
 var emp = new Employee("李四", new Address("长安街", "北京"));
 
@@ -905,11 +1009,23 @@ Console.WriteLine($"({point.X}, {point.Y}): {quadrant}");
 Person p = new("王五", 25);
 string result = p switch
 {
-    ("王五", _) => "找到王五",                     // 位置模式：Name 匹配
-    (_, >= 60) => "长者",
-    (var name, var age) => $"{name}, {age}岁"      // 提取所有字段
+    ("王五", _, _) => "找到王五",                     // 位置模式：Name 匹配
+    (_, >= 60, _) => "长者",
+    (var name, var age, _) => $"{name}, {age}岁"      // 提取所有字段
 };
 Console.WriteLine(result);
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
+record Person(string Name, int Age, string? City = null);
+
+// 嵌套属性模式
+record Address(string Street, string City);
+
+record Employee(string Name, Address Address);
+
 \`\`\`
 
 ### 三、列表模式 ⭐⭐⭐
@@ -925,9 +1041,9 @@ string desc = numbers switch
 {
     [] => "空数组",                                // 匹配空数组
     [1, 2, 3] => "恰好是 [1, 2, 3]",               // 匹配确切元素
+    [1, .., 3] => "以 1 开头，3 结尾",             // 切片模式：匹配两端（要写在更宽的 [1, ..] / [.., 3] 之前）
     [1, ..] => "以 1 开头",                        // 切片模式：匹配开头
     [.., 3] => "以 3 结尾",                        // 切片模式：匹配结尾
-    [1, .., 3] => "以 1 开头，3 结尾",             // 切片模式：匹配两端
     [_, _, _] => "恰好 3 个元素",                  // 任意 3 个元素
     _ => "其他"
 };
@@ -1026,8 +1142,14 @@ string weather = temperature switch
 };
 Console.WriteLine($"{temperature}°C: {weather}");
 
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 record Circle(double Radius);
+
 record Rectangle(double Width, double Height);
+
 record Triangle(double Base, double Height);
 \`\`\`
 
@@ -1085,6 +1207,24 @@ record Triangle(double Base, double Height);
 //                                                 → Utils (工具类)
 
 // ===== 完整代码 =====
+
+// ---------- Program.cs (入口) ----------
+// 顶级语句入口
+// 实际使用时取消注释：
+// if (args.Length == 0)
+// {
+//     args = new[] { "stats", "/tmp" };  // 默认演示
+// }
+// Console.WriteLine("=== FileTool v1.0 ===\\n");
+// await CommandDispatcher.DispatchAsync(args);
+
+using System.Text.Json;
+Console.WriteLine("FileTool 命令行工具已就绪");
+Console.WriteLine("命令: list, search, rename, stats, config");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
 
 // ---------- Config.cs ----------
 // 配置管理类
@@ -1404,19 +1544,6 @@ public static class CommandDispatcher
 ");
     }
 }
-
-// ---------- Program.cs (入口) ----------
-// 顶级语句入口
-// 实际使用时取消注释：
-// if (args.Length == 0)
-// {
-//     args = new[] { "stats", "/tmp" };  // 默认演示
-// }
-// Console.WriteLine("=== FileTool v1.0 ===\\n");
-// await CommandDispatcher.DispatchAsync(args);
-
-Console.WriteLine("FileTool 命令行工具已就绪");
-Console.WriteLine("命令: list, search, rename, stats, config");
 \`\`\`
 
 ### 二、关键架构设计
@@ -1449,12 +1576,14 @@ Console.WriteLine("命令: list, search, rename, stats, config");
     icon: '⚙️',
     title: '第八十四章 综合项目：数据处理引擎',
     content: `## 第八十四章　综合项目：数据处理引擎
+> ⚠️ 本章是完整项目的分文件讲解（DataRecord.cs、CsvReader.cs……），单段代码不是可独立运行的程序，
+> 因此标记为「C# 片段」。把各段按顺序拼成一个控制台项目即可运行。
 
 本章构建一个通用的数据处理引擎：读取 CSV / JSON-Lines / 文本，按规则转换后输出为另一种格式。综合运用文件 I/O、序列化、集合、Linq 管道、反射插件等知识。
 
 ### 一、项目概述
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 项目名称: DataEngine
 // 功能: 通用数据处理引擎
 // 输入: CSV / JSON-Lines / 文本文件
@@ -1468,7 +1597,7 @@ Console.WriteLine("命令: list, search, rename, stats, config");
 
 ### 二、核心类型定义
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ---------- DataRecord.cs ----------
 // 一行数据：键值对字典，按列名访问
 public sealed class DataRecord
@@ -1519,7 +1648,7 @@ public interface IDataWriter
 
 ### 三、内置 Reader
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ---------- CsvReader.cs ----------
 // 支持双引号转义、内嵌逗号
 public sealed class CsvReader : IDataReader
@@ -1624,7 +1753,7 @@ public sealed class JsonLinesReader : IDataReader
 
 ### 四、内置 Writer
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ---------- CsvWriter.cs ----------
 public sealed class CsvWriter : IDataWriter
 {
@@ -1676,7 +1805,7 @@ public sealed class JsonArrayWriter : IDataWriter
 
 ### 五、内置转换器
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ---------- Transformers/UpperCaseTransformer.cs ----------
 public sealed class UpperCaseTransformer : IDataTransformer
 {
@@ -1731,7 +1860,7 @@ public sealed class ComputeTransformer : IDataTransformer
 
 ### 六、流水线引擎
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ---------- Pipeline.cs ----------
 public sealed class Pipeline
 {
@@ -1788,7 +1917,7 @@ public sealed class DataEngine
 
 ### 七、反射插件加载（可选）
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ---------- PluginLoader.cs ----------
 public static class PluginLoader
 {
@@ -1816,7 +1945,7 @@ public static class PluginLoader
 
 ### 八、调用示例
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ---------- Program.cs ----------
 // 演示：读取用户 CSV，筛选活跃用户，把用户名转大写，再加一列 "等级"
 // 输出为 JSON 数组
@@ -1866,6 +1995,8 @@ File.Delete(outPath);
     title: '第八十五章 综合项目：Web API 客户端',
     content: `## 第八十五章　综合项目：Web API 客户端
 
+> ⚠️ 本章是完整项目示例（依赖真实网络请求与多个自定义类型），单段代码不能独立运行，标记为「C# 片段」。
+
 本章构建一个完整的 Web API 客户端，综合运用 HttpClient、JSON、异步编程、重试、缓存、限流等知识。
 
 ### 一、项目概述
@@ -1882,9 +2013,66 @@ File.Delete(outPath);
 
 // ===== 完整代码 =====
 
+// ---------- 使用示例 ----------
+using System.Net;
+using System.Text.Json;
+using System.Collections.Concurrent;
+using System.Text;
+async Task DemoUsageAsync()
+{
+    // 创建客户端
+    var options = new ApiClientOptions
+    {
+        BaseAddress = new Uri("https://jsonplaceholder.typicode.com/"),
+        UserAgent = "MyApp/1.0",
+        Timeout = TimeSpan.FromSeconds(10),
+        RetryPolicy = new RetryPolicy
+        {
+            MaxRetries = 3,
+            InitialDelay = TimeSpan.FromSeconds(1),
+            BackoffMultiplier = 2.0
+        },
+        RateLimiter = new RateLimiter(10, TimeSpan.FromSeconds(1)), // 每秒 10 次
+        EnableCache = true,
+        CacheTtl = TimeSpan.FromMinutes(5)
+    };
+
+    using var client = new ApiClient(options);
+
+    // GET 请求
+    var userResponse = await client.GetAsync<User>("/users/1");
+    if (userResponse.Success)
+    {
+        Console.WriteLine($"用户: {userResponse.Data?.Name} ({userResponse.Data?.Email})");
+    }
+    else
+    {
+        Console.WriteLine($"错误: {userResponse.ErrorMessage}");
+    }
+
+    // POST 请求
+    var newPost = new { title = "新文章", body = "文章内容", userId = 1 };
+    var postResponse = await client.PostAsync<Post>("/posts", newPost);
+    if (postResponse.Success)
+    {
+        Console.WriteLine($"创建文章: ID={postResponse.Data?.Id}, Title={postResponse.Data?.Title}");
+    }
+
+    Console.WriteLine("ApiClient 演示完成");
+}
+
+// await DemoUsageAsync();
+Console.WriteLine("ApiClient 已就绪，功能: GET/POST/PUT/DELETE + 重试 + 限流 + 缓存");
+
+// 说明：C# 的顶级语句必须写在类型声明之前，
+// 所以演示代码放在前面，类型定义放在文件末尾。
+
+
 // ---------- 模型定义 ----------
 public record User(int Id, string Name, string Email, string? Phone = null);
+
 public record Post(int Id, int UserId, string Title, string Body);
+
 public record Comment(int Id, int PostId, string Name, string Email, string Body);
 
 // 通用 API 响应
@@ -2208,53 +2396,6 @@ public class ApiClientOptions
     public bool EnableCache { get; init; } = true;   // 启用缓存
     public TimeSpan? CacheTtl { get; init; }          // 缓存过期时间
 }
-
-// ---------- 使用示例 ----------
-async Task DemoUsageAsync()
-{
-    // 创建客户端
-    var options = new ApiClientOptions
-    {
-        BaseAddress = new Uri("https://jsonplaceholder.typicode.com/"),
-        UserAgent = "MyApp/1.0",
-        Timeout = TimeSpan.FromSeconds(10),
-        RetryPolicy = new RetryPolicy
-        {
-            MaxRetries = 3,
-            InitialDelay = TimeSpan.FromSeconds(1),
-            BackoffMultiplier = 2.0
-        },
-        RateLimiter = new RateLimiter(10, TimeSpan.FromSeconds(1)), // 每秒 10 次
-        EnableCache = true,
-        CacheTtl = TimeSpan.FromMinutes(5)
-    };
-
-    using var client = new ApiClient(options);
-
-    // GET 请求
-    var userResponse = await client.GetAsync<User>("/users/1");
-    if (userResponse.Success)
-    {
-        Console.WriteLine($"用户: {userResponse.Data?.Name} ({userResponse.Data?.Email})");
-    }
-    else
-    {
-        Console.WriteLine($"错误: {userResponse.ErrorMessage}");
-    }
-
-    // POST 请求
-    var newPost = new { title = "新文章", body = "文章内容", userId = 1 };
-    var postResponse = await client.PostAsync<Post>("/posts", newPost);
-    if (postResponse.Success)
-    {
-        Console.WriteLine($"创建文章: ID={postResponse.Data?.Id}, Title={postResponse.Data?.Title}");
-    }
-
-    Console.WriteLine("ApiClient 演示完成");
-}
-
-// await DemoUsageAsync();
-Console.WriteLine("ApiClient 已就绪，功能: GET/POST/PUT/DELETE + 重试 + 限流 + 缓存");
 \`\`\`
 
 ### 二、架构设计
@@ -2316,7 +2457,7 @@ Console.WriteLine("ApiClient 已就绪，功能: GET/POST/PUT/DELETE + 重试 + 
 
 ### 二、C# 生态系统
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // C# 是 .NET 生态的核心语言，周边生态非常丰富
 
 // 1. Web 开发
@@ -2358,7 +2499,7 @@ Console.WriteLine("ApiClient 已就绪，功能: GET/POST/PUT/DELETE + 重试 + 
 
 #### 1. ASP.NET Core 深入
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ASP.NET Core 是 .NET 生态中最重要的工作负载
 // 推荐学习路径：
 
@@ -2385,7 +2526,7 @@ Console.WriteLine("ApiClient 已就绪，功能: GET/POST/PUT/DELETE + 重试 + 
 
 #### 2. Entity Framework Core
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // EF Core 是 .NET 的 ORM 框架
 // 推荐学习内容：
 
@@ -2400,7 +2541,7 @@ Console.WriteLine("ApiClient 已就绪，功能: GET/POST/PUT/DELETE + 重试 + 
 
 #### 3. Blazor 前端开发
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // Blazor 让你用 C# 写前端，无需 JavaScript
 
 // Blazor Server：
@@ -2420,7 +2561,7 @@ Console.WriteLine("ApiClient 已就绪，功能: GET/POST/PUT/DELETE + 重试 + 
 
 ### 四、学习资源推荐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 官方资源
 // - Microsoft Learn (learn.microsoft.com)：官方教程
 // - .NET 文档 (docs.microsoft.com/dotnet)：API 参考
@@ -2449,7 +2590,7 @@ Console.WriteLine("ApiClient 已就绪，功能: GET/POST/PUT/DELETE + 重试 + 
 
 ### 五、.NET 的未来
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // .NET 的发展方向
 // 1. .NET 9, 10, ...：每年 11 月发布新版本
 // 2. Native AOT：更小的体积，更快的启动
