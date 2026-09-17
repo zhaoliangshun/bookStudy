@@ -205,7 +205,7 @@ dotnet workload restore # 仅当仓库声明了 MAUI / WASM 等 workload
 3. 模拟供应链事故：给库打开 \`EnablePackageValidation\` 并 pack 出 1.0.0 作为基线（\`PackageValidationBaselineVersion\`），删除一个 public 方法再 \`dotnet pack\`，观察构建失败；随后按正文配置 \`NuGetAudit\`，跑 \`dotnet list package --vulnerable --include-transitive\` 并把输出当缺陷记录处理。
 `,
     code: `// ============================================================
-// 第七十八章 SDK、项目系统与 NuGet —— 可运行演示（net8.0 / C# 12）
+// 第七十九章 SDK、项目系统与 NuGet —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 排障第一步：确认跑的是哪一份制品。Framework / OS / AssemblyVersion 对不上 commit 就是「以为发了其实没发」。
 // AssemblyInformationalVersion 应由 CI 写入 commit；现场再编译一份禁止当发布。
@@ -389,7 +389,7 @@ public partial class Order
 3. 若本机有 .NET 9+ SDK：新建 net9.0 项目，用 \`System.Threading.Lock\` 实现 \`Counter\`（\`private readonly Lock _gate = new();\`），\`Parallel.For\` 并发自增后验证总数正确；再按正文迁移注意点，同时提供 \`Sum(params int[])\` 与 \`Sum(params ReadOnlySpan<int>)\` 两个重载，用既有调用点的测试钉住重载决议没有被 Span 版本抢走。
 `,
     code: `// ============================================================
-// 第七十九章 C# 13/14 现代语法 —— 可运行演示（net8.0 / C# 12 子集）
+// 第八十章 C# 13/14 现代语法 —— 可运行演示（net8.0 / C# 12 子集）
 // ------------------------------------------------------------
 // 交互示例钉在 C# 12：集合表达式、record、属性模式现在就能用。C# 13/14 正文另标，避免旧 SDK 跑挂。
 // switch 属性模式把「大额已支付」从一串 if 收成表，漏分支编译器会提醒。
@@ -569,7 +569,7 @@ CRUD 够用时不要假装事件驱动。一条 \`UPDATE\` 能维护的不变量
 3. 生产进阶：用 NetArchTest 写架构测试，断言 Domain 程序集 \`Types.InAssembly(...).ShouldNot().HaveDependencyOn("Microsoft.EntityFrameworkCore")\`；先跑绿，再故意在 Domain 实体里加一行 \`using Microsoft.EntityFrameworkCore;\` 验证测试变红，最后把该测试纳入 CI 门禁——失败的架构测试必须红，不能只当警告。
 `,
     code: `// ============================================================
-// 第八十章 架构、SOLID 与边界 —— 可运行演示（net8.0 / C# 12）
+// 第八十一章 架构、SOLID 与边界 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 值对象在边界把非法邮箱挡掉：应用层拿到的是 EmailAddress，不是「可能缺 @ 的 string」。
 // 预期失败走 Result，不抛异常——异常留给真正意外。Trim+小写是规范化，必须发生在构造，不能散落各层。
@@ -778,7 +778,7 @@ Minimal API 可直接注入 \`CancellationToken\`，它会关联客户端断开�
 3. 生产进阶：按正文幂等键草图实现 \`IdempotencyFilter\`：以 \`(Idempotency-Key, 请求体哈希)\` 为字典键，命中且指纹相同返回第一次的 \`ApiResponse\`，指纹不同返回 422；用注入的 \`TimeProvider\` 给存储加 24h TTL，并写测试覆盖「同 key 同体重放」「同 key 换金额」「过期后 key 可复用」三个场景。
 `,
     code: `// ============================================================
-// 第八十一章 生产级 Web API 设计 —— 可运行演示（net8.0 / C# 12）
+// 第八十二章 生产级 Web API 设计 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 字段错误要聚合后一次返回；结构对齐 RFC 9457（title/code/errors），code 是机器契约。
 // .NET 10 可 builder.Services.AddValidation() 让 DataAnnotations 在 handler 前自动跑。
@@ -936,7 +936,7 @@ STRIDE 速记：假冒（认证）、篡改（完整性/HMAC）、抵赖（审�
 3. 生产进阶：扩展 demo 的 \`Redact\` 成整行脱敏 \`RedactLine(string logLine)\`：用正则把 \`Bearer\` 令牌、\`Password=\` 连接串片段与 16 位卡号替换为 \`[REDACTED]\`，同时保留 \`X-Correlation-ID\` 这类低敏字段；写单元测试断言脱敏后输出不再包含原始令牌与卡号，并让该测试进入 CI——未脱敏的日志直接红。
 `,
     code: `// ============================================================
-// 第八十二章 认证、授权与安全 —— 可运行演示（net8.0 / C# 12）
+// 第八十三章 认证、授权与安全 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 认证（你是谁）与授权（你能干什么）必须分步：没登录是 401，没权限是 403，跨租户当 404 防枚举。
 // 签名/令牌比较用 FixedTimeEquals，短路 != 会泄漏匹配前缀。
@@ -1144,7 +1144,7 @@ var sql = "SELECT * FROM Orders WHERE Code = '" + userInput + "'";
 3. 生产进阶：给 \`TryWithdraw\` 包一层 \`WithdrawWithRetry\`：捕获版本冲突后重新读取最新 \`Version\` 再试，最多 3 次，仍失败返回「409 after retries」；用注入的 \`TimeProvider\` 记录每次重试时间戳（模拟 \`ISaveChangesInterceptor\` 写 \`UpdatedAt\` 审计列），并加规则「余额不足属于业务拒绝，不进入重试」。
 `,
     code: `// ============================================================
-// 第八十三章 数据一致性与 EF Core 生产实践 —— 可运行演示（net8.0 / C# 12）
+// 第八十四章 数据一致性与 EF Core 生产实践 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 乐观并发：更新携带读到的 Version，不匹配就失败，而不是「最后写入赢」。
 // EF 里这是 [Timestamp]/xmin 对上 DbUpdateConcurrencyException，API 层映射 409/412。
@@ -1330,7 +1330,7 @@ Redis 不是银弹：热 key 会打满单分片 CPU；大 value 会拖高 P99；
 3. 生产进阶：实现简化断路器 \`CircuitBreaker\`：Closed/Open/HalfOpen 三态、连续失败 5 次打开、冷却 10 秒后半开只放行 1 个探针；对一个失败率 50% 的模拟下游发起 100 次调用并统计快速失败次数，再用 \`Stopwatch\` 对比「有断路器」与「直连」面对 100% 故障下游的总耗时差异。
 `,
     code: `// ============================================================
-// 第八十四章 HTTP 韧性、限流与缓存 —— 可运行演示（net8.0 / C# 12）
+// 第八十五章 HTTP 韧性、限流与缓存 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 指数退避必须加 jitter，否则雷鸣群会在同一毫秒打爆下游。
 // 断路器 Open 时请求根本不发出：保护的是下游线程，也让调用方快速失败。
@@ -1565,7 +1565,7 @@ Channel 只解决进程内；跨进程立刻换成 broker。不要用数据库�
 3. 生产进阶：给消费者加毒消息处理：每个 \`WorkItem\` 按固定 seed 的 \`Random\` 有 20% 概率抛 \`TransientException\`，失败按指数退避重试 3 次后进入 dead-letter 列表并输出告警；收到停止信号后先停止领取，把在途项处理完再退出（优雅停机），最后打印 processed / retried / dead-lettered 统计。
 `,
     code: `// ============================================================
-// 第八十五章 后台服务、队列与消息 —— 可运行演示（net8.0 / C# 12）
+// 第八十六章 后台服务、队列与消息 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 有界 Channel + Wait：队列满时生产者被背压，而不是把内存吃到 OOM。
 // SingleReader=true 只在真的单消费者时开启；多消费者抢同一 reader 会丢数据或抛。
@@ -1728,7 +1728,7 @@ internal static class Telemetry
 3. 生产进阶：给 demo 的 \`Meter\` 增加 \`CreateHistogram<double>("order.duration.ms")\`，用 \`Stopwatch\` 记录一次模拟下单耗时并打低基数标签 \`channel\`；再实现探针语义模拟 \`CheckLiveness()\`（恒健康）与 \`CheckReadiness(deps)\`（任一依赖 down 即不健康），写测试证明「DB down 时 readiness 失败而 liveness 仍通过」。
 `,
     code: `// ============================================================
-// 第八十六章 可观测性与运行诊断 —— 可运行演示（net8.0 / C# 12）
+// 第八十七章 可观测性与运行诊断 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // ActivitySource / Meter 的名字是契约，必须和 OTLP 的 service.name 对齐，改名等于丢掉历史仪表盘。
 // 指标标签只用低基数维度（channel/status）。orderId、userId、邮箱打进 metric 会把时间序列炸到计费上限。
@@ -1923,7 +1923,7 @@ builder 比「整个库 dump」好维护：\`OrderBuilder.Paid().WithAmount(20m)
 3. 生产进阶：给 \`RefundPolicy\` 写属性测试——用固定 seed 随机生成购买时间与当前时间偏移，断言「窗口内必可退、窗口外必不可退」，失败时打印 seed 与输入；再做一次变异演练：把 \`CanRefund\` 的 \`<=\` 改成 \`<\`，确认第 14 天边界用例立刻变红——存活的变异就是假安全感的量化。
 `,
     code: `// ============================================================
-// 第八十七章 测试策略与集成测试 —— 可运行演示（net8.0 / C# 12）
+// 第八十八章 测试策略与集成测试 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 被测类不读 DateTime.UtcNow：生产注入 TimeProvider，测试传 FakeTimeProvider.SetUtcNow。
 // Theory 把第 0/13/14/15 天钉在表里；「恰好等于窗口」是规则，不是运气。
@@ -2138,7 +2138,7 @@ TimeoutStopSec=35
 3. 生产进阶：写一份多阶段 Dockerfile（先 COPY csproj/props、再 restore --locked-mode、然后 COPY src、publish 到 aspnet 基础镜像并设 \`USER $APP_UID\`，\`.dockerignore\` 排除 bin/obj/.git）；再写一版 \`COPY . .\` 的反例，改动一个 \`.cs\` 后用 \`docker build --progress=plain\` 对比两版 restore 层是否重跑；最后接入 \`IHostApplicationLifetime\`，在日志中验证 SIGTERM 后 \`ApplicationStopping\` → 排空 → 退出的顺序。
 `,
     code: `// ============================================================
-// 第八十八章 容器、配置与优雅停机 —— 可运行演示（net8.0 / C# 12）
+// 第八十九章 容器、配置与优雅停机 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // Generic Host 收到 SIGTERM 会取消 stoppingToken；忽略它继续拉取 = 被 SIGKILL 斩在半提交。
 // catch 必须 when (stoppingToken.IsCancellationRequested)：否则会把业务超时误当成停机。
@@ -2298,7 +2298,7 @@ Conventional Commits 配合 \`feat!\` / \`BREAKING CHANGE\` 脚注，让 CI 能�
 3. 生产进阶：实现 \`FeatureFlagService\`：开关默认关闭、带 \`ExpiresAt\`（注入 \`TimeProvider\`），\`IsEnabled(flag)\` 在过期时记警告并返回默认值；再加 \`AuditLog\` 记录每次开关变更（谁、何时、哪个 flag、开或关），写测试覆盖「过期自动失效」与「变更可追溯」——对应正文「开关配置本身也是发布」。
 `,
     code: `// ============================================================
-// 第八十九章 CI/CD 与供应链 —— 可运行演示（net8.0 / C# 12）
+// 第九十章 CI/CD 与供应链 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 镜像 tag、SBOM、AssemblyInformationalVersion 必须是同一个 commit，对不上就拒绝启动。
 // 禁止在生产节点「再编译一份」；现场编译等于绕过签名与漏洞扫描。
@@ -2473,7 +2473,7 @@ Inbox 去重键建议用「消费者组 + 消息 ID」，同一事件被两个�
 3. 生产进阶：实现最小 Outbox/Inbox 内存模拟：扣库存与写入 \`OrderCreated\` outbox 行在同一个「事务」里提交（要么都发生要么都不发生），后台转发器可能重复转发（模拟 at-least-once），消费者用 \`HashSet<string>\` inbox 按消息 ID 去重保证副作用只发生一次；注入「转发后、标记完成前」的崩溃再重启，验证库存不会被扣两次。
 `,
     code: `// ============================================================
-// 第九十章 分布式系统基本功 —— 可运行演示（net8.0 / C# 12）
+// 第九十一章 分布式系统基本功 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 幂等：相同 key 返回第一次的结果。生产要存请求指纹（防同 key 不同 body）和 TTL（防无限膨胀）。
 // 本 Dictionary 是进程内存，重启即忘、无法跨实例。真实 Inbox 落库或 Redis SETNX。
@@ -2636,7 +2636,7 @@ public sealed record Receipt(Guid PaymentId, decimal Amount, DateTimeOffset Crea
 3. 生产进阶（真动手）：按正文第 1 周范围搭最小订单 API 骨架——\`global.json\` + CPM + Domain/Application/Infrastructure/Host 四项目 + \`Order\`/\`Stock\` 实体与值对象 + 「不能超卖」单元测试 + 第一次 EF 迁移；最后用 demo 的 \`Check\` 模式给自己写 5 条完成度检查（nullable enabled、警告当错误、迁移可在空库重放、测试绿、无密钥入库），全部 PASS 才进入第 2 周。
 `,
     code: `// ============================================================
-// 第九十一章 生产就绪清单 —— 可运行演示（net8.0 / C# 12）
+// 第九十二章 生产就绪清单 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // BLOCK 不清零就不能发：可回滚、密钥外置、测试绿灯属于正确性底线。
 // WARN 已知悉可放行，但要进债务列表；用 WARN 长期顶替 BLOCK 等于没有门禁。

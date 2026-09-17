@@ -617,7 +617,7 @@ var afterFirstNeg = nums.SkipWhile(n => n > 0);
 Console.WriteLine($"  SkipWhile(n>0): {string.Join(", ", afterFirstNeg)}");
 
 // ---------- 10. Chunk：算子延迟；真正枚举某一块时才分配该块数组 ----------
-Console.WriteLine("\\n=== 10. Chunk（C# 8+）：分块 ===");
+Console.WriteLine("\\n=== 10. Chunk（.NET 6+ 的 BCL API，不是 C# 语言特性）：分块 ===");
 
 var chunks = Enumerable.Range(1, 10).Chunk(3);  // 最后一块可以短于 3；Count() 会把所有块都物化一遍
 
@@ -1925,7 +1925,7 @@ Console.WriteLine($"  x SequenceEqual y: {x.SequenceEqual(y)}");
 
 Console.WriteLine($"  x Reverse: {string.Join(",", x.Reverse())}");
 
-// ---------- 13. 闭包陷阱：C# 5 起 for 的 i 每轮新变量，但 foreach 旧编译器仍共享 ----------
+// ---------- 13. 闭包陷阱：C# 5 起 foreach 每轮新变量，但 for 仍共享同一个 i ----------
 Console.WriteLine("\\n=== 13. 延迟执行陷阱 1：闭包捕获循环变量 ===");
 
 int[] src = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };

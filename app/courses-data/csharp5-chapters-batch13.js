@@ -47,7 +47,7 @@ GC 不是定时跑的，而是**按需触发**，主要触发条件：
 
 1. **第 0 代预算超限**：最常见。Gen0 空间用完时触发 Gen0 回收。
 2. **显式调用**：\`GC.Collect()\`（通常**不推荐**手调，会破坏 GC 自适应调优）。
-3. **系统低内存**：操作系统通知内存吃紧，.NET 收到 \`MemoryFailPoint\` 类似信号。
+3. **系统低内存**：操作系统发出内存压力通知，.NET 收到后会提高回收频率。（\`MemoryFailPoint\` 是另一回事：它是让应用在执行大操作前**主动探测**是否有足够内存，与 GC 触发信号无关。）
 4. **大对象分配**：≥85000 字节的对象进 LOH，可能触发完整 GC。
 
 ### 四、代（Generation 0/1/2）
@@ -67,15 +67,16 @@ GC 的核心优化是**分代假设**：
 
 **回收流程**：先回收 Gen0，幸存者晋升到 Gen1；Gen0 不够用时回收 Gen1+Gen0；以此类推。Gen2 回收代价最大，称为「Full GC」。
 
-### 五、标记-清除（Mark and Sweep）
+### 五、标记—压缩（Mark and Compact）
 
-GC 回收分两阶段：
+.NET 的 GC 本质是**标记—压缩**型，典型流程是三阶段：
 
 1. **标记（Mark）**：从 **GC Roots** 出发，遍历所有可达对象，打上「存活」标记。
    - GC Roots 包括：静态字段、方法参数/局部变量、CPU 寄存器中的引用、Finalizer 队列。
-2. **清除（Sweep）**：未标记的对象视为垃圾，回收其内存。
+2. **重定位（Relocate）**：计算每个存活对象压缩后的新地址。
+3. **压缩（Compact）**：把存活对象搬移到一起、更新所有引用，消除空隙。
 
-Gen2 回收还会**压缩（Compact）**：移动存活对象填补空隙，更新所有引用。压缩代价高但避免内存碎片。
+这里有个关键且反直觉的点：**压缩是 gen0/gen1（ephemeral）回收的常态**；反倒是 **gen2（含 LOH）在启发式判断下可能只做 sweep 而不压缩**——因为搬动大量老对象太贵。这正是**堆碎片的来源**，可用 \`GCSettings.LargeObjectHeapCompactionMode\` 与 \`GCCollectionMode\` 影响这一决策。所以不要记成"只有 Gen2 才压缩"，恰好相反。
 
 ### 六、LOH（大对象堆）vs SOH（小对象堆）
 
@@ -189,7 +190,7 @@ GC.UnregisterForFullGCNotification();
 2. 合上示例，用「垃圾回收」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第六十四章 垃圾回收 —— 可运行演示（net8.0 / C# 12）
+// 第六十五章 垃圾回收 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // GC 按代工作：短命对象应死在 Gen0；活过几次会晋升，Full GC 才是延迟杀手。
 // 本 demo 多处 GC.Collect() 只为让代数可见。生产代码几乎从不手调——会打乱自适应调优。
@@ -556,10 +557,12 @@ CA2000（“未释放对象”）会抱怨 \`new FileStream\` 没进 \`using\`�
 ### 练习
 `,
     code: `// ============================================================
-// 第六十五章 IDisposable 与 Finalizer —— 可运行演示（net8.0 / C# 12）
+// 第六十六章 IDisposable 与 Finalizer —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // Dispose 是确定性释放；Finalizer 只是「忘了 Dispose」的兜底，而且会把对象多活一代。
-// 非托管句柄优先 SafeHandle：ReleaseHandle 在 CER 里跑，AppDomain 卸载也不该漏。
+// 非托管句柄优先 SafeHandle：它靠引用计数 + 关键终结（critical finalizer）保证句柄最终被释放。
+// 注意现代 .NET 已不再支持 CER（RuntimeHelpers.PrepareConstrainedRegions / ReliabilityContract 已过时），
+// SafeHandle 的价值不在 CER，而在"引用计数 + 关键终结 + 结构化 Dispose"。
 // IAsyncDisposable 给「关闭要 IO」的资源（连接、管道）；同步 Dispose 里堵异步是死锁温床。
 // 已 Dispose 的实例再操作应抛 ObjectDisposedException，而不是静默写坏 native 内存。
 // ============================================================
@@ -725,7 +728,8 @@ sealed class MySafeHandle : SafeHandle
 
     public override bool IsInvalid => handle == IntPtr.Zero;
 
-    // SafeHandle.ReleaseHandle 受 Constrained Execution Region 保护，比自己写析构更不容易漏句柄。
+    // SafeHandle 的价值是引用计数 + 关键终结 + 结构化 Dispose，比自己写析构更不容易漏句柄。
+    // （不是因为 CER——现代 .NET 已无 CER。）
     protected override bool ReleaseHandle()
     {
         Console.WriteLine($"  [MySafeHandle] ReleaseHandle 释放句柄 {handle}");
@@ -840,7 +844,7 @@ ReadOnlySpan<char> rs = s.AsSpan();  // string 不可变，所以是只读
 
 | 类型 | 可装箱 | 可作字段 | 可跨 await | 性能 |
 | --- | --- | --- | --- | --- |
-| \`Span<T>\` | ❌ | ❌ | ❌ | 最优 |
+| \`Span<T>\` | ❌ | ❌（普通 class/struct 的字段不行；\`ref struct\` 的字段可以） | ❌ | 最优 |
 | \`Memory<T>\` | ✅ | ✅ | ✅ | 略低 |
 
 异步方法里要用 \`Memory<T>\`，在同步热路径用 \`Span<T>\`。两者互转：
@@ -898,9 +902,9 @@ ReadOnlySpan<char> pass = span[(sep + 1)..]; // "pass=123"
 \`Span<T>\` 是 \`ref struct\`，编译器对它有严格限制：
 
 - ❌ 不能装箱（\`object o = span;\` 编译错误）。
-- ❌ 不能作为 class/struct 的字段（除非外层也是 ref struct）。
+- ❌ 不能作为普通 class/struct 的字段（\`ref\` 字段的宿主必须是 \`ref struct\`）；**但作为 \`ref struct\` 的字段是可以的**。所以准确表述是"普通类型的字段不行"，不是"一概不能作字段"。
 - ❌ 不能跨 \`await\` / \`yield\`。
-- ❌ 不能实现接口（C# 7.2 限制，C# 11 起部分放宽）。
+- ❌ 不能实现接口（C# 7.2 起禁止；**C# 13 / .NET 9** 才允许 ref struct 实现接口，配合泛型上的 \`allows ref struct\` 约束）。注意 C# 11 放宽的是 \`ref\` 字段与 \`scoped\`，不是接口——两者别记混。
 - ❌ 不能用 \`Lambda\` 捕获。
 
 这些限制是为了防止指向栈内存或短生命周期内存的引用逃逸。Span 可以安全指向会被 GC 移动的托管数组；运行时会跟踪托管内部引用。关键约束是 Span 不能比它引用的内存活得更久，也不能跨越可能挂起方法的 \`await\` / \`yield\`。
@@ -981,7 +985,7 @@ string result = string.Create(9, 42, (span, value) =>
 ### 练习
 `,
     code: `// ============================================================
-// 第六十六章 Span 与 Memory —— 可运行演示（net8.0 / C# 12）
+// 第六十七章 Span 与 Memory —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // Span<T> 是 ref struct：不能进 class 字段、不能跨 await、不能装箱。跨异步边界用 Memory<T>。
 // Slice 是视图不是拷贝：改 middle[0] 就是改原数组。把 Span 传出方法后，底层数组若已归还/出栈即悬空。
@@ -1211,7 +1215,7 @@ public ref struct MyRefStruct
 | 跨 \`await\` 持有 | ❌ |
 | 跨 \`yield return\` | ❌ |
 | 在 lambda / local function 中捕获 | ❌ |
-| 实现接口（C# 11 前） | ❌ |
+| 实现接口（C# 13 前） | ❌（C# 11 放宽的是 \`ref\` 字段与 \`scoped\`，不是接口） |
 | 作为 ref struct 字段 | ✅ |
 | 作为方法参数 / 返回值 | ✅ |
 
@@ -1377,7 +1381,7 @@ C# 13 允许泛型参数标 \`allows ref struct\`，于是 \`Span<T>\` 能进更
 ### 练习
 `,
     code: `// ============================================================
-// 第六十七章 ref struct 与 ref readonly —— 可运行演示（net8.0 / C# 12）
+// 第六十八章 ref struct 与 ref readonly —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // ref struct 只能活在栈上，所以 Span 不会被装箱进堆、也不会被 async 状态机捕获。
 // ref 字段（C# 11）持有「对别人变量的引用」：赋值写的是目标，寿命不能超过被引用的局部量。
@@ -1755,21 +1759,31 @@ finally { sb.Clear(); pool.Return(sb); }  // 先清空再归还：归还后其�
 小型、短生命周期数据用 struct 避免堆分配：
 
 \`\`\`csharp
-struct Point { public int X, Y; }  // 在栈上，无 GC
+// 别把"struct = 在栈上 = 无 GC"当结论：
+// 只有作为局部变量/参数、且没有被装箱时，struct 通常才在栈（或寄存器）上；
+// 作为 class 的字段、数组元素、或被塞进 List<object> / 接口变量时，它一样在堆上（还会多一次装箱）。
+// 大 struct 传值与反复赋值反而更贵。用不用 struct 取决于是否真的消除掉分配，先测量再决定。
+struct Point { public int X, Y; }
 \`\`\`
 
 但**别盲目**——大 struct 拷贝开销可能超过 GC 节省。
 
 ### 四、Bit Tricks：位运算替代算术
 
-- \`x & (n - 1)\` 替代 \`x % n\`（当 n 是 2 的幂）。
-- \`x << 3\` 替代 \`x * 8\`。
-- \`x >> 1\` 替代 \`x / 2\`。
-- \`BitOperations.Log2\` / \`LeadingZeroCount\` / \`PopCount\`（.NET Core 3+ 内联硬件指令）。
+**先泼一盆冷水**：下面这些技巧对**负数并不等价**——C# 里 \`-3 % 4 == -3\` 而 \`-3 & 3 == 1\`；\`-3 / 2 == -1\`（向零取整）而 \`-3 >> 1 == -2\`。所以只有在 \`x\` 已知非负时才成立。而且对**常量**的 2 的幂乘除取模，JIT 本来就会自动优化；除非基准测试证明确有收益，否则按可读性写 \`x % n\` / \`x / 2\`，别为了"看起来快"写出只有自己能看懂、还会踩负数坑的代码。
+
+- \`x & (n - 1)\` 替代 \`x % n\`（仅当 n 是 2 的幂 **且 x 非负**）。
+- \`x << 3\` 替代 \`x * 8\`（仅当 x 非负且不会溢出）。
+- \`x >> 1\` 替代 \`x / 2\`（仅当 x 非负）。
+- \`BitOperations.Log2\` / \`LeadingZeroCount\` / \`PopCount\`（.NET Core 3+ 内联硬件指令）——这一组是**真正值得用**的，语义与性能都好。
 
 \`\`\`csharp
-int nextPow2 = 1 << (32 - BitOperations.LeadingZeroCount((uint)x));
-int popcount = BitOperations.PopCount(0b1011_0110);  // 6
+// 向上取整到 2 的幂：直接用现成 API。
+// 手写 1 << (32 - LeadingZeroCount((uint)x)) 是错的：x 本身是 2 的幂时会翻到下一档（8 → 16），
+// 且 x >= 2^31 时 1 << 31 对 int 会溢出成负数。
+int nextPow2 = (int)BitOperations.RoundUpToPowerOf2((uint)x);
+
+int popcount = BitOperations.PopCount(0b1011_0110);  // 5（0xB6 有 5 个 1）
 \`\`\`
 
 ### 五、SIMD：向量指令
@@ -1855,7 +1869,7 @@ struct Header { public int Id; public byte Type; }  // Pack=1 紧凑布局
 ### 练习
 `,
     code: `// ============================================================
-// 第六十八章 性能优化技巧 —— 可运行演示（net8.0 / C# 12）
+// 第六十九章 性能优化技巧 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 先测分配再谈微优化：GetAllocatedBytesForCurrentThread 比「感觉慢」更接近真相。
 // 字符串 + 循环是 O(n²) 分配；StringBuilder / string.Join / string.Create 才是热路径选项。

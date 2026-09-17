@@ -1479,7 +1479,7 @@ string next = pq.Dequeue();  // "紧急任务"（优先级 1 最小）
 
 \`Queue<T>\` 内部就是**环形缓冲**：head/tail 在数组上取模前进，避免每次出队都 \`Array.Copy\`。自己实现固定容量缓冲时也是 \`(_tail + 1) % cap == _head\` 判满。不要用 \`List.RemoveAt(0)\` 冒充队列——那是 O(n)。
 
-空队列上 \`Dequeue\`/\`Peek\` 抛 \`InvalidOperationException\`。不确定是否为空（尤其并发边界）用 \`TryDequeue\` / \`TryPeek\`（现代 .NET 都有，不是「只有 .NET 6」）。
+空队列上 \`Dequeue\`/\`Peek\` 抛 \`InvalidOperationException\`。不确定是否为空（尤其并发边界）用 \`TryDequeue\` / \`TryPeek\`（自 **.NET Core 2.0** 起提供，不是「只有 .NET 6」）。
 
 ### 十、当成 IEnumerable 的坑
 
@@ -1792,7 +1792,7 @@ class PersonCollection : KeyedCollection<int, Person>
 
 ### 八、ReadOnlyDictionary<T>
 
-\`ReadOnlyDictionary\` 是 \`Dictionary\` 的只读包装。用 \`AsReadOnly()\` 创建：
+\`ReadOnlyDictionary\` 是 \`Dictionary\` 的只读包装。注意 \`Dictionary\` **没有** \`AsReadOnly()\` 方法（那是 \`List<T>.AsReadOnly()\`），字典要用构造函数包装：
 
 \`\`\`csharp
 var dict = new Dictionary<string, int>();

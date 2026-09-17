@@ -1120,7 +1120,7 @@ TTL 必须加抖动，避免整点同时过期。抖动比例 10%–20% 通常�
 | 结构 | 典型用途 | 注意 |
 | --- | --- | --- |
 | STRING | 对象 JSON、计数、分布式锁值 | 巨大 JSON 会堵网卡 |
-| HASH | 对象字段局部更新 | 无字段级 TTL |
+| HASH | 对象字段局部更新 | Redis 7.4 之前无字段级 TTL；7.4+ 可用 \`HEXPIRE\`（托管服务需确认版本） |
 | LIST | 简单队列 | 无消费确认，不适合关键投递 |
 | SET / ZSET | 去重、排行、时间窗 | 无限增长要裁剪 |
 | STREAM | 可消费组的日志 | 才接近“消息”，仍要幂等 |
@@ -1909,7 +1909,7 @@ Service 不是负载均衡器的全部：集群外流量还要 Ingress Controlle
 
 ### 三、requests/limits 与 .NET 容器 GC
 
-\`requests\` 影响调度和 HPA 基数；\`limits\` 是上限。只给 limit 不给 request 会过度承诺。内存 limit 过小 → 频繁 GC 或 **OOMKill**（133）。.NET 8+ 能感知 cgroup 限制调整堆，但仍要压测 working set。CPU limit 造成 throttling，p99 变差，看起来像“代码变慢”。
+\`requests\` 影响调度和 HPA 基数；\`limits\` 是上限。只给 limit 不给 request 会过度承诺。内存 limit 过小 → 频繁 GC 或 **OOMKill**（退出码 137 = 128 + SIGKILL）。.NET 8+ 能感知 cgroup 限制调整堆，但仍要压测 working set。CPU limit 造成 throttling，p99 变差，看起来像“代码变慢”。
 
 观察：\`working_set\`、分配速率、GC 暂停、\`cpu_throttled\`。Server GC 在容器里通常合适；超小 sidecar 才考虑 Workstation。\`DOTNET_GCHeapHardLimit\` 等只有在理解文档后使用，不要抄未知博客。
 
@@ -1999,7 +1999,8 @@ Console.WriteLine($"启动中：ready={starting.StartupCompleted && starting.Dat
 
 // ---------- 2. 优雅停机：SIGTERM 后的排水窗口 ----------
 // K8s 删除 Pod 的顺序（ terminationGracePeriodSeconds 内必须完成）：
-//   Endpoints 摘除 → 应用收到 SIGTERM → 停止接新请求 → 排空存量 → 退出。
+//   Endpoints 摘除与应用收到 SIGTERM 近似并发发生（不保证先后顺序）——
+//   这正是需要 preStop sleep 的原因：给摘流留出传播时间，别假设"先摘完再发信号"。
 // 排不干净 = 客户端看到连接被掐断的 502。
 static async Task DrainAsync(Queue<string> inflight, TimeSpan deadline)
 {
@@ -2020,7 +2021,8 @@ var inflight = new Queue<string>(["req-1", "req-2", "req-3"]);
 await DrainAsync(inflight, TimeSpan.FromSeconds(1));
 
 // ---------- 3. 资源感知：内存 limit 与 GC 模式 ----------
-// .NET 在容器里读 cgroup：limit < 80% 时 GC 保守；Server GC 按核数建堆。
+// .NET 在容器里读 cgroup：堆上限默认约为容器 memory limit 的 75%（可用
+// DOTNET_GCHeapHardLimitPercent 调整），接近上限时 GC 变激进；Server GC 按核数建堆。
 // CPU 超限被「节流」（慢），内存超限被「杀死」（OOMKill）——性质完全不同。
 static string PlanGc(int? memoryLimitMb, int cpuLimitMillis)
 {
@@ -2102,7 +2104,7 @@ Terraform state 常含数据库密码明文。后端必须加密（S3+KMS、Azur
 
 导入（import）已存在的云资源到 state 是高风险手术：地址、ID、强制新创建的属性必须逐项核对 plan。宁可先只读 \`plan\` 十遍，也不要在生产 \`apply\` 看到“将替换数据库”。替换（replace）对有状态资源等于销毁。\`lifecycle { prevent_destroy = true }\` 加在数据库、密钥保管库、关键 DNS。需要销毁时走单独 PR，标题写明不可逆。
 
-模块版本钉死，不用浮动 \`latest\`。跨团队模块要 SemVer，破坏性变量改名走主版本。文档列出必填变量和示例 \`tfvars\`（无密钥）。格式化与 \`tflint\` / \`checkov\` / \`tfsec\` 进 CI。人工评审仍不可少：静态扫描看不见“这个防火墙规则放行了合作伙伴过期 IP”。
+模块版本钉死，不用浮动 \`latest\`。跨团队模块要 SemVer，破坏性变量改名走主版本。文档列出必填变量和示例 \`tfvars\`（无密钥）。格式化与 \`tflint\` / \`checkov\` / \`trivy\` 进 CI（\`tfsec\` 已停止维护并并入 Trivy）。人工评审仍不可少：静态扫描看不见“这个防火墙规则放行了合作伙伴过期 IP”。
 
 环境晋升用同一模块版本号，像升应用版本一样升基础设施。prod 落后 staging 两个模块版本时，先补齐再发应用。密钥轮换与 IaC 的配合：IaC 只引用 vault 版本，不把值写入 tfvars。state 备份和锁丢失的恢复 runbook 要存在——锁死在崩溃的 CI 上是常见事件，解锁必须鉴权且留审计。
 
@@ -2286,7 +2288,7 @@ Little's Law：\`L = λW\`（系统中请求数 ≈ 到达率 × 平均逗留时
 
 1. 修改主 demo：把 \`iterations\` 改成 10_000 与 1_000_000 各跑三遍，观察同进程内耗时的抖动幅度；把 \`int.Parse(value.AsSpan(...))\` 换成 \`int.TryParse\` 版本对比——再想想为什么这仍然不是严谨结论（无预热、无独立进程、无多样本统计，对照正文的 BenchmarkDotNet 陷阱清单逐条打勾）。
 2. 脱离示例实现 Little's Law 容量计算器：\`Capacity(double rps, double avgLatencyMs)\` 返回所需并发数（\`rps × latency / 1000\`），再按 60% 目标利用率输出安全容量与饱和预警线；用 (500 rps, 120ms) 与 (2000 rps, 90ms) 两组数据验证。
-3. 生产场景：为毕业项目写 k6 脚本草案（stages: 2 分钟 ramp 到 200 VU、保持 5 分钟、1 分钟降回）打一个读端点，采集 p95/p99 与错误率；用 Little's Law 从实测延迟反推该并发下所需容量，把「先横向扩容还是先加缓存」的判断连同数据写进容量文档。
+3. 生产场景：为毕业项目写 k6 脚本草案打一个读端点，**必须用开放到达率模型**（\`executor: 'constant-arrival-rate'\`，\`rate: 200, timeUnit: '1s'\` 配 \`preAllocatedVUs\`/\`maxVUs\`），采集 p95/p99 与错误率；刻意再用 \`ramping-vus\`（stages: 2 分钟 ramp 到 200 VU、保持 5 分钟、1 分钟降回）跑一遍，对比两条曲线在拐点后的差异，体会固定 VU 如何把排队藏成 coordinated omission；用 Little's Law 从实测延迟反推该并发下所需容量，把「先横向扩容还是先加缓存」的判断连同数据写进容量文档。
 
 
 
@@ -2458,7 +2460,7 @@ Console.WriteLine(budgetUsed > 1 ? "SLO 已违反" : "仍在预算内");
 // 6h 窗口 > 6 = 需要关注。速度×时间=消耗，快烧比慢烧危险得多。
 var windows = new (string Name, long Total, long Failed, double Threshold)[]
 {
-    ("1h",  7_000,   120, 14.4),  // 错误率 1.71%：燃烧 17.1× → 立即页面（半小时烧掉一天预算）
+    ("1h",  7_000,   120, 14.4),  // 错误率 1.71%：燃烧 17.1× → 立即页面（约 1.4 小时烧掉一天预算）
     ("6h",  42_000,  130, 6.0),   // 错误率 ~0.31%：燃烧 3.1×，中速但未过阈 → 观察仪表盘
     ("30d", 5_000_000, 3_200, 1.0),
 };
@@ -2898,7 +2900,7 @@ OpenAPI 文档一旦被客户端生成器、网关、合同测试引用，它就
 
 ### 一、文档生成与可空
 
-.NET 9/10 内置 \`AddOpenApi()\` / \`MapOpenApi()\`，从端点元数据、\`TypedResults\`、XML 注释生成。旧 \`Swashbuckle\` 仍常见，但新项目优先内置管道。生产是否暴露 \`/openapi\` 取决于威胁模型：内网可开，公网常只给门户静态副本。
+.NET 9/10 内置 \`AddOpenApi()\` / \`MapOpenApi()\`，从端点元数据与 \`TypedResults\` 生成；XML 注释不会自动进来，需自己写 \`IOpenApiDocumentTransformer\` 去读 XML 文档文件补 \`summary\`/\`description\`。旧 \`Swashbuckle\` 仍常见，但新项目优先内置管道。生产是否暴露 \`/openapi\` 取决于威胁模型：内网可开，公网常只给门户静态副本。
 
 \`\`\`csharp
 builder.Services.AddOpenApi();
@@ -2986,7 +2988,7 @@ CI：对 OpenAPI 做语义 diff（oasdiff 等），破坏性变更必须 major �
 
 ### 练习
 
-1. 修改主 demo：把 \`code\` 改成字典里不存在的 \`"order.gone"\`，观察 \`errors[code]\` 抛出的 \`KeyNotFoundException\`——想想生产代码该返回什么而不是崩；往 \`errors\` 加 \`["order.rate_limited"] = new(429, "Too many requests")\` 并查询；给 \`ApiProblem\` 加 \`string? TraceId\` 扩展字段。
+1. 修改主 demo：确认未知错误码 \`order.teapot\` 回落到 500 + \`internal_error\` 而不崩；把 \`TryGetValue\` 改回 \`errors[code]\` 直接索引再运行，观察抛出的 \`KeyNotFoundException\`——这就是生产代码不该写的写法；往 \`errors\` 加 \`["order.rate_limited"] = new(429, "Too many requests")\` 并查询；给 \`ApiProblem\` 加 \`string? TraceId\` 扩展字段。
 2. 脱离示例独立实现 \`ProblemDetailsFactory\`：输入（errorCode、detail、traceId）输出 RFC 9457 形态——\`type\` 为稳定 URI（如 \`https://api.shop.dev/errors/order.not_found\`）、\`title\`、\`status\`、\`instance\` 加扩展字段；错误码表从 \`errors.md\` 加载，未知错误码返回 500 + \`internal_error\` 而不是抛异常。
 3. 生产场景：把毕业项目的 OpenAPI 快照检入 \`contracts/openapi.v1.json\`，CI 用 oasdiff 做语义 diff——加可选字段应显示非破坏、删字段必须变红并要求 major 或豁免；错误统一走 \`IProblemDetailsService\` 附加 traceId；弃用字段时响应带 \`Deprecation\`/\`Sunset\` 头并有集成测试断言；金额字段用整数分避免 JS number 精度。
 
@@ -3205,8 +3207,10 @@ var expValue = document.RootElement.GetProperty("exp").GetInt64();
 var now = DateTimeOffset.UtcNow;
 Console.WriteLine($"\\nexp={DateTimeOffset.FromUnixTimeSeconds(expValue):u}");
 Console.WriteLine($"token exp=2030-01-01（未来）→ 过期？{IsExpired(expValue, now)}");
-Console.WriteLine($"同一 token 在 2030-01-02 → 过期？{IsExpired(expValue, new DateTimeOffset(2030, 1, 2, 0, 0, 1, TimeSpan.Zero))}");
+Console.WriteLine($"同一 token 在 2030-01-01 00:00:01（只超 1 秒）→ 过期？{IsExpired(expValue, new DateTimeOffset(2030, 1, 1, 0, 0, 1, TimeSpan.Zero))}");
 Console.WriteLine("  ↑ 只超 1 秒时因 60s 容差仍可用——时钟偏移不该制造随机 401");
+Console.WriteLine($"在 2030-01-01 00:01:01（超 61 秒，越过容差）→ 过期？{IsExpired(expValue, new DateTimeOffset(2030, 1, 1, 0, 1, 1, TimeSpan.Zero))}");
+Console.WriteLine("  ↑ 越过容差才算真过期：容差是「误杀保护」，不是「永久续命」");
 
 // ---------- 3. Refresh 轮换与重放检测 ----------
 // 规则：每次用 refresh 换新 access 时，旧 refresh 立即作废并记录「轮换链」。
@@ -3221,25 +3225,36 @@ Console.WriteLine($"  {note1}，新令牌 {rt2}");
 Console.WriteLine("攻击者重放第 1 个旧令牌（可能已从日志/代理被偷走）：");
 var (_, note2) = store.Rotate(rt1);
 Console.WriteLine($"  {note2}");
+Console.WriteLine("验证防护真的生效——攻击者手上那个「新」令牌 rt2 是否还能用：");
+var (rt3, note3) = store.Rotate(rt2!);
+Console.WriteLine($"  {note3}（rt3={rt3 ?? "null"}）");
+Console.WriteLine("  ↑ 若这里还能换出新令牌，说明只检测了重放、没吊销，等于没防住");
 
 // ---------- Refresh 轮换实现 ----------
 sealed class RefreshTokenStore
 {
     private readonly Dictionary<string, string> _valid = new();       // 当前有效的 refresh
     private readonly HashSet<string> _retired = new();               // 已轮换作废的
+    private readonly Dictionary<string, string> _retiredOwner = new(); // 已作废令牌 → 所属用户（重放时据此整链作废）
 
     public string Issue(string user) { var t = $"rt-{user}-{Guid.NewGuid():N}"[..18]; _valid[user] = t; return t; }
 
     public (string? NewToken, string Note) Rotate(string presented)
     {
         if (_retired.Contains(presented))   // 旧令牌第二次出现：重放！
-            return (null, "已作废的 refresh 再次出现 → 疑似被盗，整链作废，强制重登");
+        {
+            // 只提示不吊销等于没防住：攻击者手里的新令牌照样能用。
+            // 真正的「整链作废」必须把该用户当前有效令牌一并清掉，强制重新登录。
+            if (_retiredOwner.TryGetValue(presented, out var owner)) _valid.Remove(owner);
+            return (null, "已作废的 refresh 再次出现 → 疑似被盗：该用户全部会话已吊销，强制重登");
+        }
         if (!_valid.ContainsValue(presented))
             return (null, "未知令牌 → 拒绝");
 
         var user = _valid.First(kv => kv.Value == presented).Key;
-        _retired.Add(presented);           // 旧的下岗
-        var fresh = Issue(user);           // 新的上岗
+        _retired.Add(presented);              // 旧的下岗
+        _retiredOwner[presented] = user;      // 记住归属，重放时能找到要吊销谁
+        var fresh = Issue(user);              // 新的上岗
         return (fresh, "轮换成功：旧 refresh 已作废");
     }
 }
@@ -3377,8 +3392,7 @@ if (request.ExpectedVersion != stored.Version)
 else
 {
     stored = stored with { Status = request.Status, Version = stored.Version + 1 };
-    // with：复制一份新 record。数据库里对应 UPDATE ... SET version = version+1 WHERE version = @expected
-    // with：复制一份新 record。数据库里对应 UPDATE ... SET version = version+1 WHERE version = @expected
+    // with：复制一份新 record（原对象不变）。数据库里对应 UPDATE ... SET version = version+1 WHERE version = @expected
     Console.WriteLine(stored);
 }
 
@@ -3738,7 +3752,7 @@ static string Decide(string scenario) => scenario switch
     _ => "先测：没有「用户更快看到首字节」的证据就不上",
 };
 
-foreach (var s in new[] { "CLI 工具（dotnet-countfs 风格）", "Serverless 函数", "反射依赖（Dapper 动态查询）", "长驻服务（订单 API）" })
+foreach (var s in new[] { "CLI 工具（dotnet-counters 风格）", "Serverless 函数", "反射依赖（Dapper 动态查询）", "长驻服务（订单 API）" })
     Console.WriteLine($"{s,-30} → {Decide(s)}");
 
 Console.WriteLine("\\n门禁：三种发布产物（普通/Trimmed/AOT）都要进 CI 烟雾测试；回退标签常备。");
@@ -3983,7 +3997,7 @@ export const csharp5Conclusion = {
 ### 读完后最容易犯的六个错
 
 1. **把模拟 demo 当成框架经验。** 章末纯 C# 能讲清 Outbox 顺序，但不能证明 EF 迁移、Redis 过期和 Kestrel 转发头。第一百一十六章要求真实依赖，就是为了挡住这一步。
-2. **收藏下一本书，而不是合并长期仓库。** 126 个互不相干的示例目录，三个月后没有一个能发布。只保留毕业项目仓库，其余当查阅。
+2. **收藏下一本书，而不是合并长期仓库。** 136 个互不相干的示例目录，三个月后没有一个能发布。只保留毕业项目仓库，其余当查阅。
 3. **用覆盖率或“学完进度条”代替演练。** 没有故障注入、没有恢复成功记录，就没有生产能力。
 4. **忽略支持日历。** 2026-11-10 之后 .NET 8/9 不再收安全更新；学习环境可以暂留，生产不能。
 5. **一个人读完、一个人上线、一个人值班。** 至少找一名同伴做安全和数据评审，并约定谁能在凌晨执行回滚。

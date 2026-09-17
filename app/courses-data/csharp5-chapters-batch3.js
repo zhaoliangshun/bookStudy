@@ -187,7 +187,9 @@ for (int i = 0; i < 10; i++)
 多重循环中，\`break\` 默认只跳出最内层。要跳出外层需要使用"标签"。
 
 \`\`\`csharp
-outer:                                  // 定义标签
+// 注意：标签必须放在循环「之后」，goto 才能起到「跳出」的作用。
+// 若把标签写在 for 之前，goto 会重新执行整个 for（i 被重新初始化为 0），
+// 结果是不停打印 i=0 的死循环——这是初学者最容易踩的一个坑。
 for (int i = 0; i < 3; i++)
 {
     for (int j = 0; j < 3; j++)
@@ -196,6 +198,8 @@ for (int i = 0; i < 3; i++)
         Console.WriteLine($"i={i}, j={j}");
     }
 }
+outer:                                  // 定义在循环之后 = 跳出外层
+Console.WriteLine("已跳出外层循环");
 \`\`\`
 
 更优雅的做法是把外层循环抽成方法，用 \`return\` 退出。
@@ -791,7 +795,7 @@ var (_, name) = FindUser(1);     // 只要 name，丢弃 bool
 
 ### 八、元组比较 ⭐⭐
 
-元组支持 \`==\` 和 \`!=\`，按元素逐个比较（\`==\`/\`!=\` 运算符是 **C# 9.0** 引入；C# 7.3 及更早只能用 \`Equals\` 做值比较）。
+元组支持 \`==\` 和 \`!=\`，按元素逐个比较（元组 \`==\`/\`!=\` 是 **C# 7.3** 引入；**C# 7.0–7.2** 只能用 \`Equals\` 做值比较）。
 
 \`\`\`csharp
 var a = (1, "x");
@@ -839,7 +843,7 @@ public record Person(string Name, int Age);   // 有类型名，可做参数类�
 
 ### 十二、公开 API 与序列化注意
 
-把元组当方法返回值在**模块内部**很爽；一旦变成 public，调用方会依赖 \`Item1\` 或你此刻写的名字，重构就会破。JSON 序列化 \`ValueTuple\` 通常得到 \`{"Item1":1,"Item2":2}\`，不是 \`{"X":1,"Y":2}\`。跨进程、跨语言、要文档化的返回值，升级成 \`record Point(int X, int Y)\`。
+把元组当方法返回值在**模块内部**很爽；一旦变成 public，调用方会依赖 \`Item1\` 或你此刻写的名字，重构就会破。注意 JSON 序列化：\`System.Text.Json\` 默认只序列化公共**属性**，而 \`ValueTuple\` 的 \`Item1\`/\`Item2\` 是**字段**，所以默认序列化得到的是 \`{}\`（除非开启 \`IncludeFields = true\`）；老教程里常见的 \`{"Item1":1,"Item2":2}\` 是 Newtonsoft.Json 的行为。跨进程、跨语言、要文档化的返回值，升级成 \`record Point(int X, int Y)\`。
 
 元组 \`==\` 是逐字段；含引用元素时只比较那些引用是否相等（string 有重载所以比内容）。嵌套元组相等是递归的。需要自定义比较请不要硬拧元组，换类型。
 
@@ -869,7 +873,7 @@ public record Person(string Name, int Age);   // 有类型名，可做参数类�
 // 本 demo 覆盖 ValueTuple 字面量、元素命名（编译期糖）、多返回值、
 // Deconstruct、弃元、== 比较、foreach 解构。
 // 陷阱：名字运行时是 Item1/Item2；公开 API 和 JSON 不要用元组。
-// 版本：ValueTuple 语法 C# 7；元组 == / != 是 C# 9。
+// 版本：ValueTuple 语法 C# 7；元组 == / != 是 C# 7.3。
 
 using System;
 
@@ -911,14 +915,14 @@ void PrintPerson((string Name, int Age) p)
     Console.WriteLine($"  {p.Name}, {p.Age} 岁");
 }
 
-// ---------- 6. 元组 == 逐字段（C# 9） ----------
+// ---------- 6. 元组 == 逐字段（C# 7.3） ----------
 void TupleComparison()
 {
     Console.WriteLine("== 6. 元组比较 ==");
     var a = (1, "x");
     var b = (1, "x");
     var c = (2, "x");
-    Console.WriteLine($"  (1,'x') == (1,'x') ? {a == b}");   // C# 9 起逐字段 ==；string 比内容
+    Console.WriteLine($"  (1,'x') == (1,'x') ? {a == b}");   // C# 7.3 起逐字段 ==；string 比内容
     Console.WriteLine($"  (1,'x') == (2,'x') ? {a == c}");   // False
 }
 
@@ -1036,7 +1040,7 @@ class Range
 | C# 9 | 关系模式（\`>\` \`<\`）、逻辑模式（\`and\`/\`or\`/\`not\`） |
 | C# 10 | 嵌套属性扩展 |
 | C# 11 | 列表模式 \`[a, b, ..]\`、\`var\` 模式扩展 |
-| C# 12 | 列表模式改进、跨模式组合 |
+| C# 12 | （无新增模式语法；C# 12 主打主构造函数、集合表达式、别名任意类型等） |
 
 ### 二、is 类型模式 ⭐⭐⭐
 

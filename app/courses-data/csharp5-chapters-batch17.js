@@ -67,6 +67,87 @@ app.MapPost("/orders", (CreateOrderRequest request) =>
 
 下面 demo 做三件事：聚合字段错误、把领域冲突与格式错误分流成不同状态码、演示 over-posting 为什么必须用入站 DTO。
 
+### 五、验证库怎么落地：三条路的取舍
+
+| 方案 | 优势 | 代价 / 坑 | 适用 |
+| --- | --- | --- | --- |
+| DataAnnotations | 零依赖、特性即文档、源生成友好 | 跨字段与条件规则写起来别扭（\`IValidatableObject\` 勉强） | 简单 DTO、SDK/共享契约 |
+| FluentValidation | 规则即代码，跨字段、条件、\`RuleSet\`、递归 \`SetValidator\` 都自然 | 多一个依赖；反射扫描有冷启动成本；AOT 需额外确认 | 复杂表单、规则密集的后台 |
+| .NET 10 源生成验证（\`AddValidation()\`） | 零分配、编译期发现、AOT 友好 | 只覆盖 DataAnnotations 子集 + \`[ValidatableType]\`；**必须在声明类型的那个程序集里注册** | 新项目、AOT/Native 场景 |
+
+三个落地细节，踩过的人都记得：
+
+1. **FluentValidation 的 validator 生命周期是 Transient**，不要在 validator 里注入 Scoped 服务（\`DbContext\`）——那会变成捕获依赖。需要查库的规则（"用户名是否已存在"）请放到 handler 里用 \`ValidateAsync\` 手动跑，把校验拆成「纯格式校验自动跑」和「需查库的业务校验手动跑」两层。
+2. **跨程序集不生效**：\`AddValidation()\` / \`AddValidatorsFromAssembly\` 只扫你传进去的程序集。把 DTO 放在共享类库、却在 API 项目里注册，规则会静默失效——验证"通过"了，其实一次都没跑。加一条集成测试专门盯它。
+3. **本地化**：\`ValidatorOptions.Global.LanguageManager\` 与 DataAnnotations 的 \`ErrorMessageResourceType\` 都要在启动时配好；错误消息是契约的一部分，别让它随线程 Culture 漂移。
+
+### 六、嵌套、集合与现代绑定写法
+
+DataAnnotations 有个反直觉的默认行为：**复杂属性不会自动递归验证**。
+
+\`\`\`csharp-snippet
+// 默认：Order 上的 [Required] 会查，但 Items 里每个元素的规则不查。
+// .NET 8+ 显式打开：
+public sealed class CreateOrderInput
+{
+    [ValidateObjectMembers]                       // 递归进 Address 内部
+    public AddressInput Address { get; set; } = new();
+
+    [ValidateEnumeratedItems]                     // 逐个查集合元素
+    [MaxLength(50)]
+    public List<OrderLineInput> Items { get; set; } = new();
+}
+
+// record 主构造函数上写特性必须加 property: 前缀，
+// 否则特性挂在「参数」上而不是「属性」上，验证器根本看不见。
+public sealed record CreateOrderInput(
+    [property: Required, MinLength(1)] string Sku,
+    [property: Range(1, 99)] int Quantity);
+\`\`\`
+
+现代绑定的几个省力写法：
+
+- **\`TryParse\` / \`IParsable<T>\`**：给强类型 id、\`DateOnly\`、自定义值对象实现静态 \`TryParse\`，路由和查询参数会自动解析，解析失败自动进 ModelState——不用再写字符串转类型的样板。
+- **\`BindAsync\`**：复杂类型需要异步解析（比如从 Body + Route 组合）时实现它。
+- **\`[AsParameters]\`**：把一组查询参数打包成 \`record struct\`，minimal API 里少写一串 \`[FromQuery]\`。
+- **JSON 选项**：\`PropertyNameCaseInsensitive\` 决定大小写容错；\`NumberHandling\` 允许字符串数字时要小心（"1" 和 1 混着进来的系统，迟早在排序上出问题）；\`MaxDepth\` 必须设——深层嵌套 JSON 是低成本的栈溢出 DoS。
+
+### 七、文化、可空与枚举：三个静默 bug 源
+
+这三类问题都不会报错，只会悄悄给出错误结果。
+
+1. **文化（Culture）**：\`decimal.TryParse("1,5", out var v)\` 在 \`de-DE\` 下是 1.5，在 \`en-US\` 下是 15。\`DateTime\` 同理，\`03/04\` 是 3 月 4 日还是 4 月 3 日取决于机器。API 边界一律显式指定：
+   \`\`\`csharp-snippet
+   // 错：吃当前线程文化，容器里设了 LANG 就变
+   decimal.TryParse(text, out var price);
+   // 对：边界上永远不变文化
+   decimal.TryParse(text, NumberStyles.Number,
+                    CultureInfo.InvariantCulture, out var price2);
+   \`\`\`
+   配套：金额用 \`decimal\` 而不是 \`double\`；对外的 JSON 金额用**整数分**，同时避开浮点精度和 JavaScript \`number\` 的 2^53 天花板。
+2. **可空与 bool**：\`bool\` 字段缺失时默认是 \`false\`，你无法区分"客户端传了 false"和"客户端没传"。补丁（PATCH）语义下必须用 \`bool?\`，或检查 \`ModelState\` 里是否存在该 key。
+3. **枚举**：默认按数字绑定，\`?status=999\` 会得到一个不存在的枚举值且**不报错**。配 \`JsonStringEnumConverter\` 后未知字符串才会 400。生产建议显式 \`Enum.IsDefined\` 兜一遍，或直接用字符串常量白名单。
+
+### 八、出站也要收敛：over-getting
+
+入站防 over-posting，出站防 over-getting。直接把 EF 实体序列化返回，等于把 \`PasswordHash\`、\`TenantId\`、内部状态机字段、软删除标记一起发出去——而且下次给实体加字段时，API 响应会**自动**多一个字段，没人评审过。
+
+- 出站一律用显式响应 DTO，\`sealed record\` 最省心（不可变、值语义、可测）。
+- 可选字段裁剪（\`?fields=\`）也要走白名单，否则 \`?fields=passwordHash\` 就是自助餐。
+- 映射：手写显式映射最可控，也最适合 AOT/trimming；用自动映射库的代价是"改了实体字段，DTO 悄悄变了"。高频热路径可以上源生成的映射器兼顾两者。
+
+### 生产检查
+
+- [ ] 入站 DTO 与持久化实体分离，字段白名单拷贝，禁 \`TryUpdateModelAsync(entity)\`
+- [ ] 出站 DTO 不含 \`PasswordHash\` / \`TenantId\` / 内部状态；新增实体字段不会自动出现在响应里
+- [ ] 领域冲突（库存不足、状态不允许、币种不支持）返回 409/422，不是 400
+- [ ] 错误 \`code\` 常量化，并在 OpenAPI 上声明（\`.ProducesValidationProblem()\`、\`.ProducesProblem(StatusCodes.Status409Conflict)\`）
+- [ ] 所有 \`decimal\`/\`DateTime\` 解析显式传 \`CultureInfo.InvariantCulture\`
+- [ ] 嵌套对象与集合元素的验证确实生效（\`[ValidateObjectMembers]\` / \`[ValidateEnumeratedItems]\`），有测试证明
+- [ ] 请求体大小、集合长度、JSON 深度三者都设了上限
+- [ ] 验证规则跨程序集时，注册了该程序集且有集成测试断言"非法输入必被拒"
+- [ ] 有集成测试覆盖：缺字段、越界、类型不符、未知枚举，都返回 400 且错误形状稳定
+
 ### 练习
 
 1. 修改 demo 的 samples 数组：加入 quantity = 100（越界）、currency = ""（空串）、sku = "  "（纯空白）三个新样本，观察 \`Validate\` 聚合出的 400 字段错误信息；再把合法样本的 currency 改成小写 "cny"，确认 \`OrdinalIgnoreCase\` 比较仍通过业务规则；最后给 \`ApplyToEntity\` 传一个带 \`"total": 0\` 的恶意 JSON 字段集合，确认白名单之外的字段不会写进实体。
@@ -74,7 +155,7 @@ app.MapPost("/orders", (CreateOrderRequest request) =>
 3. 生产场景：把 CreateOrderRequest 接入 ASP.NET Core 验证管道——\`AddValidation()\` 加 \`AddProblemDetails()\`，请求模型加 \`[Required]\` 与 \`[Range(1, 99)]\` 标注；写集成测试覆盖五条路径：缺 sku 返回 400 且 errors 指向字段、quantity 越界返回 400、USD 结算返回 409、合法输入返回 201、请求体多塞 \`Total\` 字段时实体值不被覆盖（over-posting 被忽略）。
 `,
     code: `// ============================================================
-// 第一百二十六章 输入验证、绑定与错误形状 —— 可运行演示（net8.0 / C# 12）
+// 第一百二十七章 输入验证、绑定与错误形状 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 聚合全部字段错误再返回；格式 400、领域冲突 409，code 是稳定契约，detail 可以改文案。
 // .NET 10 的 AddValidation() 会在 handler 前跑 DataAnnotations；net8.0 没有这根管道，
@@ -198,6 +279,70 @@ app.Use(async (ctx, next) =>
 
 主 demo 演示幂等存储的三种路径（首次执行 / 重放 / 指纹冲突）与 keyset 翻页的边界行为。
 
+### 四、分页怎么选：offset 与 keyset 的账
+
+\`?page=3&size=20\` 人人会写，但它有两个物理上的硬伤：**深分页越来越慢**（数据库要数过并丢弃前面所有行），**翻页时会漂移**（两次查询之间插入了新数据，第 2 页会重复显示第 1 页的最后几条，或漏掉几条）。
+
+| 方案 | 优点 | 代价 | 适用 |
+| --- | --- | --- | --- |
+| Offset（\`LIMIT/OFFSET\`） | 实现简单、可跳页、能显示总页数 | 深分页慢；并发写入会漂移 | 后台管理、数据量小、要跳页 |
+| Keyset / cursor | 性能恒定；不漂移 | 不能跳到任意页；游标要防篡改 | 信息流、列表 API、大数据量 |
+| Keyset + 总数字段 | 兼顾体验 | 总数要单独 \`COUNT\`，很慢时可缓存/估算 | 通用推荐 |
+
+keyset 的三个实现细节：
+
+1. **排序必须唯一**：只按 \`created_at\` 排序，同一时间戳的行在两次查询间顺序不定，翻页会重复/丢失。必须加唯一 tiebreaker：\`ORDER BY created_at DESC, id DESC\`，游标里同时带上两个值（SQL 里用行值比较 \`(created_at, id) < (@afterCreatedAt, @afterId)\`）。
+2. **游标是不透明 token**：Base64 编码 \`{"v":1,"createdAt":...,"id":...}\`，带版本号。客户端篡改、版本不符、解不开 → 400，不要静默返回"第一页"。
+3. **响应形状**：返回 \`items\` + \`nextCursor\`，有下一页时才给 \`nextCursor\`；末页返回空 \`items\` 且 \`nextCursor = null\`。**不要用"返回了少于 pageSize 条"来判断末页**——刚好整除时会多翻一次空页。
+
+\`\`\`csharp-snippet
+// 稳定的 keyset 查询：行值比较 + 唯一 tiebreaker
+// CREATE INDEX ix_orders_tenant_created_id ON orders (tenant_id, created_at DESC, id DESC);
+var sql = """
+    SELECT id, sku, quantity, created_at
+    FROM orders
+    WHERE tenant_id = @tenant
+      AND (created_at, id) < (@afterCreatedAt, @afterId)   -- 上一页最后一行之后
+    ORDER BY created_at DESC, id DESC
+    LIMIT @take;
+    """;
+// 翻页必须配一个匹配的复合索引，否则 keyset 也只是"看起来很快"。
+\`\`\`
+
+### 五、幂等的三个真实难点
+
+demo 里的 \`ConcurrentDictionary\` 只演示了语义。落到生产，难的是这三件事：
+
+1. **竞态**：两个相同 key 的请求同时到达，都查不到记录，然后都执行了业务逻辑——幂等形同虚设。解法是让存储本身挡住：\`(tenant, key)\` **唯一索引**，插入成功者执行，插入冲突者去读已有结果；或用一个分布式锁/租约。
+2. **原子性**：幂等记录和业务写入必须**同一个事务**。先写业务再写幂等记录，中间崩了，重试会再执行一次；反过来说，业务失败时幂等记录必须一起回滚，否则这个 key 永久被"已成功"占用却什么都没做。
+3. **"处理中"状态**：第一个请求还在跑，第二个相同 key 到达。三种做法选一：等待第一个完成并复用结果（用户体验最好，需要锁或轮询）、直接返回 409 + \`Retry-After\`（最简单）、返回 202 让客户端轮询结果。选哪个取决于操作时长——支付类通常等，导出类通常 202。
+
+配套：记录要带 **TTL**（支付类常留 24h，够覆盖客户端重试窗口即可，别永久保留）；指纹只对 **body 的规范化形式** 取哈希（JSON 键顺序、空白差异要归一化，否则语义相同的请求被判成冲突）。
+
+### 六、查询约定的默认答案
+
+把这几条写进 API 规范，能省掉大部分来回讨论：
+
+- **过滤/排序白名单**：用户字符串永不进 SQL（第一百二十八章同款）。未支持的 \`sort\` 值返回 400 并列出允许值，不要静默忽略——静默忽略会让前端以为生效了。
+- **默认上限与硬上限**：\`take\` 默认 20、硬上限 100；超过硬上限返回 400（不是截断返回，那会让客户端以为拿全了）。
+- **时间范围**：列表查询默认限制时间窗口（如最近 90 天），避免一个没带过滤条件的请求扫全表。
+- **稳定排序**：不指定 \`sort\` 时也要有确定的默认排序，否则分页不可重现。
+- **条件请求**：读接口支持 \`ETag\` / \`Last-Modified\`，配合 \`If-None-Match\` 返回 304，省带宽也省数据库。
+- **大结果集导出**：不要靠翻页把 100 万行拉出来——那会把数据库和连接池拖死。导出走异步任务：提交请求 → 生成文件到对象存储 → 短寿命预签名 URL 通知下载。
+
+### 生产检查
+
+- [ ] 写接口（POST/PATCH/DELETE）都设计了幂等语义，重试不产生副作用
+- [ ] 幂等记录与业务写入同库同事务，\`(tenant, key)\` 有唯一索引
+- [ ] 幂等记录有 TTL，且覆盖"处理中"状态（等待 / 409 / 202 三选一，写进文档）
+- [ ] 幂等指纹对 body 规范化后取哈希（键顺序、空白不敏感）
+- [ ] 分页排序带唯一 tiebreaker，游标带版本号且防篡改
+- [ ] 已有列表接口评估过 offset → keyset 迁移，深分页（>1000）有监控
+- [ ] \`take\` 有硬上限，超限返回 400 而非静默截断
+- [ ] 排序/过滤字段白名单，未支持的值 400 而非忽略
+- [ ] 大结果集导出走异步任务，不靠同步翻页
+- [ ] 有并发测试证明：相同 key 并发请求只执行一次业务逻辑
+
 ### 练习
 
 1. 修改 demo：先用 key-1、body "sku=1,qty=2" 执行一次，再用相同 key、body 改为 "sku=1,qty=9" 调用，确认返回 422 指纹不匹配；把 \`KeysetPage\` 的 after 分别改成 7 与 0，观察末页（空结果）与首页的输出边界；再给 \`Execute\` 传一个 Processing 状态的记录（直接往 \`_records\` 里塞），观察第二个并发请求会等到结果还是拿到 409。
@@ -205,7 +350,7 @@ app.Use(async (ctx, next) =>
 3. 生产场景：把 cursor 分页落到 SQL——按 (createdAt, id) 稳定排序，写出形如 \`WHERE (createdAt, id) > (@afterCreatedAt, @afterId) ORDER BY createdAt, id LIMIT @take\` 的查询；把游标编码成 Base64 的 nextCursor 随响应返回，解码时校验格式并拒绝伪造游标；排序字段建允许列表（如只允许 createdAt 与 amount），防止用户输入拼进 ORDER BY。
 `,
     code: `// ============================================================
-// 第一百二十七章 幂等、分页与查询约定 —— 可运行演示（net8.0 / C# 12）
+// 第一百二十八章 幂等、分页与查询约定 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 幂等键按租户隔离；同 key 同指纹重放首次响应，同 key 不同 body 必须 422，不能静默改单。
 // 先写入 processing 再执行 create：并发第二个请求应 409/等待，而不是两次下单。
@@ -323,6 +468,69 @@ app.Use(async (ctx, next) =>
 - 病毒扫描在隔离环境异步执行，扫描通过前文件不对外可见。
 - 下载授权不能靠「URL 很难猜」：要么短寿命预签名 URL，要么每次下载走授权校验。
 
+### 五、CSRF 到底怎么防
+
+先厘清一件事：**CSRF 只在"浏览器会自动带上凭据"时才成立**。如果你的 API 只认 \`Authorization: Bearer\` 头（浏览器不会自动加），那它没有 CSRF 问题；一旦用 Cookie 会话（哪怕 \`SameSite=Lax\`），就必须防。
+
+三种做法，按推荐度排序：
+
+1. **SameSite=Lax/Strict 打底**：现代浏览器的默认防线，能挡住跨站 POST 携带 Cookie。它是**必要但不充分**——Lax 允许顶级导航的 GET 携带 Cookie，旧浏览器和某些边缘场景仍会漏，所以不能只靠它。
+2. **Anti-forgery token（推荐）**：服务端发一个与会话绑定的 token，前端在表单/请求头里回传，服务端校验。ASP.NET Core MVC 内置 \`ValidateAntiForgeryToken\`；SPA/前后端分离场景用 **double-submit**：token 同时放 Cookie 和自定义头（如 \`X-XSRF-TOKEN\`），服务端比对两者——攻击者能诱导浏览器带上 Cookie，但读不到 Cookie 内容也设不了自定义头（跨域自定义头会触发预检）。
+3. **要求自定义头**：简单粗暴但有效——跨域自定义头必然触发预检，而预检不通过浏览器就不会发真实请求。
+
+配套三条：**State-changing 操作必须 POST/PUT/PATCH/DELETE**（不要用 GET 改状态，那连"诱导点击链接"都够用了）；校验 \`Origin\`/\`Referer\` 作为**辅助**手段（不是唯一防线，某些代理会剥掉）；token 与用户会话绑定，别做成全局共享值。
+
+### 六、安全头清单与 CSP 落地
+
+这一组头加起来的成本不到一小时，收益是挡掉一整类低级攻击：
+
+\`\`\`csharp-snippet
+app.Use(async (ctx, next) =>
+{
+    var h = ctx.Response.Headers;
+    h["X-Content-Type-Options"] = "nosniff";                    // 禁止 MIME 嗅探：text/plain 别给我当 HTML 执行
+    h["X-Frame-Options"] = "DENY";                              // 或 CSP 的 frame-ancestors
+    h["Referrer-Policy"] = "strict-origin-when-cross-origin";   // 别把完整 URL 泄漏给第三方
+    h["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"; // 关掉用不上的能力
+    h["Cross-Origin-Opener-Policy"] = "same-origin";
+    h["Cross-Origin-Resource-Policy"] = "same-origin";
+    if (ctx.Request.IsHttps)
+        h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";  // HSTS：只在 HTTPS 下加
+    ctx.Response.Headers["Content-Security-Policy"] =
+        "default-src 'self'; script-src 'self' 'nonce-{每请求随机}'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'";
+    await next();
+});
+\`\`\`
+
+CSP 的正确上法：**先 \`Content-Security-Policy-Report-Only\` 灰度**，收集 \`report-uri\` 上报的违规，确认没有误伤后再切到强制模式。直接上强制模式，最常见的结局是某个 CDN 上的脚本被拦掉、线上白屏。CSP 里 \`script-src\` 用 **nonce（每请求随机）** 或 hash，别用 \`'unsafe-inline'\`——那等于没上。
+
+HSTS 的两个提醒：只在 HTTPS 响应里加（HTTP 响应里加会被忽略）；\`includeSubDomains\` 一旦发出去，撤销要等 \`max-age\` 过期，先小值试水（如 300 秒）再放大。另外，**\`Access-Control-Allow-Origin\` 动态回显 Origin 时必须同时发 \`Vary: Origin\`**，否则 CDN 会把给 A 站的响应缓存后发给 B 站。
+
+### 七、上传的完整链路
+
+上传不是"收到文件存起来"，它是一条有 6 个环节的流水线，每一环都能被单独绕过：
+
+1. **限流与限额三件套**：单个文件大小、单次请求文件数、以及**速率**。只有大小限制的接口会被慢速连接拖死（慢速 POST / Slowloris）——用 \`IHttpMaxRequestBodySizeFeature\` 或反向代理层的 \`client_max_body_size\` + 速率限制。
+2. **流式处理**：\`IFormFile\` 会先把整个文件读进内存/临时盘，大文件应该用 \`Request.Body\` 流式读并直接转发到对象存储，避免"内存随并发线性上涨"。
+3. **魔数校验**：读文件头若干字节判断真实类型（PNG \`89 50 4E 47\`、JPEG \`FF D8 FF\`、PDF \`25 50 44 46\`），不信 \`Content-Type\`、不信文件名、不信客户端给的扩展名。
+4. **文件名与路径**：\`Path.GetFileName()\` 去掉路径穿越（\`../../etc/passwd\`），拒绝 Windows 保留名（\`CON\`、\`NUL\`、\`AUX\`），生成随机存储 key，扩展名从**识别出的类型**推导。
+5. **隔离与扫描**：文件先写到不可执行、不可直接访问的位置；病毒扫描在隔离环境异步跑，通过前对外不可见。图片类建议**重新编码**（消除隐藏在元数据/内嵌对象里的载荷）。
+6. **读取与下载**：服务端渲染用户上传内容时，用 \`Content-Disposition: attachment\` + \`X-Content-Type-Options: nosniff\`；绝不存到 webroot 下可被当脚本执行的位置；下载走短寿命预签名 URL 或每次鉴权。
+
+一句话总结：**上传的危险不在于"文件多大"，而在于"它会被谁以什么方式解释"**——同一个字节流，被当图片渲染和被当 HTML 执行，后果完全不同。
+
+### 生产检查
+
+- [ ] CORS 的 Origin 是明确列表，未出现 \`AllowAnyOrigin()\` + \`AllowCredentials()\`
+- [ ] 动态回显 Origin 时同时发 \`Vary: Origin\`（防 CDN 缓存串站）
+- [ ] Cookie 会话有 CSRF 防护（anti-forgery / double-submit / 自定义头），且非 GET 才改状态
+- [ ] 安全头齐备：\`nosniff\`、\`X-Frame-Options\`/\`frame-ancestors\`、\`Referrer-Policy\`、\`Permissions-Policy\`、HSTS（仅 HTTPS）
+- [ ] CSP 先 \`Report-Only\` 灰度，\`script-src\` 用 nonce/hash 而非 \`unsafe-inline\`
+- [ ] 上传有大小、数量、速率三重限制；大文件流式处理不进内存
+- [ ] 文件类型按魔数判定，文件名规范化（防穿越 + Windows 保留名），随机存储 key
+- [ ] 上传文件不落在可执行目录；下载走短寿命预签名 URL 或每次鉴权
+- [ ] 图片类重新编码；扫描通过前文件对外不可见
+
 ### 练习
 
 1. 修改 demo 的 \`Detect\`：补上 JPEG（FF D8 FF）与 GIF（GIF87a/GIF89a）两组魔数分支；构造一个扩展名是 .png、内容却以 "hello" 开头的样本，确认它被识别为 application/octet-stream；再给 \`IsAllowedOrigin\` 传入 null（模拟无 Origin 头的同源请求），观察当前行为并决定该放行还是拒绝；最后把 \`SanitizeFileName\` 喂 \`"../../etc/passwd"\` 与 \`"CON.png"\`，验证路径穿越与 Windows 保留名被处理。
@@ -330,7 +538,7 @@ app.Use(async (ctx, next) =>
 3. 生产场景：为带前端的 BFF 配置安全基线——CORS 用显式 Origin 列表加 \`AllowCredentials\`；写一个中间件统一加 CSP、\`X-Content-Type-Options: nosniff\`、\`Referrer-Policy\` 与 HSTS 四个响应头；上传保存为对象存储的随机 key（扩展名取自魔数而非用户输入），病毒扫描放隔离容器异步执行；用集成测试断言每个响应头存在且上传目录不可枚举。
 `,
     code: `// ============================================================
-// 第一百二十八章 CORS、CSRF、安全头与上传 —— 可运行演示（net8.0 / C# 12）
+// 第一百二十九章 CORS、CSRF、安全头与上传 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 扩展名和 Content-Type 都能伪造，文件头（魔数）才是类型真相；认不出就当 octet-stream。
 // CORS Allow-Origin 必须是显式列表。反射任意 Origin + Allow-Credentials 等于帮攻击者读响应。
@@ -415,6 +623,93 @@ builder.Services
 
 .NET 8+ 可在 Starting/Started/Stopping/Stopped 等阶段挂钩。应用不能仅凭“进了 Started”就假定依赖可用：启动期完成必要初始化，随后才让 readiness 探针返回成功；Kubernetes / 负载均衡器看到 readiness 成功后再送流量。耗时预热要有超时，非关键依赖失败则保持降级而不是永久卡住启动。停止阶段反过来：先摘掉 readiness，等 in-flight 请求排干，再断依赖。
 
+### 四、Keyed services：同一接口多个实现
+
+.NET 8 之前，同一接口注册多个实现要么靠「具名 wrapper 类」，要么自己注入 \`IEnumerable<T>\` 再挑一个——都别扭。Keyed services 把它变成一等公民：
+
+\`\`\`csharp-snippet
+// 注册：三个生命周期都有对应 API
+builder.Services.AddKeyedSingleton<ICache, RedisCache>("redis");
+builder.Services.AddKeyedScoped<ICache, MemoryCache>("memory");
+builder.Services.AddKeyedTransient<ICache, NoopCache>("noop");
+
+// 消费方式一：构造注入（最常用，端点/minimal API 支持）
+public sealed class OrderService([FromKeyedServices("redis")] ICache cache) { /* ... */ }
+
+// 消费方式二：手动解析
+var cache = provider.GetRequiredKeyedService<ICache>("redis");
+
+// 消费方式三：枚举全部 key（做「按 key 路由」的工厂时很有用）
+builder.Services.AddKeyedSingleton<ICache, RedisCache>(KeyedService.AnyKey);
+\`\`\`
+
+四条实践经验：
+
+1. **key 用常量，不要散落字符串**。建议 \`public static class CacheKeys { public const string Redis = "redis"; }\`，拼错时编译不过，而不是运行时 \`InvalidOperationException\`。
+2. **key 解析失败是抛异常**（\`GetRequiredKeyedService\`）或返回 null（\`GetKeyedService\`）。生产建议一律用 Required 版本——静默 null 会变成后面某处的 \`NullReferenceException\`，离现场太远。
+3. **Keyed 不能替代策略模式**。如果你需要根据运行时值（租户、地区）选择实现，用工厂 + 字典更清晰；keyed 适合「编译期就确定的少数几种实现」。
+4. **不要用 key 伪装多租户**。每个租户注册一个 keyed 实例，等于把租户数量绑死在容器上，租户一多就是内存和启动时间的灾难。
+
+### 五、Options 的三个深坑
+
+表格里的三个接口之外，还有几个反复出现的坑：
+
+1. **绑定是懒执行的**：\`IOptions<T>.Value\` 第一次访问时才做绑定。配置写错（字符串转不了 int、必填项缺失）会在**第一次用到它的请求上**抛 \`InvalidOperationException\`——而不是启动时。所以 \`.ValidateOnStart()\`（或 \`IStartupValidator\`）不是可选项，它把"上线后某个冷门接口 500"变成"部署阶段直接失败回滚"。
+2. **自定义校验用 \`IValidateOptions<T>\`**：DataAnnotations 只覆盖特性；跨字段规则（如 \`TimeoutSeconds < RetryCount * BackoffSeconds\`）要实现 \`IValidateOptions<T>\`，返回 \`ValidateOptionsResult.Fail("...")\`。校验失败信息要能直接指导运维："Payment:ApiKey 不能为空"，而不是 "Options validation failed"。
+3. **热重载不是万能的**：\`IOptionsMonitor<T>\` 能拿到新值，但**已经在跑的后台服务不会自动重读**——它需要用 \`OnChange\` 回调主动响应；而且回调里做耗时操作会阻塞配置重载。另外，可变对象上的值被就地修改（不是替换）时，monitor 的快照语义会失效，Options 类请保持不可变（\`init\`/\`record\`）。
+
+\`\`\`csharp-snippet
+builder.Services
+    .AddOptions<PaymentOptions>()
+    .BindConfiguration("Payment")       // 绑定配置节
+    .ValidateDataAnnotations()          // 特性级校验
+    .Validate(o => o.TimeoutSeconds > 0 && o.TimeoutSeconds <= 30,
+              "Payment:TimeoutSeconds 必须在 (0, 30] 秒")   // 跨字段/自定义规则
+    .ValidateOnStart();                 // 启动即校验，坏配置不让上线
+
+// 需要热更新的地方：OnChange 主动响应，回调里只做轻活
+var monitor = provider.GetRequiredService<IOptionsMonitor<PaymentOptions>>();
+monitor.OnChange(opts => logger.LogInformation("支付配置已更新: {Timeout}", opts.TimeoutSeconds));
+\`\`\`
+
+配置源的**优先级**也要心里有数：后注册的覆盖先注册的。典型顺序是 \`appsettings.json\` → \`appsettings.{Environment}.json\` → 环境变量 → 命令行 →（可选）密钥管理服务。**环境变量用双下划线表示层级**：\`Payment__ApiKey\`，容器里这是最常用的覆盖方式。
+
+### 六、Host 生命周期与优雅停机
+
+停机不是"进程退出"，而是一段有顺序的编排：
+
+1. \`IHostApplicationLifetime.ApplicationStopping\` 触发 → **先把 readiness 置为失败**（让 K8s 把本副本摘出 Endpoints，新流量不再进来）。
+2. 等待存量请求完成（\`ShutdownTimeout\`，默认 5 秒，K8s 侧 \`terminationGracePeriodSeconds\` 必须大于它，否则会被 SIGKILL）。
+3. \`IHostedService.StopAsync\` 按**注册的反序**执行——先停消费者，再停生产者。
+4. 最后释放 DI 容器与日志（flush）。
+
+两个高频错误：**\`ShutdownTimeout\` 与 \`terminationGracePeriodSeconds\` 不匹配**（应用还在排空就被 KILL，表现为发布时零星 502）；**\`BackgroundService\` 忽略了 \`StoppingToken\`**（\`ExecuteAsync\` 里写了个不理取消的死循环，导致停机永远卡到超时）。
+
+\`\`\`csharp-snippet
+protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+{
+    // 关键：循环条件与 await 都要接 stoppingToken，否则停机时卡满 ShutdownTimeout
+    while (!stoppingToken.IsCancellationRequested)
+    {
+        try { await ProcessOneAsync(stoppingToken); }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }
+        catch (Exception ex) { _logger.LogError(ex, "处理失败，等待重试"); await Task.Delay(1000, stoppingToken); }
+    }
+}
+\`\`\`
+
+### 生产检查
+
+- [ ] 开发环境开启 \`ValidateOnBuild\` + \`ValidateScopes\`，捕获依赖在启动阶段暴露
+- [ ] 所有 Options 都 \`.ValidateOnStart()\`，坏配置阻止启动而非首请求 500
+- [ ] 跨字段配置规则用 \`IValidateOptions<T>\`，失败信息指明具体配置键
+- [ ] Keyed service 的 key 用常量；解析一律 \`GetRequiredKeyedService\`
+- [ ] 配置文件分层清晰，敏感值走环境变量/密钥服务，未进仓库
+- [ ] 后台服务的循环与 await 都接受 \`stoppingToken\`
+- [ ] \`ShutdownTimeout\` < \`terminationGracePeriodSeconds\`，且停机先摘 readiness
+- [ ] 启动期预热有超时，非关键依赖失败时降级而非卡住启动
+- [ ] 有集成测试证明坏配置启动失败、优雅停机不丢在途请求
+
 ### 练习
 
 1. 修改 demo 的 MiniHost：新增 \`AddTransient<T>\`（每次解析都新建实例），在同一个 scope 里 Get 两次，对比 Transient 与 Scoped、Singleton 三者的实例差异；再把 \`AppClock\` 从 AddSingleton 改为 AddScoped，观察两个 scope 各拿一份、同一 scope 内复用；最后运行第三部分，观察 keyed 解析按 key 取到不同实现、未知 key 抛出明确异常。
@@ -422,7 +717,7 @@ builder.Services
 3. 生产场景：把配置校验搬进 Options 管道——\`AddOptions<PaymentOptions>().BindConfiguration("Payment").ValidateDataAnnotations().ValidateOnStart()\`，写一个宿主集成测试证明坏配置（如 ApiKey 为空）在启动阶段直接失败，而不是首次请求才 500；再实现 \`IHostedLifecycleService\` 在 Started 阶段做连接池预热（带 30 秒超时），预热完成后才把 readiness 标记为健康。
 `,
     code: `// ============================================================
-// 第一百二十九章 Generic Host、Keyed DI 与 Options —— 可运行演示（net8.0 / C# 12）
+// 第一百三十章 Generic Host、Keyed DI 与 Options —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // Singleton 跨 Scope 同一实例，Scoped 每 Scope 一份，Transient 每次解析都 new。
 // 捕获依赖：Singleton 攥住 RequestContext，下一个请求读到上一个用户——ValidateScopes=true 挡在启动期。
@@ -557,6 +852,77 @@ HybridCache 组合 L1 内存 + L2 分布式，并内置 stampede 保护（同一
 
 主 demo 演示 stampede 保护（单飞）：热点 key 过期瞬间 50 个并发请求到达，只有 1 个回源；并展示「异常结果不该被缓存」这个常见缺陷。
 
+### 四、三层缓存怎么选
+
+先把三层的职责分清，很多"缓存不生效"其实是放错了层：
+
+| 层 | 缓存什么 | 生效位置 | 典型失效期 |
+| --- | --- | --- | --- |
+| **响应缓存/输出缓存** | 整个 HTTP 响应 | 中间件（服务端）/ 浏览器与 CDN（响应头） | 秒级～分钟级 |
+| **进程内内存**（\`IMemoryCache\`） | 反序列化后的对象 | 单进程内 | 秒级，重启即丢 |
+| **分布式**（Redis 等） | 序列化后的字节 | 跨实例共享 | 分钟～小时级 |
+
+\`[ResponseCache]\`（HTTP 头，靠客户端/CDN 生效）与 OutputCache（服务端中间件，自己存响应）是两回事——前者只是"建议"，后者才真的替你挡住请求，别混为一谈。
+
+三条硬规则：
+
+1. **个性化响应绝不能进公共缓存**。输出缓存的 Vary 规则漏掉 \`Authorization\`/租户，结果就是用户 A 看到用户 B 的订单——这是缓存事故里最贵的一类。私有响应要么不缓存，要么用 \`VaryByValue\` 把租户/用户维度显式写进 key，要么只在进程内缓存且 key 带用户。
+2. **别缓存的东西**：带 \`Set-Cookie\` 的响应、实时金额/库存、一次性令牌、以及"错误响应"（5xx 缓存下来会让故障持续时间远超实际）。
+3. **命中率要有指标**。没有命中率监控的缓存等于没有缓存——你无法区分"它挡住了 90% 请求"和"它其实一直 miss 还额外付出序列化成本"。
+
+### 五、HybridCache 的正确用法
+
+\`HybridCache\`（.NET 9+）把 L1 + L2 + stampede 保护打包，但用错仍会踩坑：
+
+\`\`\`csharp-snippet
+// 注册：L1 内存 + L2 Redis
+builder.Services.AddHybridCache()
+    .AddStackExchangeRedisCache(o => o.Configuration = redisConn);
+
+// 使用：GetOrCreateAsync 是主 API，同 key 并发只回源一次（stampede 保护）
+var orders = await cache.GetOrCreateAsync(
+    $"tenant:{tenantId}:orders:v{schemaVersion}",
+    async ct => await db.Orders.AsNoTracking().Where(o => o.TenantId == tenantId).ToListAsync(ct),
+    new HybridCacheEntryOptions
+    {
+        Expiration = TimeSpan.FromSeconds(60 + Random.Shared.Next(-6, 6)), // TTL + jitter
+        LocalCacheExpiration = TimeSpan.FromSeconds(10),                   // L1 更短，降低跨实例不一致
+    },
+    tags: ["orders", $"tenant:{tenantId}"]);                               // 标签失效
+
+// 失效：按 key 或按标签批量失效（比逐个 Remove 可靠）
+await cache.RemoveAsync(key);
+await cache.RemoveByTagAsync($"tenant:{tenantId}");
+\`\`\`
+
+要点：
+
+- **L1 比 L2 短得多**（如 L1 10s、L2 60s）。L1 太长会让多实例之间的数据不一致窗口变得肉眼可见，用户刷新页面时看到新旧交替。
+- **序列化要求**：L2 要序列化，类型必须是序列化器支持的（JSON 源生成/AOT 场景尤其注意），且**改了 DTO 结构要让旧缓存失效**——把 schema 版本写进 key 是最省事的做法。
+- **结果可空与负缓存**：查不到时不要缓存 null（会把"暂时没有"固化）。要防穿透可以缓存一个短暂的**空标记**（如 30 秒），并明确它与"真数据"的区别。
+- **回源失败不要污染缓存**：factory 抛异常时必须清理在途记录，否则后续请求会一直复用这个失败状态（demo 第三部分演示的正是这个缺陷）。
+
+### 六、失效的三条可靠策略
+
+依赖 \`Remove\` 成功是最脆的方案（删除失败 = 数据已改、缓存还是旧的，且没有补偿）。生产上按可靠性排序：
+
+1. **短 TTL + 版本化 key（推荐）**：数据更新时递增 \`schemaVersion\`，旧 key 自然无人再读，连删除都不用做。代价是更新后最长有 TTL 窗口的陈旧数据——这通常是可接受的（明确写给产品："最长 60 秒"）。
+2. **事件驱动失效**：数据变更后发领域事件/消息，消费者按 key 或标签删缓存。要处理消息丢失（兜底 TTL）与重复（幂等删除）。
+3. **双删 + 延迟**：先删缓存 → 改数据库 → 延迟几百毫秒再删一次。用于缓解"改数据库过程中有并发读把旧值写回缓存"的竞态；它不完美，但简单有效。
+
+另外，**TTL 一定要加 jitter**（±10%）。同一批 key 在同一秒集体过期，回源流量会打出一个尖峰；jitter 把尖峰摊平。以及：缓存的 key 必须含**租户、版本、授权维度**，宁可少命中也不要串数据。
+
+### 生产检查
+
+- [ ] 三层缓存职责清晰；私有/个性化响应不会进公共缓存（Vary 规则含租户与授权）
+- [ ] 输出缓存未用于带 \`Set-Cookie\`、实时金额、一次性令牌的响应
+- [ ] \`HybridCache\` 的 L1 短于 L2；\`schemaVersion\` 写进 key
+- [ ] TTL 带 jitter；热点 key 有 stampede 保护（单飞）
+- [ ] 回源失败不污染缓存：清理在途记录，可选短暂负缓存
+- [ ] 失效策略不依赖单次 \`Remove\` 成功（版本化 key / 事件驱动 / 双删）
+- [ ] 有命中率与回源次数的指标；缓存故障时有降级预算（回源 or 返回陈旧）
+- [ ] 有测试覆盖：并发回源只执行一次、异常不被缓存、key 不含跨租户数据
+
 ### 练习
 
 1. 修改 demo：把并发数从 50 提到 200，确认“回源数据库”仍然只打印一次；把 key 换成 "tenant:orders:cold" 再跑一轮，观察发生第二次回源；再注释掉第三部分里 factory 抛异常时的 \`_inflight.Remove(key)\` 清理，重跑观察后续请求全部卡住——体会为什么失败必须清理在途记录。
@@ -564,7 +930,7 @@ HybridCache 组合 L1 内存 + L2 分布式，并内置 stampede 保护（同一
 3. 生产场景：为订单列表接口设计缓存方案——输出缓存层 \`VaryByQuery\` 加 \`VaryByAuthorization\` 防止跨用户串数据；HybridCache 的 key 设计为 \`tenant:{tenantId}:orders:v{schemaVersion}\`，TTL 60 秒加 ±10 秒 jitter 防同步过期；失效改为递增 schemaVersion 而不是依赖 Remove 成功；最后推演一遍：数据更新后旧缓存最长还能存活多久、回源风暴如何被单飞挡住。
 `,
     code: `// ============================================================
-// 第一百三十章 输出缓存、HybridCache 与失效 —— 可运行演示（net8.0 / C# 12）
+// 第一百三十一章 输出缓存、HybridCache 与失效 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 热点 key 过期时单飞：N 个并发只放行 1 个回源，其余搭便车，避免把数据库打穿。
 // 回源失败必须 Remove 在途记录并透传异常；留下失败 Task 会让后续请求全部卡死或缓存负值。
@@ -689,6 +1055,65 @@ app.MapHealthChecks("/healthz", new() { Predicate = r => r.Tags.Count == 0 });
 app.MapHealthChecks("/ready", new() { Predicate = r => r.Tags.Contains("ready") });
 \`\`\`
 
+### 四、探针参数怎么算
+
+探针配错的典型后果有两个方向，都比"不配探针"更糟：**配太敏感** → 下游抖一下，全部实例同时重启（连环车祸）；**配太迟钝** → 实例早已不健康却继续接流量，用户持续报错。
+
+三个关键参数：
+
+- \`periodSeconds\`：探针间隔（如 10s）。
+- \`failureThreshold\`：连续失败几次才判定失败（如 3）。**判定耗时 = \`periodSeconds × failureThreshold\`**，健康检查自身的超时必须显著小于它，否则会出现"检查还没超时返回，K8s 已经算它失败"的错位。
+- \`startupProbe.failureThreshold × periodSeconds\`：**必须大于最坏启动时长**（含 JIT 预热、缓存加载、迁移）。这是 startupProbe 存在的唯一理由——给慢启动一个合法窗口，别让 liveness 在启动期就把进程杀掉。
+
+\`\`\`yaml
+# 生产探针草案（数值是起点，不是真理，按实测调）
+startupProbe:
+  httpGet: { path: /healthz/startup, port: 8080 }
+  periodSeconds: 5
+  failureThreshold: 60          # 5s × 60 = 最长 300s 启动窗口
+livenessProbe:
+  httpGet: { path: /healthz/live, port: 8080 }   # 只查进程自身，不查依赖！
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+readinessProbe:
+  httpGet: { path: /healthz/ready, port: 8080 }  # 可含数据库等关键依赖
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 2
+\`\`\`
+
+**liveness 里查下游依赖是头号反模式**。下游抖 3 秒 → 全部副本 liveness 失败 → 集体重启 → 重启期间流量全丢 → 存活的副本被流量打爆 → 更多 liveness 失败。正确的做法是：liveness 只回答"这个进程还活着吗"（进程在、没死锁），依赖问题交给 readiness 摘流量 + 告警。
+
+### 五、依赖隔离：别让一个依赖拖垮全站
+
+健康检查只是"报表"，真正的韧性来自依赖隔离（bulkhead）：
+
+1. **分级**：关键依赖（数据库、支付网关）失败 → 整实例不接流量；非关键依赖（推荐、分析、邮件）失败 → 标记 \`Degraded\`，继续服务并告警。判据是"它挂了，我的核心流程还能不能完成"。
+2. **超时与熔断分开设**：每个依赖有自己的超时（不能共用全局），并配熔断器（连续失败 N 次后快速失败一段时间，给下游喘息）。熔断器的**半开**状态要限制试探流量，否则恢复瞬间又被打垮。
+3. **降级路径要真的能跑**：写了 \`try/catch\` 返回默认值，不等于降级可用——要有测试证明"缓存挂了接口仍返回 200"，否则降级代码路径第一次被执行往往是在线上故障时，而它可能是坏的。
+4. **舱壁（资源隔离）**：给不同依赖用不同的 \`HttpClient\` 实例/连接池，避免一个慢依赖占满公共连接池，把其他依赖一起拖死——这是"明明只挂了一个服务，整站都慢"的常见成因。
+
+### 六、健康端点的暴露与输出
+
+- **不要暴露细节**：公网可访问的 \`/health\` 应该只返回 \`200 Healthy\`/\`503 Unhealthy\`。详细报告（哪个依赖、什么错误、耗时）放内网端点或需要鉴权——详细报告会泄漏内部拓扑、版本号、连接串片段。
+- **状态码**：健康检查端点的 HTTP 状态码要真实反映状态（\`Healthy\` → 200，\`Degraded\` → 200，\`Unhealthy\` → 503）。返回 200 却在 body 里写 Unhealthy，LB 会照常发流量。
+- **HealthCheckPublisher**：把检查结果定期推送到监控系统，这样"曾经不健康过 30 秒"这种瞬时抖动也会被记录，而不是只靠探针轮询碰运气。
+- **缓存健康结果**：高频探针（每 5 秒 × 每副本）打到数据库上也是有成本的，可以给健康检查结果加一个很短的缓存（1～2 秒）。
+
+### 生产检查
+
+- [ ] liveness **不含**任何下游依赖检查（只回答"进程是否还活着"）
+- [ ] readiness 含关键依赖，非关键依赖标记为 \`Degraded\` 而非 \`Unhealthy\`
+- [ ] \`startupProbe\` 的 \`failureThreshold × periodSeconds\` 大于实测最坏启动时长
+- [ ] 健康检查自身有超时（如 2s），且显著小于 \`periodSeconds × failureThreshold\`
+- [ ] 多个检查并行执行并共享总预算，不是串行累加
+- [ ] 健康端点 HTTP 状态码真实反映状态（Unhealthy → 503）
+- [ ] 公网只暴露简化结果，详细报告限内网/鉴权
+- [ ] 每个依赖有独立超时与熔断，降级路径有测试证明可用
+- [ ] 慢依赖有连接池隔离，不会占满公共连接池
+- [ ] 健康检查结果接入监控（Publisher），瞬时抖动可被追溯
+
 ### 练习
 
 1. 修改 demo 的 \`AppHealth\`：新增 Redis 字段并作为关键依赖纳入 \`IsReady\`，运行三种组合观察：Redis 挂导致 not ready、Analytics 挂仍然 ready、StartupDone 为 false 时 live 与 ready 全 false；再观察第三部分三级汇总的输出——Analytics 挂时应为 Degraded 而非 Unhealthy；对照结果写一份依赖分级结论（哪些进 readiness、哪些降级放行）。
@@ -696,7 +1121,7 @@ app.MapHealthChecks("/ready", new() { Predicate = r => r.Tags.Contains("ready") 
 3. 生产场景：写出 K8s 探针配置草案——livenessProbe 只探测进程自身（/healthz 固定返回 200，不含依赖检查）；readinessProbe 挂 /ready 并包含数据库；startupProbe 的 failureThreshold 乘 periodSeconds 大于最坏预热时长；附一份依赖分级表（数据库、Redis、邮件、分析服务各自进 liveness、readiness 还是都不进），并说明每条决策的依据。
 `,
     code: `// ============================================================
-// 第一百三十一章 健康检查、探针与依赖隔离 —— 可运行演示（net8.0 / C# 12）
+// 第一百三十二章 健康检查、探针与依赖隔离 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // liveness 只回答「进程要不要被杀」；把数据库探活放进 live 会导致依赖抖动时被 K8s 连环重启。
 // readiness 回答「要不要接流量」：关键依赖（库、必须的缓存）失败才摘流，分析管道挂了应 Degraded。
@@ -808,6 +1233,65 @@ Aspire Dashboard 适合看本地 logs、traces、metrics。生产导出到 OTLP 
 
 主 demo 演示「资源引用」的核心思想：应用只依赖资源名，连接信息由环境注入——同一份代码在 local 与 prod 读出不同连接串；并演示启动依赖的拓扑排序。
 
+### 六、ServiceDefaults：别让每个项目各写一遍
+
+\`aspire init\` 生成的 \`ServiceDefaults\` 项目不是样板垃圾，它是**跨服务的横切配置单点**：OpenTelemetry（日志/指标/追踪）接线、健康检查端点、服务发现、HTTP 韧性（标准 \`AddStandardResilienceHandler\`）。所有服务只写一行 \`builder.AddServiceDefaults();\`。
+
+它的价值在于：横切关注点只有一份定义，改采样率、改健康检查路径、加一个 exporter 都是一处改动。团队里最坏的情况是每个服务各写一份 OTel 配置，然后互相不一致——排查时 trace 断在中间，因为 A 服务用了不同的 propagator。
+
+\`\`\`csharp-snippet
+// ServiceDefaults/Extensions.cs（节选，理解它在做什么即可）
+public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
+{
+    builder.ConfigureOpenTelemetry();          // logging + metrics + tracing，统一 OTLP 导出
+    builder.AddDefaultHealthChecks();          // /health、/alive 端点
+    builder.Services.AddServiceDiscovery();    // 让 https://api 这类逻辑名可解析
+    builder.Services.ConfigureHttpClientDefaults(http =>
+    {
+        http.AddStandardResilienceHandler();   // 超时 + 重试 + 熔断 + 限流的默认组合
+        http.AddServiceDiscovery();
+    });
+    return builder;
+}
+\`\`\`
+
+注意 \`AddStandardResilienceHandler\` 给的是**通用默认值**（总超时约 30 秒、重试若干次）。它是起点不是终点——写操作（POST 下单）的默认重试可能不幂等，应按接口语义覆盖策略（第一百三十五章的 deadline 预算同理）。
+
+### 七、Aspire 不是什么
+
+把边界说清楚，能省掉团队几个月的争论：
+
+| 它是 | 它不是 |
+| --- | --- |
+| **本地开发编排器**：一键拉起依赖与仪表盘 | 生产编排器（生产用 K8s/ACA/ECS + IaC） |
+| **连接信息的注入方式**（资源名 → 连接串） | 服务网格 / 配置中心替代品 |
+| **分布式应用的代码化拓扑描述** | 部署流水线（CI/CD 仍由 GitHub Actions/Azure DevOps 负责） |
+| 提升本地与生产的一致性 | 消除环境差异（差异必须靠 IaC 与配置治理收敛） |
+
+一个常见误解是"用了 Aspire 就能一键上云"。实际上 Aspire 的部署能力（\`aspire deploy\` / Aspirate 生成清单）适合**快速起步与小型系统**；中大型系统仍应把 IaC 作为唯一事实来源。折中做法是：用 Aspire 描述拓扑，生成 IaC 草稿，再由运维评审固化。
+
+### 八、与测试的配合
+
+编排能力对集成测试是巨大利惠：依赖用容器（Testcontainers）或 Aspire 编排拉起，测试跑完即销毁，不再依赖"某台机器上有个共享测试数据库"——那是测试不稳定的头号来源。
+
+三条经验：
+
+- **测试与本地开发共用同一套依赖描述**，能消除"本地能跑、CI 挂了"的大部分原因。
+- **并行测试要隔离**：多组测试同时跑时，数据库要么每套测试独立库/schema，要么固定端口映射到不同宿主端口；共用同一个库和同一份种子数据，结果就是随机失败。
+- **启动等待**：容器起来了 ≠ 能连。要么用 \`WaitFor\` + 应用侧重试，要么在测试里显式轮询健康端点（带超时），不要 \`Thread.Sleep(5000)\` 碰运气。
+
+### 生产检查
+
+- [ ] AppHost SDK 版本在 csproj 中钉住，升级走 PR 审查
+- [ ] 所有服务调用 \`AddServiceDefaults()\`，横切配置只有一份
+- [ ] 连接信息一律通过资源引用注入，代码里无写死的 \`localhost:5432\`/\`6379\`
+- [ ] \`WaitFor\` 之外，应用自身仍有重试、超时与健康检查
+- [ ] 写接口的 HTTP 韧性策略按幂等性单独覆盖，未盲目使用默认重试
+- [ ] Dashboard 仅限本地；生产遥测走 OTLP 后端，采样率与基数有设计
+- [ ] 应用脱离 AppHost、\`dotnet run\` + 环境变量也能在 CI 启动
+- [ ] 停止编排后无孤儿容器；CI 与本地的依赖版本一致
+- [ ] 集成测试用容器化的独立依赖，并行时不互相干扰
+
 ### 练习
 
 1. 修改 demo：新增一个 staging 环境的 \`EnvironmentBindings\`（analytics 连接指向 staging 域名），三个环境循环打印 shop 连接串；再对不存在的 key 调用 \`Get\`，把 \`KeyNotFoundException\` 改为返回默认值的 \`TryGet\`，体会“缺配置显式失败还是静默默认”的取舍；最后给第三部分资源图加一条 worker WaitFor redis 的边，观察拓扑排序输出如何变化。
@@ -815,7 +1299,7 @@ Aspire Dashboard 适合看本地 logs、traces、metrics。生产导出到 OTLP 
 3. 生产场景：为团队编写 Aspire 验收清单并逐条给出验证命令——aspire init 后核对 AppHost csproj 的 SDK 版本被仓库钉住；数据库容器健康检查未通过时 API 不发出首个请求（WaitFor 加应用侧重试双保险）；全局搜索确认没有写死 6379/5432 端口；Ctrl+C 停止后确认 docker ps 无孤儿容器；把 API 项目单独 dotnet run，仅靠环境变量注入连接串也能在 CI 启动。
 `,
     code: `// ============================================================
-// 第一百三十二章 .NET Aspire 与本地开发编排 —— 可运行演示（net8.0 / C# 12）
+// 第一百三十三章 .NET Aspire 与本地开发编排 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 应用只认资源名（ConnectionStrings:shop），连接串由环境注入，同一份代码才能从 localhost 走到内部 DNS。
 // WaitFor 是启动拓扑：有环必须失败，不要靠超时「等一等也许好了」。
@@ -928,6 +1412,87 @@ sealed class ResourceGraph
 1. 单元/集成测试：构造两个租户的数据，断言查询结果不串。
 2. 防线测试：故意写一个漏掉租户过滤的查询，验证应用层守卫或 RLS 至少有一层拦截——这层测试防的是「未来的新代码」。
 
+### 五、租户上下文怎么传递
+
+租户 ID 一旦进入应用，必须有一个**唯一权威来源**，而不是在每个方法里从 \`HttpContext\` 里捞。常见做法：
+
+\`\`\`csharp-snippet
+// 推荐：Scoped 的租户上下文（一次请求一份，DI 注入即可）
+public sealed class TenantContext { public string TenantId { get; private set; } = ""; public bool IsElevated { get; private set; } }
+
+// 中间件：只从这里解析租户，别的地方一律注入 ITenantContext
+app.Use(async (ctx, next) =>
+{
+    var tenantId = ctx.User.FindFirstValue("tenant_id")      // 来自已验签的 token
+                   ?? throw new UnauthorizedAccessException("token 缺少 tenant_id");
+    ctx.RequestServices.GetRequiredService<TenantContext>().TenantId = tenantId;
+    await next();
+});
+
+// EF Core 全局过滤器：让"忘记加条件"在默认情况下就不会发生
+modelBuilder.Entity<Order>().HasQueryFilter(o => o.TenantId == _tenantContext.TenantId);
+\`\`\`
+
+三个坑：
+
+1. **不要用 \`AsyncLocal\` 当唯一来源**。它在 \`async\` 流动中对"谁设置的"不设防，任何代码都能改；而 Scoped 服务配合 DI 至少能约束到请求边界。若确实用 \`AsyncLocal\`，必须只在中间件里 Set 一次。
+2. **后台任务没有 HttpContext**。队列消费者、定时任务要显式携带 tenantId（消息里带），并在 \`CreateScope()\` 后手动填充上下文——否则全局过滤器会拿到空值，于是"什么也查不到"（还算安全的失败）或"查到全部"（如果过滤器写成了 \`== null || \`，那就是灾难）。
+3. **\`HasQueryFilter\` 不是安全边界，是防呆**。它可以被 \`IgnoreQueryFilters()\` 绕过，也可能因为过滤器里引用了未初始化的上下文而失效。真正的边界是数据库 RLS。
+
+### 六、RLS：把防线放到数据层
+
+应用层总会漏，数据库层再挡一次。以 PostgreSQL 为例：
+
+\`\`\`sql
+-- 1. 开启行级安全
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+-- 2. 强制（表所有者也受约束，否则 owner 会绕过）
+ALTER TABLE orders FORCE ROW LEVEL SECURITY;
+
+-- 3. 策略：会话变量必须等于行的 tenant_id
+CREATE POLICY tenant_isolation ON orders
+    USING (tenant_id = current_setting('app.tenant_id', true))
+    WITH CHECK (tenant_id = current_setting('app.tenant_id', true));
+\`\`\`
+
+应用侧每个连接/事务开头设置一次：
+
+\`\`\`csharp-snippet
+await using var tx = await db.Database.BeginTransactionAsync(ct);
+await db.Database.ExecuteSqlRawAsync($"SET LOCAL app.tenant_id = '{tenantId}'"); // tenantId 必须来自已验证来源
+var orders = await db.Orders.ToListAsync(ct);   // 漏了 Where 也只看到本租户
+\`\`\`
+
+要点：\`SET LOCAL\`（事务内有效）比 \`SET\`（会话级）安全，连接池复用不会串；\`WITH CHECK\` 同时管住写入（防止把数据写成别人的租户）；迁移账户需要 \`BYPASSRLS\` 或被策略豁免，否则跑不动迁移。SQL Server 的对应能力是 Row-Level Security + \`SESSION_CONTEXT\`，思路相同。
+
+### 七、跨租户操作与授权边界
+
+真实系统里一定有跨租户场景：平台管理员、客服代查、数据导出、对账任务。正确做法不是"放开过滤器"，而是：
+
+- **独立的权限提升路径**：显式授予（有时间窗、有审批记录），期间的操作**全程审计**（谁、为什么、看了哪个租户的什么）。
+- **独立的查询入口**：不要在同一个 \`DbContext\` 上用开关切租户，容易忘记切回来。跨租户任务用独立的服务/连接，代码路径一眼可辨。
+- **导出与分享**：导出文件按租户打包、加密、短寿命 URL；调试 dump 与日志查询默认只含请求者所属租户。
+
+### 八、租户级配额与噪声邻居
+
+多租户共享资源时，"一个大客户跑批处理把所有人拖慢"是必然事件，需要提前设计：
+
+- 每租户限流（请求数、并发数、批量大小），超限返回 429 + \`Retry-After\`。
+- 后台任务按租户配额调度，大租户的导出任务排队而不是并发冲刺。
+- 指标标签里放 tenantId 要谨慎：**租户数上千时，标签基数会打爆时序库**。做法是对大租户单独打标，小租户聚合到 \`tenant_tier\` 或干脆只记内部诊断用的维度。
+
+### 生产检查
+
+- [ ] 租户 ID 只有一个权威来源（已验签的 token），不信客户端 header
+- [ ] EF Core 全局过滤器兜底，且后台任务显式传递租户
+- [ ] 数据库 RLS 已开启并 \`FORCE\`，\`WITH CHECK\` 覆盖写入
+- [ ] 缓存 key、队列分区、搜索索引、对象存储前缀都含租户
+- [ ] 跨租户操作走独立授权路径，全程审计、有时间窗
+- [ ] 有"防线测试"：故意漏租户条件的查询会被应用层或 RLS 拦截
+- [ ] 每租户限流与配额，防止噪声邻居
+- [ ] 指标标签的租户基数受控（大租户单列，小租户聚合）
+- [ ] 日志/导出/dump 默认按租户隔离，敏感字段脱敏
+
 ### 练习
 
 1. 修改 demo：给 orders 数组加一条租户 "C" 的记录，当前租户 A 过滤后确认看不到它；把 headerTenant 改成与 tokenTenant 相同的 "A"，观察走进“租户一致”分支；再试试 headerTenant 传空串，决定应该拒绝还是回退到 token 中的租户；最后运行第三部分，观察裸 key 与租户前缀 key 的差异。
@@ -935,7 +1500,7 @@ sealed class ResourceGraph
 3. 生产场景：设计缓存与日志两处的租户隔离——缓存层封装 \`TenantKey.Build("orders", id)\` 统一产出 \`tenant:{tenantId}:orders:{orderId}\` 前缀，禁止裸拼 key；日志结构化字段带 tenantId 但金额、邮箱脱敏；评估共享库 tenant_id 与数据库 RLS 组成双层防线，写一条回归测试：故意构造漏加租户过滤的查询，验证应用层守卫与 RLS 至少有一层拦截。
 `,
     code: `// ============================================================
-// 第一百三十三章 多租户、数据隔离与授权边界 —— 可运行演示（net8.0 / C# 12）
+// 第一百三十四章 多租户、数据隔离与授权边界 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 查询忘记 tenant 条件就是串数据；全局查询过滤器可以托底，但写原生 SQL 时仍要手传。
 // 租户身份只信已验证 token，客户端 header 是攻击面（改成邻居租户 ID 即可读）。
@@ -1000,6 +1565,71 @@ public sealed record OrderRow(string TenantId, string Id, decimal Total);
 
 ### 三、背压
 
+队列无界 = 内存定时炸弹。三条经验：
+
+1. **默认就有界**：\`Channel.CreateBounded(capacity)\`，容量按"能承受的积压"而不是"内存能装多少"来定。满了要有明确策略：拒绝（返回 503 + \`Retry-After\`）、阻塞等待、或丢弃最旧——选哪个取决于业务（支付指令不能丢，指标采样可以丢）。
+2. **信号量控制并发**：\`SemaphoreSlim\` 限制同时处理的数量，比"加大线程池"更可控。要设置等待超时，否则排队请求会无限堆积。
+3. **拒绝要快、要早**：在入口就拒绝（限流中间件）比让请求进来再超时更省资源。已被拒绝的请求不应再占用下游连接。
+
+\`\`\`csharp-snippet
+var channel = Channel.CreateBounded<WorkItem>(new BoundedChannelOptions(1000)
+{
+    FullMode = BoundedChannelFullMode.Wait,   // 满了就等（也可选 DropOldest / DropWrite）
+    SingleReader = false,
+    SingleWriter = false,
+});
+// 生产者：写不进去时按策略处理，而不是无限 await
+if (!channel.Writer.TryWrite(item))
+{
+    return Results.StatusCode(503);           // 明确背压：让上游重试或降级
+}
+\`\`\`
+
+### 四、超时要分层
+
+一个 HTTP 调用其实有三段超时，混为一谈就会出现"明明设了 5 秒，却卡了 40 秒"：
+
+| 超时类型 | 管什么 | 典型值 |
+| --- | --- | --- |
+| 连接超时 | 建立 TCP/TLS 的时间 | 2～5s |
+| 请求超时（每跳） | 单次请求等响应的时间 | 视接口而定 |
+| 总体超时 / deadline | 整个业务操作（含重试）的预算 | 由 SLO 倒推 |
+
+重试次数 × 单次超时 必须 ≤ 总体预算，否则重试会把预算撑爆——"重试 3 次、每次 30 秒"的接口，最坏要 90 秒才失败，而调用方 10 秒就放弃了。正确算法是**每跳拿剩余预算**：
+
+\`\`\`csharp-snippet
+var total = TimeSpan.FromSeconds(5);
+var sw = Stopwatch.StartNew();
+for (int attempt = 1; ; attempt++)
+{
+    var remaining = total - sw.Elapsed;
+    if (remaining <= TimeSpan.Zero) throw new TimeoutException("预算耗尽");
+    using var cts = CancellationTokenSource.CreateLinkedTokenSource(requestAborted);
+    cts.CancelAfter(remaining);                 // 只用剩余时间，不再给满
+    try { return await http.GetAsync(url, cts.Token); }
+    catch (OperationCanceledException) when (!requestAborted.IsCancellationRequested && attempt < 3)
+    { await Task.Delay(100 * attempt); }        // 退避，且退避时间也要算进预算
+}
+\`\`\`
+
+### 五、取消的边界与代价
+
+- **不可取消的操作**：数据库写入、已发出的支付指令、文件已写一半——取消只能停止"等待"，不能撤销"已发生"。所以取消路径要设计成"停止后续步骤 + 记录中断状态 + 由补偿/对账收拾残局"，而不是假装什么都没发生。
+- **不要吞掉取消**：\`catch (Exception)\` 会把 \`OperationCanceledException\` 一起吞掉，于是客户端早已断开，服务端还在算完并写库——这就是"僵尸请求"。正确顺序是先 \`catch (OperationCanceledException) when (ct.IsCancellationRequested)\` 再 \`catch (Exception)\`。
+- **取消不等于失败**：客户端取消（499）不该计入错误率，也不该触发告警；自己超时（504）才该计。混在一起会让 SLO 与告警长期失真。
+- **资源清理**：取消发生在 \`await\` 之间时，\`finally\`/\`using\` 仍会执行——这是唯一能保证清理的地方，别把释放逻辑写在取消分支里。
+
+### 生产检查
+
+- [ ] \`CancellationToken\` 从入口一路传到 DB、HttpClient、队列
+- [ ] 客户端取消（499）与自身超时（504）分开计数与告警
+- [ ] 重试次数 × 单次超时 ≤ 总体 deadline；每跳只拿剩余预算
+- [ ] 队列默认有界，满时有明确拒绝策略（503 + Retry-After）
+- [ ] 信号量限制并发并设置等待超时
+- [ ] 未吞掉 \`OperationCanceledException\`；取消后不在继续写业务数据
+- [ ] 超时分三层配置（连接/每跳/总体），有集成测试验证
+- [ ] 背压有可观测指标（队列长度、丢弃数、等待时长）
+
 Channel/Queue 必须有界。满了要失败、丢弃或阻塞生产者——需要明确策略：
 
 | FullMode | 语义 | 适用 |
@@ -1020,7 +1650,7 @@ Channel/Queue 必须有界。满了要失败、丢弃或阻塞生产者——需
 3. 生产场景：为消息消费者设计背压策略——\`Channel.CreateBounded\` 容量按下游吞吐乘可容忍延迟估算；可丢消息（指标上报）用 \`BoundedChannelFullMode.DropOldest\`，不可丢消息（订单）用 Wait 并把 \`Reader.Count\` 作为 lag 指标暴露；写一次演练：把消费速度降到每秒 1 条，观察生产者阻塞、lag 告警、超过 deadline 后的降级动作分别如何触发。
 `,
     code: `// ============================================================
-// 第一百三十四章 取消、超时、deadline 与背压 —— 可运行演示（net8.0 / C# 12）
+// 第一百三十五章 取消、超时、deadline 与背压 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 有界 Channel + Wait：队列满时生产者被拖住，无界队列只是把爆炸推迟到 OOM。
 // deadline 是整条操作的绝对截止时间；每次 IO/Delay/WaitToWrite 都传同一 token，用的是剩余预算。
@@ -1106,6 +1736,63 @@ static async Task RunAsync()
 
 指标标签同样受分级约束：高基数字段（userId、email）不进 metrics label，否则时序数据库先被基数打爆，再把隐私泄进监控系统。
 
+### 四、审计事件的模型与存储
+
+一条有用的审计记录要能回答「谁、何时、对什么、做了什么、为什么、改成了什么」：
+
+\`\`\`csharp-snippet
+public sealed record AuditEvent(
+    string ActorId,          // 操作人（含系统/服务身份）
+    string ActorTenantId,    // 租户，跨租户操作必须记录
+    DateTimeOffset At,       // UTC 时间
+    string Action,           // order.refund / user.role_changed，稳定枚举式
+    string ResourceType,     // order
+    string ResourceId,
+    string? BeforeHash,      // 变更前快照哈希（不存明文，省空间也降风险）
+    string? AfterHash,
+    string? Reason,          // 敏感操作的理由（如客服代查工单号）
+    string CorrelationId);   // 串联 trace / 请求
+\`\`\`
+
+存储上的四条硬要求：
+
+1. **只追加（append-only）**：审计表不允许 \`UPDATE\`/\`DELETE\`，权限上也要单独授予——应用账号有写权限即可，读权限归审计/安全角色。
+2. **与业务同事务或可靠 Outbox**：审计写不进去 = 这次变更不能被承认。要么回滚业务，要么走 Outbox 保证最终写入（第一百〇一章同款思路）。**"审计挂了业务照常改"是合规上的硬伤**。
+3. **不可篡改的兜底**：高合规场景把审计事件哈希后链式串联（每条含上一条哈希），或定期把哈希锚定到只写存储（WORM）/外部时间戳服务。
+4. **保留期分层**：审计通常比业务日志保留更久（1～7 年，看法规），且删除只能按保留策略整体过期，不能被单条抹掉——"能删审计"等于"能毁证据"。
+
+### 五、日志脱敏的实现位置
+
+脱敏最可靠的落点是**日志管线本身**，而不是"每个开发记得别打密码"。三条路线按可靠性排序：
+
+1. **集中式 redaction（推荐）**：自定义 \`ILoggerProvider\` / 序列化钩子，在写入前统一扫字段名与正则（卡号 Luhn、身份证、JWT 形状、邮箱）。漏网只发生在一处，修一次全站生效。
+2. **类型级控制**：给敏感类型重写 \`ToString()\`（如 \`Sensitive<T>\` 包装器只输出 \`[REDACTED]\`），并用 \`ILogger\` 的源生成的 \`[LogProperties]\` 控制哪些属性进日志。
+3. **约定 + 评审（最弱）**：文档写"不要打 password"。它必然在某个加班的深夜失效。
+
+三个容易漏的出口：**异常消息与堆栈**（\`HttpRequestException: ...?token=xxx\` 会进日志）、**HTTP 访问日志**（URL 查询串里可能有令牌）、**第三方 SDK 的日志**（ORM 打印 SQL 时会把参数值打出来——生产必须关掉 \`EnableSensitiveDataLogging\`）。
+
+另外，**日志注入（log forging）** 也要防：用户输入的换行符能伪造出一条假的日志行。结构化日志（属性化）天然免疫；拼接字符串时要把 \`\r\n\` 转义。
+
+### 六、合规：能删、能导出、能证明
+
+- **删除权（被遗忘权）**：业务数据可删，审计记录通常豁免（合规要求保留），但要能证明"该用户的个人数据已从业务库中删除"。设计上把 PII 集中在少数表/列，删除才可行——PII 散落在 30 张表里时，删除请求会变成不可能完成的任务。
+- **保留与过期**：按数据类型设定保留期（如业务日志 90 天、审计 1 年），过期删除任务要产出**可导出的执行记录**（删了哪些、多少条、什么时间），而不是"我们相信定时任务跑了"。
+- **跨境与驻留**：多区域部署时，日志与备份的存放位置也是合规事项（数据不能出境）。这会影响日志聚合架构——是集中到一个区域，还是每区域独立留存。
+- **访问审计**：谁能看审计日志本身，也要有记录和最小权限。审计系统被攻破等于攻击者知道你在查什么。
+
+### 生产检查
+
+- [ ] 数据分级落在代码里的分类器，而非仅文档约定
+- [ ] 严格机密字段（密码、证件、卡号）不进日志、指标标签、trace attribute
+- [ ] 脱敏在日志管线集中处理，覆盖异常消息、访问日志、ORM 参数日志
+- [ ] 审计事件包含操作人、时间、资源、动作、前后快照、租户、关联 ID
+- [ ] 审计与业务同事务或走可靠 Outbox；审计失败不让业务静默成功
+- [ ] 审计存储只追加、权限独立，有防篡改设计
+- [ ] 保留期按数据分级配置，删除任务产出可导出的证明
+- [ ] 高基数字段（userId、email）不进 metrics label
+- [ ] 日志结构化（模板 + 属性），用户输入已防日志注入
+- [ ] PII 集中在少数表/列，删除权可实际执行
+
 ### 练习
 
 1. 修改 demo 的 \`redact\` 数组：加入 "idCard" 与 "bankCard"，并给样本补一条含 18 位身份证号与长度恰好 4 的短 token 的事件；观察 \`Mask\` 对短值走 "****" 分支、长值保留首尾两字符的规则边界——长度 5 与 4 的值分别输出什么；再观察第三部分分级渲染：password 与 email 的输出有何不同。
@@ -1113,7 +1800,7 @@ static async Task RunAsync()
 3. 生产场景：为订单模块实现审计事件——审计表记录操作人、时间、资源 id、动作与变更前后的快照哈希；审计写入失败时业务写操作回滚或落入可靠 Outbox，禁止“审计挂了业务照常改”；保留期限按法规设为 180 天，到期删除任务要产出可导出的删除证明；写一个集成测试：让审计存储故意不可用，验证下单接口返回 503 而不是静默成功。
 `,
     code: `// ============================================================
-// 第一百三十五章 审计、数据分级与合规日志 —— 可运行演示（net8.0 / C# 12）
+// 第一百三十六章 审计、数据分级与合规日志 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 日志是长期存储：能 grep 日志的人通常多于能调接口的人，PII 必须按级别处理。
 // Confidential（邮箱/手机）保留首尾便于排障；Restricted（密码/证件）连脱敏版本都不输出。

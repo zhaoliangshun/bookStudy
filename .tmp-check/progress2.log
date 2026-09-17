@@ -1,0 +1,144 @@
+(node:64081) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///Users/test/bookStudy/app/courses-data/csharp5-tutorial-data.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to /Users/test/bookStudy/package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[4/137] ✓ csharp5-ch04 顶级语句与程序结构
+[3/137] ✓ csharp5-ch03 第一个 C# 程序
+[2/137] ✓ csharp5-ch02 开发环境搭建
+[1/137] ✓ csharp5-ch01 .NET 与 C# 总览
+[5/137] ✓ csharp5-ch05 控制台输入输出
+[6/137] ✓ csharp5-ch06 变量与常量
+[7/137] ✓ csharp5-ch07 内置类型详解
+[8/137] ✓ csharp5-ch08 值类型与引用类型
+[9/137] ✓ csharp5-ch09 运算符
+[12/137] ✓ csharp5-ch-arrays 数组
+[11/137] ✓ csharp5-ch11 字符串格式化与插值
+[13/137] ✓ csharp5-ch12 控制流
+[10/137] ✓ csharp5-ch10 字符串详解
+[14/137] ✓ csharp5-ch13 枚举类型
+[15/137] ✓ csharp5-ch14 元组与解构
+[16/137] ✓ csharp5-ch15 模式匹配
+[17/137] ✓ csharp5-ch16 可空值类型
+[18/137] ✓ csharp5-ch17 可空引用类型
+[19/137] ✓ csharp5-ch18 类与对象基础
+[20/137] ✓ csharp5-ch19 字段与属性
+[21/137] ✓ csharp5-ch20 方法详解
+[22/137] ✓ csharp5-ch21 构造函数与析构
+[23/137] ✓ csharp5-ch22 静态类与静态成员
+[24/137] ✓ csharp5-ch23 继承
+[25/137] ✓ csharp5-ch24 多态与虚方法
+[26/137] ✓ csharp5-ch25 抽象类与接口
+[27/137] ✓ csharp5-ch26 密封类与扩展方法
+[28/137] ✓ csharp5-ch27 命名空间与作用域
+[29/137] ✓ csharp5-ch28 泛型基础
+[30/137] ✓ csharp5-ch29 集合与 IEnumerable
+[31/137] ✓ csharp5-ch30 List 与 LinkedList
+[32/137] ✓ csharp5-ch31 Dictionary 与 HashSet
+[33/137] ✓ csharp5-ch32 Queue 与 Stack
+[34/137] ✓ csharp5-ch33 SortedList 与 SortedDictionary
+[36/137] ✓ csharp5-ch35 委托
+[37/137] ✓ csharp5-ch36 Lambda 表达式
+[38/137] ✓ csharp5-ch37 事件
+[35/137] ✓ csharp5-ch34 并发集合
+[39/137] ✓ csharp5-ch38 表达式树
+[41/137] ✓ csharp5-ch40 LINQ 基础
+[40/137] ✓ csharp5-ch39 函数式编程基础
+[42/137] ✓ csharp5-ch41 LINQ 过滤与投影
+[43/137] ✓ csharp5-ch42 LINQ 排序与分组
+[44/137] ✓ csharp5-ch43 LINQ 聚合与统计
+[45/137] ✓ csharp5-ch44 LINQ 转换与立即执行
+[49/137] ✓ csharp5-ch48 并发同步
+[46/137] ✓ csharp5-ch45 异步编程基础
+[48/137] ✓ csharp5-ch47 取消与异常处理
+[47/137] ✓ csharp5-ch46 Task 与并行
+[51/137] ✓ csharp5-ch50 线程与线程池
+[52/137] ✓ csharp5-ch51 文件与目录
+[53/137] ✓ csharp5-ch52 流与读写器
+[50/137] ✓ csharp5-ch49 IAsyncEnumerable 与 Channels
+[54/137] ✓ csharp5-ch53 JSON 序列化
+[55/137] ✓ csharp5-ch54 XML 与 CSV 处理
+[56/137] ✓ csharp5-ch55 高性能 IO 与管道
+[57/137] ✓ csharp5-ch56 反射基础
+[58/137] ✓ csharp5-ch57 反射高级应用
+[60/137] ✓ csharp5-ch59 源生成器简介
+[59/137] ✓ csharp5-ch58 特性 Attribute
+[61/137] ✓ csharp5-ch60 异常处理
+[62/137] ✓ csharp5-ch61 自定义异常与异常策略
+[63/137] ✓ csharp5-ch62 调试技术
+[65/137] ✓ csharp5-ch64 垃圾回收
+[64/137] ✓ csharp5-ch63 日志与诊断
+[66/137] ✓ csharp5-ch65 IDisposable 与 Finalizer
+[67/137] ✓ csharp5-ch66 Span 与 Memory
+[68/137] ✓ csharp5-ch67 ref struct 与 ref readonly
+[70/137] ✓ csharp5-ch69 HTTP 客户端
+[69/137] ✓ csharp5-ch68 性能优化技巧
+[71/137] ✓ csharp5-ch70 Socket 与 TCP
+[72/137] ✓ csharp5-ch71 UDP 与 IPC
+[74/137] ✓ csharp5-ch73 依赖注入与配置
+[75/137] ✓ csharp5-ch74 单元测试
+[76/137] ✓ csharp5-ch75 ASP.NET Core 简介
+[77/137] ✓ csharp5-ch76 EF Core 数据访问
+[78/137] ✓ csharp5-ch77 综合项目实战
+[79/137] ✓ csharp5-ch78 SDK、项目系统与 NuGet
+[80/137] ✓ csharp5-ch79 C# 13/14 现代语法
+[81/137] ✓ csharp5-ch80 架构、SOLID 与边界
+[82/137] ✓ csharp5-ch81 生产级 Web API 设计
+[83/137] ✓ csharp5-ch82 认证、授权与安全
+[84/137] ✓ csharp5-ch83 数据一致性与 EF Core 生产实践
+[86/137] ✓ csharp5-ch85 后台服务、队列与消息
+[73/137] ✓ csharp5-ch72 WebSocket 与 gRPC 简介
+[85/137] ✓ csharp5-ch84 HTTP 韧性、限流与缓存
+[87/137] ✓ csharp5-ch86 可观测性与运行诊断
+[88/137] ✓ csharp5-ch87 测试策略与集成测试
+[89/137] ✓ csharp5-ch88 容器、配置与优雅停机
+[91/137] ✓ csharp5-ch90 分布式系统基本功
+[90/137] ✓ csharp5-ch89 CI/CD 与供应链
+[92/137] ✓ csharp5-ch91 生产就绪清单：阶段体检
+[93/137] ✓ csharp5-ch92 Git、分支策略与代码评审
+[95/137] ✓ csharp5-ch94 时间、时区、全球化与正则
+[94/137] ✓ csharp5-ch93 高级类型设计与泛型数学
+[96/137] ✓ csharp5-ch95 Native Interop、unsafe 与内存安全
+[97/137] ✓ csharp5-ch96 关系数据库设计、索引与锁
+[98/137] ✓ csharp5-ch97 ADO.NET、Dapper 与数据访问选型
+[99/137] ✓ csharp5-ch98 Redis 与分布式缓存
+[100/137] ✓ csharp5-ch99 消息系统、Outbox、Inbox 与 Saga
+[101/137] ✓ csharp5-ch100 gRPC、SignalR、GraphQL 与实时通信
+[102/137] ✓ csharp5-ch101 对象存储、搜索与大文件处理
+[103/137] ✓ csharp5-ch102 云配置、密钥与 Feature Flags
+[104/137] ✓ csharp5-ch103 Kubernetes 与云原生运行
+[105/137] ✓ csharp5-ch104 IaC、环境与发布治理
+[106/137] ✓ csharp5-ch105 基准、负载测试与容量规划
+[107/137] ✓ csharp5-ch106 SLO、告警与事故响应
+[108/137] ✓ csharp5-ch107 备份、灾备与生产排障
+[109/137] ✓ csharp5-ch108 类库、NuGet 与 API 兼容性
+[110/137] ✓ csharp5-ch109 ASP.NET Core 管道、Minimal API 与 Controllers
+[111/137] ✓ csharp5-ch110 OpenAPI、版本化与错误契约
+[112/137] ✓ csharp5-ch111 OAuth 2.0、OIDC、JWT 与 BFF
+[113/137] ✓ csharp5-ch112 EF Core 建模、迁移、查询与测试
+[114/137] ✓ csharp5-ch113 WebApplicationFactory 与 Testcontainers
+[115/137] ✓ csharp5-ch114 Native AOT、Trimming 与源生成
+[116/137] ✓ csharp5-ch115 毕业项目启动：订单系统从零到上线
+[117/137] ✓ csharp5-ch116 加密与安全编码
+[118/137] ✓ csharp5-ch117 字符编码与本地化
+[119/137] ✓ csharp5-ch118 PLINQ 与数据并行
+[120/137] ✓ csharp5-ch119 不可变集合与对象池
+[121/137] ✓ csharp5-ch120 二进制序列化与高性能协议
+[122/137] ✓ csharp5-ch121 插件架构与程序集隔离
+[123/137] ✓ csharp5-ch122 客户端与 UI 技术全景
+[124/137] ✓ csharp5-ch123 C# 与 AI 应用集成
+[125/137] ✓ csharp5-ch124 C# 语言版本演进
+[126/137] ✓ csharp5-ch125 遗留系统现代化改造
+[127/137] ✓ csharp5-ch126 输入验证、绑定与错误形状
+[128/137] ✓ csharp5-ch127 幂等、分页与查询约定
+[129/137] ✓ csharp5-ch128 CORS、CSRF、安全头与上传
+[130/137] ✓ csharp5-ch129 Generic Host、Keyed DI 与 Options
+[131/137] ✓ csharp5-ch130 输出缓存、HybridCache 与失效
+[132/137] ✓ csharp5-ch131 健康检查、探针与依赖隔离
+[133/137] ✓ csharp5-ch132 .NET Aspire 与本地开发编排
+[134/137] ✓ csharp5-ch133 多租户、数据隔离与授权边界
+[136/137] ✓ csharp5-ch135 审计、数据分级与合规日志
+[137/137] ✓ csharp5-conclusion 结语：持续交付，而不是毕业
+[135/137] ✓ csharp5-ch134 取消、超时、deadline 与背压
+
+===== 总计 137，OK 137，FAIL 0，TIMEOUT 0 =====
+

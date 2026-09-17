@@ -429,14 +429,18 @@ object list = Activator.CreateInstance(intList)!;
 反射不仅能查当前程序集，还能动态加载外部 DLL：
 
 \`\`\`csharp
-// 按程序集名（已知引用或 GAC）加载
+// 按程序集名加载（GAC 是 .NET Framework 的概念，.NET Core / .NET 5+ 已无 GAC）
 Assembly a1 = Assembly.Load(new AssemblyName("System.Text.Json"));
 
-// 按文件路径加载
+// 按文件路径加载。注意：LoadFrom 会锁定文件（Windows 上无法删除/覆盖该 DLL），
+// 插件要热替换就必须换方案
 Assembly a2 = Assembly.LoadFrom("/path/MyPlugin.dll");
 
-// 仅加载不锁定文件（不影响再次编译）
-Assembly a3 = Assembly.LoadFrom("/path/MyPlugin.dll");
+// 推荐：可收集的 AssemblyLoadContext，isCollectible: true 才能卸载；
+// 用 LoadFromStream 读字节加载可避免锁文件
+var alc = new AssemblyLoadContext("plugins", isCollectible: true);
+Assembly a3 = alc.LoadFromAssemblyPath("/path/MyPlugin.dll");
+Assembly a3b = alc.LoadFromStream(File.OpenRead("/path/MyPlugin.dll"));  // 不锁文件
 
 // 加载字节数组（来自网络/资源）
 Assembly a4 = Assembly.Load(bytes);
@@ -472,7 +476,7 @@ MethodInfo closed = open.MakeGenericMethod(typeof(int));
 int[] empty = (int[])closed.Invoke(null, null)!;
 \`\`\`
 
-### 四、Delegate.CreateDelegate：反射变委托，性能 100 倍
+### 四、Delegate.CreateDelegate：反射变委托，快一个数量级
 
 直接用 \`MethodInfo.Invoke\` 每次都做参数装箱、安全检查，慢且开销大。如果方法签名固定，可以转成委托：
 
@@ -986,7 +990,7 @@ public class Base { }
 public class Derived : Base { }  // Derived 也能 GetCustomAttribute<MyAttr>()
 \`\`\`
 
-⚠ 注意：\`Inherited\` 对 \`AttributeTargets.Method\` 的影响：若子类 override 父方法，新方法上**不自动继承**特性，需要手动重贴。
+关于 override 与特性继承，准确说法是：当 \`AttributeUsage.Inherited\` 为默认值 \`true\`，且查询走继承语义（\`GetCustomAttribute<T>()\`、\`GetCustomAttributes(inherit: true)\`、\`Attribute.IsDefined(..., inherit: true)\`）时，反射会沿 \`virtual\` 基方法定义查找，**override 方法上照样能看到基方法的特性**。只有 \`Inherited = false\` 或查询显式传 \`inherit: false\` 时才看不到。某些框架（如 MVC 路由）要求 override 时重贴特性，那是框架的策略选择，不是反射规则。
 
 ### 八、用特性驱动 SQL 生成
 
@@ -1060,6 +1064,7 @@ Console.WriteLine($"表名: {tableName}");
 foreach (PropertyInfo prop in userType.GetProperties())
 {
     ColumnAttribute? col = prop.GetCustomAttribute<ColumnAttribute>();  // 每个属性一次反射；真实 ORM 会在启动时建模型
+    if (col == null) continue;  // 没有 [Column] 的属性（如 Computed）返回 null，必须判空跳过——否则 NullReferenceException
     MaxLengthAttribute? max = prop.GetCustomAttribute<MaxLengthAttribute>();
     string flags = (col.IsPrimaryKey ? "PK " : "") + (col.IsRequired ? "必填 " : "");
     Console.WriteLine($"  {prop.Name,-12} -> 列 {col.Name,-12} 类型 {prop.PropertyType.Name,-8} {flags}{(max != null ? "max=" + max.Length : "")}");
@@ -1333,7 +1338,7 @@ public static class SqlBuilder
 | 性能 | 较慢 | 显著更快 |
 | 新项目选择 | 兼容旧生成器，未被废弃 | 通常优先 |
 
-初代生成器在「\`IncrementalInit\`」每变更一次就全部重跑，性能很差。增量生成器采用 **管线 + 缓存** 模型：输入分阶段处理，每阶段都缓存，只有真正变更的部分才会重新计算。
+初代生成器（\`ISourceGenerator\`）的入口是 \`Initialize\` + \`Execute\`，**每次编译都会执行 \`Execute\` 全量重算**，没有增量缓存，性能很差。增量生成器（\`IIncrementalGenerator\`）的入口是 \`Initialize(IncrementalGeneratorInitializationContext)\`，采用 **管线 + 缓存** 模型：输入分阶段处理，每阶段都缓存，只有真正变更的部分才会重新计算。
 
 ### 三、源生成器 vs 反射
 

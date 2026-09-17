@@ -376,7 +376,7 @@ C# 提供了 8 种整型，按是否带符号和位数划分：
 
 ### 三、字符与布尔
 
-- \`char\`：单个 Unicode 字符，占 2 字节，用单引号 \`'A'\`。
+- \`char\`：一个 **UTF-16 码元**，占 2 字节，用单引号 \`'A'\`。注意它不是「一个可见字符」——emoji 等增补平面字符需要两个 \`char\`（代理对）。
 - \`bool\`：布尔值，只有 \`true\` 和 \`false\` 两个值，占 1 字节。
 
 ### 四、object 与 dynamic
@@ -1712,7 +1712,7 @@ Console.WriteLine($"s 引用未变：{ReferenceEquals(s, upper) is false}");
 // ---------- 2. 多种创建方式：字面量会 intern，new string 一般不会 ----------
 Console.WriteLine("\\n===== 字符串创建 =====");
 string s1 = "hello";                              // 字面量进入驻留池，相同字面量可能同引用
-string s2 = new string('a', 5);                   // 重复字符；长度 0 时也分配（可用 string.Empty）
+string s2 = new string('a', 5);                   // 重复字符；count 为 0 时直接返回 string.Empty，不分配
 string s3 = string.Concat("a", "b", "c");         // 少量拼接；循环里不要 Concat 叠加
 string s4 = string.Join("-", new[] { 1, 2, 3 });  // 集合→字符串，null 元素会变成空段
 string s5 = new string(new[] { 'X', 'Y' });       // 从 char[]；会拷贝，改数组不影响 s5
@@ -2447,7 +2447,7 @@ finally { pool.Return(buf); }   // 不 Return 就等于泄漏到池外
 
 ### 十一、stackalloc、Span 与「foreach 变量是拷贝」
 
-\`stackalloc int[] { 1, 2, 3 }\` 的初始化器从 **C# 7.2** 就可用；C# 12 新增的是目标类型明确时的集合表达式，例如 \`Span<int> values = [1, 2, 3]\`。两者都可能使用栈内存，生命周期不能逃出当前方法；不要在循环里反复 \`stackalloc\`，大小也必须保守。
+\`stackalloc int[] { 1, 2, 3 }\` 的初始化器从 **C# 7.3** 就可用；把 \`stackalloc\` 直接赋给 \`Span<T>\` 是 **C# 7.2**；C# 12 新增的是集合表达式，例如 \`Span<int> values = [1, 2, 3]\`。两者都可能使用栈内存，生命周期不能逃出当前方法；不要在循环里反复 \`stackalloc\`，大小也必须保守。
 
 \`arr[1..3]\` **复制**成新数组；\`arr.AsSpan(1, 2)\` 是同一块内存的视图，改 Span 就是改原数组。需要独立快照才 Copy。
 
@@ -2470,7 +2470,7 @@ finally { pool.Return(buf); }   // 不 Return 就等于泄漏到池外
 // 本 demo 覆盖声明、下标与 Range、多维/交错、Array API、引用语义、
 // 协变陷阱、ArrayPool / Span / stackalloc、foreach 变量是拷贝。
 // 陷阱：arr[1..3] 会分配新数组；赋值共享存储；string[] 当 object[] 写入会炸。
-// 版本：^ 与 .. 是 C# 8；集合表达式 [1,2,3] 是 C# 12；stackalloc 初始化器 C# 7.2。
+// 版本：^ 与 .. 是 C# 8；集合表达式 [1,2,3] 是 C# 12；stackalloc 初始化器 C# 7.3；stackalloc→Span 是 C# 7.2。
 using System;
 using System.Linq;
 
@@ -2583,7 +2583,7 @@ catch (ArrayTypeMismatchException)
 }
 
 // ---------- 10. ArrayPool / Span / stackalloc ----------
-Console.WriteLine("\\n===== 10. ArrayPool / Span / stackalloc（C# 12） =====");
+Console.WriteLine("\\n===== 10. ArrayPool / Span / stackalloc（Span 与 stackalloc→Span 是 C# 7.2，集合表达式是 C# 12） =====");
 var pool = System.Buffers.ArrayPool<int>.Shared;
 int[] rented = pool.Rent(8);  // 可能比 8 更长，且内容可能是脏数据
 try

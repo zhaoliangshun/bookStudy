@@ -597,7 +597,7 @@ C# 2.0 的「匿名方法」是 Lambda 的前身：
 Func<int, int> old = delegate(int x) { return x * x; };
 
 // 新：Lambda（更简洁）
-Func<int, int> new = x => x * x;
+Func<int, int> lambda = x => x * x;   // 注意：不能命名为 new（保留关键字，CS1041）
 \`\`\`
 
 匿名方法已经过时，新代码一律用 Lambda。Lambda 在可读性、类型推断、表达式树支持上都更优。
@@ -871,7 +871,7 @@ Console.WriteLine("\\n=== 5. 捕获陷阱：for 循环中的捕获 ===");
 var badActions = new List<Action>();
 for (int i = 0; i < 3; i++)
 {
-    badActions.Add(() => Console.Write(i + " "));  // for 的 i 是同一个变量；C# 13 才改成每次迭代独立
+    badActions.Add(() => Console.Write(i + " "));  // for 的 i 全程是同一个变量（C# 5 只修了 foreach，for 至今仍共享），必须复制一份
 }
 Console.Write("  错误版本: ");
 foreach (var a in badActions) a();   // 输出 3 3 3
@@ -1064,7 +1064,7 @@ btn.Clicked += MyHandler;   // ✅ 只能 += / -=
 .NET 的事件约定：事件委托签名是 \`(object? sender, EventArgs e) => void\`。两个内置委托：
 
 - \`EventHandler\`：无自定义数据，用 \`EventArgs.Empty\`。
-- \`EventHandler<TEventArgs>\`：带自定义数据，TEventArgs 必须派生自 \`EventArgs\`。
+- \`EventHandler<TEventArgs>\`：带自定义数据。**TEventArgs 不再要求派生自 \`EventArgs\`** —— 这个约束在 .NET Framework 4.5 就已移除，\`EventHandler<int>\`、\`EventHandler<string>\` 完全合法（本章 demo 里就用了 \`EventHandler<int>\`）。实践中仍建议用自定义类型或 \`record\`，可读性更好。
 
 \`\`\`csharp
 public event EventHandler? Clicked;                       // 无数据
@@ -1240,14 +1240,18 @@ order.Placed += (s, e) => inventory.Reserve(...);   // 订单触发库存
 
 ### 十五、线程安全触发与弱事件
 
-字段型 event 的编译器实现不是原子的。正确触发要**先拷到局部变量**：
+关于线程安全，要分清两件事，别混为一谈：
+
+**订阅（\`+=\` / \`-=\`）本身是线程安全的。** Roslyn 为字段式事件生成的 \`add\`/\`remove\` 用的是 \`Interlocked.CompareExchange\` 循环，并发订阅不会丢。（C# 4 以前确实用 \`lock(this)\`，这也是老资料里"事件不是线程安全"说法的来源；现在是过时的。）
+
+**真正需要你处理的是"触发"**：读两次 \`OrderPlaced\` 之间它可能从非 null 变成 null，所以必须**先拷到局部变量**再判空：
 
 \`\`\`csharp
-EventHandler<OrderEventArgs>? handler = OrderPlaced;
+EventHandler<OrderEventArgs>? handler = OrderPlaced;   // 拷快照，避免判空后被置 null
 handler?.Invoke(this, e);
 \`\`\`
 
-多线程 \`+=\` / \`-=\` 会丢订阅。需要时自己写 \`add\` / \`remove\` 访问器，用 \`lock\` 或 \`Interlocked.CompareExchange\` 换委托链。C# 13 的 \`System.Threading.Lock\` 也可以当锁对象（见并发章节）。
+例外：如果自己手写 \`add\`/\`remove\` 访问器，那**没有**编译器兜底，必须自己用 \`lock\` 或 \`Interlocked.CompareExchange\` 保证（C# 13 的 \`System.Threading.Lock\` 也可当锁对象）。
 
 弱事件（WPF \`WeakEventManager\`、自己用 \`WeakReference\`）让发布者**不延长**订阅者寿命；代价是触发时要把已死的订阅清掉，热路径更贵。UI 框架常用，服务端更常见的是 \`Dispose\` 里老老实实 \`-=\`。
 
@@ -1493,7 +1497,7 @@ class UINotifier
 class ObservableValue<T>
 {
     private T _value = default!;
-    private EventHandler<T>? _valueChanged;   // 手写 backing：默认 event 的 add/remove 已是 lock(this)
+    private EventHandler<T>? _valueChanged;   // 手写 backing：注意默认字段式 event 的 add/remove 是 Interlocked 的，手写的不是
 
     public T Value
     {

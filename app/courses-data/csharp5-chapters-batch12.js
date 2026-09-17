@@ -154,7 +154,7 @@ static bool LogAndContinue(Exception ex)
 }
 \`\`\`
 
-\`when\` 里再抛异常会**替换**原异常，过滤器应保持几乎无副作用。需要重抛时在 catch 里写 \`throw;\`，不要 \`throw ex;\`。
+异常过滤器里抛出的异常**会被运行时吞掉**，过滤器被当作返回 \`false\`，原异常照常继续向上传播（不会替换原异常）。这既意味着"在 \`when\` 里记日志"不会改变控制流，也意味着**过滤器里的异常会静默消失**——所以日志实现自身仍要 try/catch。需要重抛时在 catch 里写 \`throw;\`，不要 \`throw ex;\`（后者会重置堆栈）。
 
 ### 13. Task / async 里的异常
 
@@ -172,7 +172,7 @@ static bool LogAndContinue(Exception ex)
 2. 合上示例，用「异常处理」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第六十章 异常处理 —— 可运行演示（net8.0 / C# 12 顶级语句）
+// 第六十一章 异常处理 —— 可运行演示（net8.0 / C# 12 顶级语句）
 // ------------------------------------------------------------
 // catch 必须从具体到一般：IndexOutOfRange 写在 Exception 后面会编译失败。
 // 重抛只用 throw; —— throw ex; 会把堆栈截断到 catch 处，线上找不到真源头。
@@ -350,8 +350,10 @@ catch (Exception ex)
 }
 
 // ===== 自定义异常定义 =====
-// 自定义异常要可序列化（跨 AppDomain / 某些日志管道仍依赖），并提供无参、消息、Inner 三个构造。
-[Serializable]
+// 自定义异常只需提供无参、消息、Inner 三个构造。
+// 注意：现代 .NET 不要再为异常加 [Serializable]——那是配合已废弃的 BinaryFormatter 用的，
+// .NET Core / .NET 5+ 也没有可卸载的 AppDomain 需要跨边界序列化异常。
+// 跨进程/跨服务请传错误码或 Problem Details，不要序列化 Exception 本身。
 public class InvalidUserException : Exception
 {
     // 自定义字段：用户名
@@ -487,7 +489,7 @@ checked
 
 ### 10. async void 的异常陷阱
 
-\`async void\` 方法抛出的异常**无法被调用方 catch**，会直接进 \`AppDomain.UnhandledException\` 导致进程崩溃。规则：
+\`async void\` 方法抛出的异常**无法被调用方 catch**，它会被投递到捕获时的 \`SynchronizationContext\`：WPF/WinForms 等有同步上下文时进 \`Application.ThreadException\` / \`Dispatcher.UnhandledException\`（有机会标记为已处理）；**没有同步上下文时（如 ASP.NET Core）才落到 \`UnhandledException\` 并终止进程**。规则：
 
 - 事件处理器（必须 async void）外，**永远用 async Task**。
 - async void 中要 try/catch 所有异常并记录。
@@ -553,7 +555,7 @@ COM 互操作才需要 \`HResult\`；普通 Web/业务异常保持默认即可�
 ### 练习
 `,
     code: `// ============================================================
-// 第六十一章 自定义异常与异常策略 —— 可运行演示（net8.0 / C# 12）
+// 第六十二章 自定义异常与异常策略 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 预期失败（解析、校验）走 Result / Try*，不要靠抛 FormatException 当控制流。
 // 真正意外（DB 宕了、不变量被破坏）才抛异常；跨边界再转成 Result 或 ProblemDetails。
@@ -765,7 +767,7 @@ public enum ErrorCode
 }
 
 // 业务异常基类：携带错误码
-[Serializable]
+// 不加 [Serializable]：那是配合已废弃的 BinaryFormatter 的旧做法，现代 .NET 不需要。
 public class BusinessException : Exception
 {
     // 错误码：让消费方按码处理
@@ -946,7 +948,7 @@ class Person { public string Name; public int Age; }
 ### 练习
 `,
     code: `// ============================================================
-// 第六十二章 调试技术 —— 可运行演示（net8.0 / C# 12）
+// 第六十三章 调试技术 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // [Conditional("DEBUG")] 连实参求值一起删掉：Release 里昂贵的日志字符串根本不会算。
 // Debug.Assert 只在 Debug 构建生效；生产不变量要用正式校验 + 失败指标，不能指望弹窗。
@@ -1256,7 +1258,9 @@ OpenTelemetry 是 CNCF 主导的可观测性标准，统一日志、追踪、指
 \`Activity\` 是 .NET 的分布式追踪原语：
 
 \`\`\`csharp
-var activity = ActivitySource.StartActivity("ProcessOrder");
+// 注意：StartActivity 是实例方法，不是静态方法——必须先有一个 ActivitySource 实例
+static readonly ActivitySource source = new("MyApp", "1.0.0");
+using var activity = source.StartActivity("ProcessOrder");   // 离开 using 即 Stop 并上报
 try { /* 业务 */ }
 finally { activity?.Dispose(); } // 自动记录耗时和状态
 \`\`\`
@@ -1322,7 +1326,7 @@ logger.LogInformation(MyEvents.UserLogin, "用户 {UserId} 登录", userId);
 2. 合上示例，用「日志与诊断」里最核心的 1～2 个 API 自己写一个更短的版本，对照原 demo。
 `,
     code: `// ============================================================
-// 第六十三章 日志与诊断 —— 可运行演示（net8.0 / C# 12）
+// 第六十四章 日志与诊断 —— 可运行演示（net8.0 / C# 12）
 // ------------------------------------------------------------
 // 结构化占位符 {UserId} 会进字段；插值字符串会把整句熔成一条不可检索的文本。
 // 日志里的 PII（邮箱、手机、token）必须打码：日志读者通常远多于接口调用者。

@@ -1416,7 +1416,7 @@ Console.WriteLine("第二行");
 \`WriteLine\` 也可以不传参数，只输出一个空行：
 
 \`\`\`csharp
-Console.WriteLine();   // 等同于 Console.Write("\\n");
+Console.WriteLine();   // 等同 Console.Write(Environment.NewLine)；Windows 上是 \\r\\n 不是 \\n
 \`\`\`
 
 ### 三、字符串插值 $""（推荐）

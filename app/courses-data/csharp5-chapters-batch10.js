@@ -651,7 +651,7 @@ JSON 是现代 API 的事实标准——REST 接口、配置文件、NoSQL 数�
 | 内置 | .NET 8 自带 | 需 NuGet |
 | AOT | 支持（Source Generator）| 不支持 |
 | 功能 | 略少，但够用 | 功能最全 |
-| 默认行为 | 严格（区分大小写、不允许多余字段）| 宽松 |
+| 默认行为 | 严格（区分大小写）；多余字段**默认忽略**，.NET 8 起设 \`UnmappedMemberHandling.Disallow\` 才报错 | 宽松 |
 
 新项目优先 \`System.Text.Json\`，仅在需要特殊功能（如复杂的动态 JSON）时才考虑 Newtonsoft。
 
@@ -1129,7 +1129,7 @@ while (reader.Read())
     }
 }
 
-using XmlWriter writer = XmlWriter.Create("out.xml", new XmlWriterOptions { Indent = true });
+using XmlWriter writer = XmlWriter.Create("out.xml", new XmlWriterSettings { Indent = true, Encoding = new UTF8Encoding(false) });
 writer.WriteStartDocument();
 writer.WriteStartElement("Root");
 writer.WriteElementString("Name", "张三");

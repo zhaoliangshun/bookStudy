@@ -1135,7 +1135,7 @@ void Increment()
 
 1. 锁对象推荐用一个 \`private readonly object\`，**不要** lock \`this\`、\`typeof(X)\` 或字符串字面量——容易死锁。
 2. lock 持有时间要尽量短。
-3. 不要在 lock 内部 await——可能死锁。
+3. 不要在 lock 内部 await——编译器会直接报错（**CS1996: Cannot await in the body of a lock statement**），所以这不是"可能死锁"的运行时风险，而是写不出来。真正会在运行时死锁的是：手写 \`Monitor.Enter\` 后 await、在同步上下文里 \`.Result\`/\`.Wait()\`、以及多把锁的加锁顺序不一致。异步场景用 \`SemaphoreSlim.WaitAsync\`。
 
 ### 三、Monitor.Enter / Exit / TryEnter
 
@@ -2029,7 +2029,7 @@ ThreadPool.GetMinThreads(out int minWorker, out int minIO);
 ThreadPool.GetAvailableThreads(out int availWorker, out int availIO);
 \`\`\`
 
-- \`maxWorker\`：线程池最多能开多少工作线程（默认 int.MaxValue，但受内存限制）。
+- \`maxWorker\`：线程池最多能开多少工作线程。默认值**并非** \`int.MaxValue\`（常见是 32767，IO 完成线程默认 1000，且受容器 CPU 限制与运行时配置影响）——实际值请用 \`ThreadPool.GetMaxThreads\` 读取，不要在代码里写死假设。
 - \`minWorker\`：线程池最少保持多少线程（默认等于 CPU 核数）。
 - \`availWorker\`：当前空闲线程数。
 
