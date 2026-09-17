@@ -1,5 +1,5 @@
 // =============================================================
-// C# 从入门到精通大全 - 第六批章节（第六部分 委托事件与 LINQ，共 6 章）
+// C# 大全 - 第五批章节（第五部分 委托事件与 LINQ，共 6 章）
 // -------------------------------------------------------------
 // 本批包含 6 章：
 //   csharp2-ch27 : 第二十七章 委托 Delegate
@@ -19,10 +19,10 @@ const chapters = [
   // 第二十七章：委托 Delegate
   // ============================================================
   {
-    id: 'csharp2-ch27',
-    group: '第六部分 委托事件与 LINQ',
+    id: "csharp2-ch27",
+    group: '第五部分 委托事件与 LINQ',
     icon: '📡',
-    title: '第二十七章 委托 Delegate',
+    title: '委托 Delegate',
     content: `## 第二十七章　委托 Delegate
 
 委托是 C# 的「类型安全函数指针」——把方法当数据传来传去。它是事件、Lambda、LINQ 的基石，搞懂委托才能搞懂后面所有功能。
@@ -222,10 +222,10 @@ foreach (var kv in strategies)
   // 第二十八章：事件 Event
   // ============================================================
   {
-    id: 'csharp2-ch28',
-    group: '第六部分 委托事件与 LINQ',
+    id: "csharp2-ch28",
+    group: '第五部分 委托事件与 LINQ',
     icon: '🎉',
-    title: '第二十八章 事件 Event',
+    title: '事件 Event',
     content: `## 第二十八章　事件 Event
 
 事件 = 受限的委托。「发布者」触发，「订阅者」响应。GUI 按钮、消息总线、状态变更通知都靠它。
@@ -234,7 +234,7 @@ foreach (var kv in strategies)
 
 假设有个温度计，温度超过阈值要通知报警器：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 class Thermometer
 {
     private int _temp;
@@ -448,7 +448,7 @@ class Thermometer
 \`\`\`
 
 \`EventHandler<T>\` 等价于：
-\`\`\`csharp
+\`\`\`csharp-snippet
 delegate void EventHandler<TEventArgs>(object sender, TEventArgs e);
 \`\`\`
 
@@ -537,10 +537,10 @@ class TempSensor
   // 第二十九章：Lambda 表达式
   // ============================================================
   {
-    id: 'csharp2-ch29',
-    group: '第六部分 委托事件与 LINQ',
+    id: "csharp2-ch29",
+    group: '第五部分 委托事件与 LINQ',
     icon: 'λ',
-    title: '第二十九章 Lambda 表达式',
+    title: 'Lambda 表达式',
     content: `## 第二十九章　Lambda 表达式
 
 Lambda 是「匿名方法的语法糖」——让你不用单独声明一个方法，直接在调用处写函数体。它是委托、事件、LINQ 的日常写法。
@@ -804,10 +804,10 @@ Console.WriteLine(Calc(2, "^", 10));   // 1024
   // 第三十章：LINQ 查询表达式
   // ============================================================
   {
-    id: 'csharp2-ch30',
-    group: '第六部分 委托事件与 LINQ',
+    id: "csharp2-ch30",
+    group: '第五部分 委托事件与 LINQ',
     icon: '🔍',
-    title: '第三十章 LINQ 查询表达式',
+    title: 'LINQ 查询表达式',
     content: `## 第三十章　LINQ 查询表达式
 
 LINQ（Language Integrated Query，语言集成查询）是 C# 最强特性之一——用统一语法查询任何数据源：集合、数据库、XML、JSON……日常开发**几乎每段业务代码都在用**。
@@ -874,7 +874,7 @@ foreach (var s in topStudents)
 
 ### 三、orderby：排序
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 按 Score 升序
 var asc = from s in students
           orderby s.Score
@@ -897,7 +897,7 @@ foreach (var s in multi) Console.WriteLine(s);
 
 ### 四、group：分组
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 按 Class 分组
 var byClass = from s in students
              group s by s.Class;
@@ -961,7 +961,7 @@ foreach (var x in orderWithCustomer)
 
 ### 六、group join：左外连接
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 想列出所有客户，没订单的显示空
 var customerOrders = from c in customers
                      join o in orders on c.Id equals o.CustomerId into cos
@@ -983,7 +983,7 @@ foreach (var x in customerOrders)
 
 ### 七、let：临时变量
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 用 let 保存中间结果
 var query = from s in students
             let grade = s.Score >= 90 ? "A" : s.Score >= 80 ? "B" : "C"
@@ -1074,7 +1074,7 @@ Console.WriteLine();
 
 ### 十、查询表达式 vs 方法语法
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 查询表达式
 var q1 = from s in students
          where s.Score >= 85
@@ -1146,10 +1146,10 @@ foreach (var x in productStat)
   // 第三十一章：LINQ 方法语法进阶
   // ============================================================
   {
-    id: 'csharp2-ch31',
-    group: '第六部分 委托事件与 LINQ',
+    id: "csharp2-ch31",
+    group: '第五部分 委托事件与 LINQ',
     icon: '⚙️',
-    title: '第三十一章 LINQ 方法语法进阶',
+    title: 'LINQ 方法语法进阶',
     content: `## 第三十一章　LINQ 方法语法进阶
 
 上一章学了查询表达式，这章讲日常开发**真正用得多**的方法语法——链式调用，每个方法都是扩展方法，配上 Lambda 描述规则。
@@ -1183,7 +1183,7 @@ record Product(int Id, string Name, decimal Price, string Category, int Stock);
 
 ### 一、Where：过滤 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -1203,7 +1203,7 @@ var everyOther = products.Where((p, i) => i % 2 == 0);
 
 ### 二、Select：投影 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 取名字
 var names = products.Select(p => p.Name);
 Console.WriteLine(string.Join(",", names));
@@ -1223,7 +1223,7 @@ var withTotal = products.Select(p => new
 
 ### 三、OrderBy / OrderByDescending / ThenBy：排序 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 按 Price 升序
 var asc = products.OrderBy(p => p.Price);
 
@@ -1246,7 +1246,7 @@ var reversed = products.OrderBy(p => p.Price).Reverse();
 
 ### 四、GroupBy：分组 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 按分类分组
 var byCategory = products.GroupBy(p => p.Category);
 
@@ -1273,7 +1273,7 @@ foreach (var x in categoryStats)
 
 ### 五、Join：连接 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -1339,7 +1339,7 @@ foreach (var x in pairs)
 
 ### 七、Distinct：去重
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 简单去重
 var nums = new[] { 1, 2, 2, 3, 3, 3, 4 };
 var unique = nums.Distinct();                  // 1,2,3,4
@@ -1359,7 +1359,7 @@ var distinctByPrice = products
 
 ### 八、Take / Skip：分页 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 var sorted = products.OrderByDescending(p => p.Price).ToList();
 
 // 取前 3
@@ -1383,7 +1383,7 @@ var takeCheap = products
 
 ### 九、First / FirstOrDefault / Single / SingleOrDefault ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // First：取第一个；没元素抛异常
 var first = products.First();
 var firstCheap = products.First(p => p.Price < 100);   // USB线
@@ -1403,7 +1403,7 @@ var only = products.SingleOrDefault(p => p.Id == 1);     // 键盘
 
 ### 十、Any / All / Contains / Count ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // Any：有没有任意一个满足
 bool hasExpensive = products.Any(p => p.Price > 1000);   // true
 bool anyEmpty = products.Any(p => p.Stock == 0);          // false
@@ -1424,7 +1424,7 @@ int longNamed = products.Count(p => p.Name.Length > 2);
 
 ### 十一、Sum / Average / Min / Max：聚合 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 var totalValue = products.Sum(p => p.Price * p.Stock);   // 总库存价值
 var avgPrice = products.Average(p => p.Price);
 var minPrice = products.Min(p => p.Price);
@@ -1445,7 +1445,7 @@ Console.WriteLine(product);   // 120 (5!)
 
 ### 十二、ToDictionary / ToList / ToArray / ToLookup
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ToDictionary：转字典
 var dict = products.ToDictionary(p => p.Id);
 Console.WriteLine(dict[3].Name);    // 显示器
@@ -1465,7 +1465,7 @@ foreach (var g in byCat["外设"])
 
 ### 十三、其他常用：Zip / Chunk / Union / Intersect / Except
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // Zip：两个序列配对
 var names = new[] { "张三", "李四", "王五" };
 var ages = new[] { 20, 25, 30 };
@@ -1486,7 +1486,7 @@ Console.WriteLine(string.Join(",", a.Except(b)));      // 1,2   差集
 
 ### 十四、综合实战：电商数据统计
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 1. 各分类库存价值排行
 var categoryValue = products
     .GroupBy(p => p.Category)
@@ -1555,10 +1555,10 @@ foreach (var x in page) Console.WriteLine($"  {x}");
   // 第三十二章：扩展方法
   // ============================================================
   {
-    id: 'csharp2-ch32',
-    group: '第六部分 委托事件与 LINQ',
+    id: "csharp2-ch32",
+    group: '第五部分 委托事件与 LINQ',
     icon: '🔌',
-    title: '第三十二章 扩展方法',
+    title: '扩展方法',
     content: `## 第三十二章　扩展方法
 
 扩展方法让你**给已有类型"添加"方法，而不修改源码**——不用继承、不用改类。LINQ 那 50+ 方法全是扩展方法。
@@ -1590,7 +1590,7 @@ static class StringUtils
 
 有了扩展方法，能像调用实例方法一样写：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 string s = "hello";
 string r = s.Reverse();    // 像是 string 自带的方法
 \`\`\`
@@ -1689,7 +1689,7 @@ var first = nums.First();                     // First 是扩展方法
 
 这些方法定义在 \`System.Linq.Enumerable\` 静态类里，全是扩展方法，扩展 \`IEnumerable<T>\`：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 namespace System.Linq
 {
     public static class Enumerable
@@ -1852,7 +1852,7 @@ public static class LoggerExtensions
 
 #### 1. 不能扩展"实例方法已有的同名同签名"
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 public static class BadExtensions
 {
     // string 已有 ToString()，扩展同名会冲突——但实例方法优先
@@ -1865,7 +1865,7 @@ public static class BadExtensions
 
 #### 2. 必须在静态类、静态方法里
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ❌ 错：不能放在普通类
 class Foo
 {
@@ -1909,7 +1909,7 @@ namespace MyApp.Utils
 
 #### 4. 扩展 null 也能调
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 string? s = null;
 s.Reverse();   // 不抛 NullReferenceException（因为是静态调用）
 // 但 Reverse 内部如果访问 s，会抛 NullReferenceException

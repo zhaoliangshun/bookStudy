@@ -1,5 +1,5 @@
 // =============================================================
-// C# 大全 - 第八批章节（第八部分 异步与并发，共 4 章）
+// C# 大全 - 第七批章节（第七部分 异步与并发，共 4 章）
 // -------------------------------------------------------------
 // 本批包含 4 章：
 //   csharp2-ch39 : 第三十九章 async/await 异步编程
@@ -19,10 +19,10 @@ const chapters = [
   // 第三十九章：async/await 异步编程
   // ============================================================
   {
-    id: 'csharp2-ch39',
-    group: '第八部分 异步与并发',
+    id: "csharp2-ch39",
+    group: '第七部分 异步与并发',
     icon: '⚡',
-    title: '第三十九章 async/await 异步编程',
+    title: 'async/await 异步编程',
     content: `## 第三十九章　async/await 异步编程
 
 \`async/await\` 是现代 C# 异步编程的核心。它让异步代码写得像同步代码一样直白，又不会阻塞线程。这一章是 C# 进阶的分水岭，搞不懂 async 你就写不好 Web、UI、IO 任何场景。
@@ -238,7 +238,7 @@ async Task<string> FetchAsync()
 
 \`Task\` 是引用类型，每次 await 都要分配对象。如果方法经常同步完成（比如缓存命中），可以用 \`ValueTask<T>\` 避免分配：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -324,10 +324,10 @@ Console.WriteLine($"共下载 {results.Length} 个页面");
   // 第四十章：Task 与并行
   // ============================================================
   {
-    id: 'csharp2-ch40',
-    group: '第八部分 异步与并发',
+    id: "csharp2-ch40",
+    group: '第七部分 异步与并发',
     icon: '🚀',
-    title: '第四十章 Task 与并行',
+    title: 'Task 与并行',
     content: `## 第四十章　Task 与并行
 
 \`Task\` 是 .NET 并发的统一抽象：一个「将来会有结果」的单元。无论 IO 异步还是 CPU 并行，都用 Task 表达。这章讲 CPU 并行——把活分到多个线程同时跑。
@@ -533,10 +533,12 @@ using System.Threading.Tasks;
 
 // 高效版：用 Parallel.For 的线程局部变量
 // 原理：每个线程分区内累加自己的 local 值（无竞争），最后一次性合并到 total（减少锁开销）
-long total = Parallel.For(0L, 10001, () => 0L,
+// 注意：这个重载返回的是 ParallelLoopResult（只有 IsCompleted / LowestBreakIteration），
+// 没有 .Result，所以累加结果要通过 Interlocked 汇总到外部变量，不能写 .Result。
+long total = 0;
+Parallel.For(0L, 10001, () => 0L,
     (i, loop, local) => local + i,                // 每个分区内用局部变量累加，无锁
-    local => Interlocked.Add(ref total, local))   // 分区完成后一次性原子合并
-    .Result;
+    local => Interlocked.Add(ref total, local));  // 分区完成后一次性原子合并
 
 Console.WriteLine($"总和 = {total}");
 \`\`\`
@@ -545,7 +547,7 @@ Console.WriteLine($"总和 = {total}");
 
 \`AsParallel()\` 让 LINQ 自动并行：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -627,10 +629,10 @@ Console.WriteLine($"Parallel：{sw.ElapsedMilliseconds} ms, 共 {count} 个");
   // 第四十一章：锁与线程同步
   // ============================================================
   {
-    id: 'csharp2-ch41',
-    group: '第八部分 异步与并发',
+    id: "csharp2-ch41",
+    group: '第七部分 异步与并发',
     icon: '🔒',
-    title: '第四十一章 锁与线程同步',
+    title: '锁与线程同步',
     content: `## 第四十一章　锁与线程同步
 
 多线程最大的坑就是「数据竞争」——多个线程同时改同一个变量，结果不可预测。这一章讲怎么让多线程安全地共享数据。
@@ -898,7 +900,7 @@ using var are = new AutoResetEvent(false);
 
 ### 八、lock this 陷阱 ⭐
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System;
 using System.Threading;
 
@@ -947,7 +949,7 @@ Console.WriteLine("演示：lock(typeof(T)) 和 lock(\"字符串\") 也危险，
 
 ### 九、实战 demo：线程安全计数器 + 生产消费
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -1019,10 +1021,10 @@ Console.WriteLine("全部处理完成");
   // 第四十二章：CancellationToken 与并发集合
   // ============================================================
   {
-    id: 'csharp2-ch42',
-    group: '第八部分 异步与并发',
+    id: "csharp2-ch42",
+    group: '第七部分 异步与并发',
     icon: '🛡️',
-    title: '第四十二章 CancellationToken 与并发集合',
+    title: 'CancellationToken 与并发集合',
     content: `## 第四十二章　CancellationToken 与并发集合
 
 这一章讲两件事：**怎么取消一个正在跑的任务**，**怎么让多个线程安全地操作集合**。这两块是写健壮并发程序的关键拼图。
@@ -1204,10 +1206,11 @@ Parallel.For(0, 1000, i =>
 Console.WriteLine(dict["count"]);   // 1000
 
 // GetOrAdd：不存在就添加（原子），存在就直接返回现有值
-var v = dict.GetOrAdd("name", _ => "张三");
+// 注意 dict 是 <string, int>，值必须是 int，不能塞字符串（下面的 TryUpdate 同理）
+var v = dict.GetOrAdd("age", _ => 18);
 
 // TryUpdate：条件更新——只有当当前值等于 comparisonValue 时才更新
-dict.TryUpdate("name", "李四", "张三");   // 只有当前值是"张三"才更新为"李四"
+dict.TryUpdate("age", 20, 18);   // 只有当前值是 18 才更新为 20
 \`\`\`
 
 注意：\`ConcurrentDictionary\` 的**单个操作是原子的**，但多个操作组合不是。比如：
@@ -1336,7 +1339,7 @@ await Task.WhenAll(ProduceAsync(), ConsumeAsync());
 
 ### 十、实战 demo：可取消的并发日志收集
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System;
 using System.Threading;
 using System.Threading.Channels;

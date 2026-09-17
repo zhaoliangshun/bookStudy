@@ -1,5 +1,5 @@
 // =============================================================
-// C# 大全 - 第七批章节（第七部分 高级特性，共 6 章）
+// C# 大全 - 第六批章节（第六部分 高级特性，共 6 章）
 // -------------------------------------------------------------
 // 本批包含 6 章：
 //   csharp2-ch33 : 第三十三章 模式匹配
@@ -21,10 +21,10 @@ const chapters = [
   // 第三十三章：模式匹配
   // ============================================================
   {
-    id: 'csharp2-ch33',
-    group: '第七部分 高级特性',
+    id: "csharp2-ch33",
+    group: '第六部分 高级特性',
     icon: '🧩',
-    title: '第三十三章 模式匹配',
+    title: '模式匹配',
     content: `## 第三十三章　模式匹配
 
 模式匹配（Pattern Matching）让「检查数据形状 + 提取数据」合二为一，取代繁琐的 \`if-else + as\` 组合。C# 7 起引入，C# 8+ 大幅扩展，到 C# 11/12 已是日常开发核心语法。
@@ -320,10 +320,10 @@ public record Request(string Method, string Path, string Body);
   // 第三十四章：record 记录类型
   // ============================================================
   {
-    id: 'csharp2-ch34',
-    group: '第七部分 高级特性',
+    id: "csharp2-ch34",
+    group: '第六部分 高级特性',
     icon: '🏷️',
-    title: '第三十四章 record 记录类型',
+    title: 'record 记录类型',
     content: `## 第三十四章　record 记录类型
 
 record（记录类型，C# 9 引入）是为「数据建模」量身打造的引用类型——它默认提供值相等、不可变性、\`with\` 表达式、解构等功能，写 DTO/值对象/消息体**几乎必选**。
@@ -602,7 +602,7 @@ public record Point(int X, int Y);
 
 ### 十、实战 demo：消息体建模
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ===== 为什么事件/消息用 record？ =====
 // 1. 事件是不可变的事实——一旦发生就不能改变
 // 2. 事件需要值相等——相同内容的事件应该相等（方便去重、幂等处理）
@@ -660,10 +660,10 @@ static readonly State Stopped = new("Stopped");
   // 第三十五章：反射
   // ============================================================
   {
-    id: 'csharp2-ch35',
-    group: '第七部分 高级特性',
+    id: "csharp2-ch35",
+    group: '第六部分 高级特性',
     icon: '🪞',
-    title: '第三十五章 反射',
+    title: '反射',
     content: `## 第三十五章　反射
 
 反射（Reflection）让程序在运行时**查看自己的类型信息**——类有什么字段、方法、属性？还能动态创建实例、调用方法、读写字段。框架（序列化、ORM、DI 容器）几乎全靠反射实现。
@@ -769,7 +769,7 @@ public class Sample
 
 ### 三、动态创建实例
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System.Reflection;
 
 // 可执行代码
@@ -973,7 +973,7 @@ using System.Reflection;
 
 // 可执行代码（演示原理，实际需要 DLL 文件）
 Console.WriteLine("插件系统原理：");
-Console.WriteLine("1. Assembly.LoadFrom(\"MyPlugin.dll\") 加载外部程序集");
+Console.WriteLine("1. Assembly.LoadFrom('MyPlugin.dll') 加载外部程序集");
 Console.WriteLine("2. asm.GetTypes() 遍历所有类型");
 Console.WriteLine("3. typeof(IPlugin).IsAssignableFrom(type) 筛选实现接口的类型");
 Console.WriteLine("4. Activator.CreateInstance(type) 创建插件实例");
@@ -1033,7 +1033,7 @@ public class Foo { public int Bar() => 42; }
 
 ### 九、实战 demo：迷你 ORM
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System.Reflection;
 using System.Data;
 
@@ -1104,10 +1104,10 @@ public class UserEntity
   // 第三十六章：特性 Attribute
   // ============================================================
   {
-    id: 'csharp2-ch36',
-    group: '第七部分 高级特性',
+    id: "csharp2-ch36",
+    group: '第六部分 高级特性',
     icon: '✨',
-    title: '第三十六章 特性 Attribute',
+    title: '特性 Attribute',
     content: `## 第三十六章　特性 Attribute
 
 特性（Attribute）是给代码元素（类、方法、属性等）贴的「元数据标签」——本身不执行任何逻辑，但反射能读到它，从而驱动其他行为（验证、序列化、ORM 映射、文档生成）。是「声明式编程」的核心机制。
@@ -1586,10 +1586,10 @@ EF Core、Dapper Contrib 都是这套机制——读特性生成 SQL。
   // 第三十七章：匿名类型与 dynamic
   // ============================================================
   {
-    id: 'csharp2-ch37',
-    group: '第七部分 高级特性',
+    id: "csharp2-ch37",
+    group: '第六部分 高级特性',
     icon: '🎭',
-    title: '第三十七章 匿名类型与 dynamic',
+    title: '匿名类型与 dynamic',
     content: `## 第三十七章　匿名类型与 dynamic
 
 C# 有两种「不显式定义类型」的写法：**匿名类型**（编译期生成类型，强类型）和 **dynamic**（运行时绑定，弱类型）。两者本质完全不同，本章讲清边界。
@@ -1858,7 +1858,7 @@ Console.WriteLine(newJson);
 
 ### 九、实战 demo：动态包装器
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System.Dynamic;
 
 // 可执行代码
@@ -1924,10 +1924,10 @@ public class DynDict : DynamicObject
   // 第三十八章：协变与逆变
   // ============================================================
   {
-    id: 'csharp2-ch38',
-    group: '第七部分 高级特性',
+    id: "csharp2-ch38",
+    group: '第六部分 高级特性',
     icon: '🔄',
-    title: '第三十八章 协变与逆变',
+    title: '协变与逆变',
     content: `## 第三十八章　协变与逆变
 
 协变（Covariance）和逆变（Contravariance）解决一个问题：**「子类型对象」能不能赋值给「父类型泛型参数」的容器/委托**。听起来绕，看完代码就懂。
@@ -2071,7 +2071,7 @@ public class Dog : Animal { }
 
 #### 协变价值：通用集合/产出接口
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System.Collections.Generic;
 using System.Linq;
 
@@ -2233,7 +2233,7 @@ public class Dog : Animal { }
 
 ### 七、实战 demo：事件总线
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System;
 using System.Collections.Generic;
 

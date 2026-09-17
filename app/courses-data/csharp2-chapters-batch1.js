@@ -1,7 +1,7 @@
 // =============================================================
-// C# 大全 - 第一部分 基础入门（第 1-10 章）
+// C# 大全 - 第一批章节（开篇 + 第一部分 基础入门，共 10 个条目）
 // -------------------------------------------------------------
-// 本批包含 11 章：
+// 本批包含前言 + 9 章：
 //   csharp2-preface : 前言
 //   csharp2-ch01    : 第一个程序与环境搭建
 //   csharp2-ch02    : 变量与数据类型
@@ -12,7 +12,6 @@
 //   csharp2-ch07    : 方法（函数）
 //   csharp2-ch08    : 异常处理
 //   csharp2-ch09    : 命名空间与程序结构
-//   csharp2-ch10    : 调试技巧与最佳实践
 //
 // 风格：demo 驱动，每章直接上手写代码，多注释，循序渐进。
 // 适用版本：.NET 8 LTS / C# 12，示例用顶级语句。
@@ -31,7 +30,7 @@ const chapters = [
 
 ### 一、这本教程讲什么
 
-这是一本**大而全**的 C# 教程，目标是用 60 章的篇幅，覆盖 C# 日常开发 **100%** 会用到的知识点。
+这是一本**大而全**的 C# 教程，目标是用 54 章的篇幅，覆盖 C# 日常开发 **100%** 会用到的知识点。
 
 和传统教程不同，本书：
 - **不讲废话**：跳过历史、理论堆砌，直接讲"怎么用"
@@ -73,12 +72,15 @@ const chapters = [
 
 | 部分 | 章节 | 主题 |
 | --- | --- | --- |
-| 第一部分 基础入门 | 第 1-10 章 | 环境搭建、变量类型、运算符、控制流、数组字符串、方法、异常、命名空间、调试 |
-| 第二部分 面向对象 | 第 11-20 章 | 类与对象、构造函数、属性、继承多态、接口、静态类、枚举结构体、记录类型 |
-| 第三部分 集合与泛型 | 第 21-30 章 | 泛型、集合接口、List、Dictionary、Queue、Stack、HashSet、LINQ、迭代器 |
-| 第四部分 高级特性 | 第 31-40 章 | 委托、Lambda、事件、反射、动态类型、运算符重载、索引器、模式匹配、可空类型、元组 |
-| 第五部分 异步与并发 | 第 41-50 章 | async/await、Task、异步流、并行编程、线程、锁、并发集合、最佳实践 |
-| 第六部分 实战应用 | 第 51-60 章 | 文件 IO、流、JSON、HTTP、数据库、EF Core、LINQ to Entities、单元测试、综合项目 |
+| 第一部分 基础入门 | 第 1-9 章 | 环境搭建、变量类型、运算符、控制流、数组字符串、方法、异常、命名空间 |
+| 第二部分 面向对象基础 | 第 10-14 章 | 类与对象、字段属性方法、构造函数、静态成员、继承 |
+| 第三部分 面向对象进阶 | 第 15-19 章 | 多态、抽象类与接口、值与引用类型、枚举与结构体、可空类型 |
+| 第四部分 泛型与集合 | 第 20-26 章 | 泛型入门与约束、List、Dictionary、HashSet/Queue/Stack、迭代器、元组 |
+| 第五部分 委托事件与 LINQ | 第 27-32 章 | 委托、事件、Lambda、LINQ 查询与方法语法、扩展方法 |
+| 第六部分 高级特性 | 第 33-38 章 | 模式匹配、record、反射、特性、匿名类型与 dynamic、协变逆变 |
+| 第七部分 异步与并发 | 第 39-42 章 | async/await、Task 与并行、锁与线程同步、CancellationToken 与并发集合 |
+| 第八部分 IO 与序列化 | 第 43-46 章 | 文件与目录、Stream 流、JSON 序列化、正则表达式 |
+| 第九部分 工程化与实战 | 第 47-53 章 | 异常最佳实践、日期时间、程序集、HttpClient、内存管理与 GC、调试技巧、综合项目 |
 
 > 准备好了吗？翻到第一章，开始写代码。`,
   },
@@ -87,11 +89,11 @@ const chapters = [
   // 第一章：第一个程序与环境搭建
   // ============================================================
   {
-    id: 'csharp2-ch01',
+    id: "csharp2-ch01",
     group: '第一部分 基础入门',
     icon: '🚀',
     title: '第一个程序与环境搭建',
-    content: `## 第一个程序与环境搭建
+    content: `## 第一章　第一个程序与环境搭建
 
 ### 一、5 分钟写出第一个程序
 
@@ -119,7 +121,7 @@ Console.WriteLine($"{a} * {b} = {a * b}");
 
 一个 C# 程序由以下部分组成：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 1. 命名空间（可选，用于组织代码）
 // using System;  // .NET 6+ 默认隐式引入，无需手动写
 
@@ -234,11 +236,11 @@ Console.WriteLine($"MYVAR = {MYVAR}");  // 输出 30
   // 第二章：变量与数据类型
   // ============================================================
   {
-    id: 'csharp2-ch02',
+    id: "csharp2-ch02",
     group: '第一部分 基础入门',
     icon: '📦',
     title: '变量与数据类型',
-    content: `## 变量与数据类型
+    content: `## 第二章　变量与数据类型
 
 ### 一、变量声明
 
@@ -469,7 +471,7 @@ Console.WriteLine($"dateVal: {dateVal}");
 
 ### 八、常量与只读变量
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // const: 编译时常量，必须在声明时赋值
 const double PI = 3.14159;
 const string APP_NAME = "MyApp";
@@ -520,11 +522,11 @@ config.Show();
   // 第三章：运算符与表达式
   // ============================================================
   {
-    id: 'csharp2-ch03',
+    id: "csharp2-ch03",
     group: '第一部分 基础入门',
     icon: '➕',
     title: '运算符与表达式',
-    content: `## 运算符与表达式
+    content: `## 第三章　运算符与表达式
 
 ### 一、算术运算符
 
@@ -816,11 +818,11 @@ Console.WriteLine($"result4: {result4}");
   // 第四章：控制流：条件语句
   // ============================================================
   {
-    id: 'csharp2-ch04',
+    id: "csharp2-ch04",
     group: '第一部分 基础入门',
     icon: '🔀',
     title: '控制流：条件语句',
-    content: `## 控制流：条件语句
+    content: `## 第四章　控制流：条件语句
 
 ### 一、if 语句
 
@@ -1080,11 +1082,11 @@ Console.WriteLine($"温度 {temperature}°C，{comfort}");
   // 第五章：控制流：循环语句
   // ============================================================
   {
-    id: 'csharp2-ch05',
+    id: "csharp2-ch05",
     group: '第一部分 基础入门',
     icon: '🔄',
     title: '控制流：循环语句',
-    content: `## 控制流：循环语句
+    content: `## 第五章　控制流：循环语句
 
 ### 一、for 循环
 
@@ -1233,7 +1235,7 @@ Console.WriteLine("程序结束");
 
 ### 四、foreach 循环
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // foreach：遍历集合中的每个元素
 int[] numbers = { 10, 20, 30, 40, 50 };
 
@@ -1316,19 +1318,24 @@ for (int i = 0; i < 3; i++)
     }
 }
 
-// 使用标签跳出多层循环（不推荐，但有时有用）
-outer:
+// 跳出多层循环（不推荐，但有时有用）
+// 注意两点，都是 C# 特有的坑：
+//   1. C# 没有 Java 那种「break 标签;」语法，跳出多层要用 goto 标签;
+//   2. 标签必须写在循环「之后」，goto 才是「跳出」；写在循环之前会重新执行整个
+//      外层 for（i 被重新初始化为 0），变成死循环。
 for (int i = 0; i < 3; i++)
 {
     for (int j = 0; j < 3; j++)
     {
         if (i == 1 && j == 1)
         {
-            break outer;  // 跳出外层循环
+            goto outer;  // 跳到外层标签，跳出两层循环
         }
         Console.WriteLine($"i={i}, j={j}");
     }
 }
+outer:
+Console.WriteLine("已跳出外层循环");
 \`\`\`
 
 ### 六、yield return（迭代器）
@@ -1410,11 +1417,11 @@ Console.WriteLine();
   // 第六章：数组与字符串
   // ============================================================
   {
-    id: 'csharp2-ch06',
+    id: "csharp2-ch06",
     group: '第一部分 基础入门',
     icon: '📝',
     title: '数组与字符串',
-    content: `## 数组与字符串
+    content: `## 第六章　数组与字符串
 
 ### 一、一维数组
 
@@ -1764,11 +1771,11 @@ Console.WriteLine($"StringBuilder 耗时：{sw2.ElapsedMilliseconds}ms");
   // 第七章：方法（函数）
   // ============================================================
   {
-    id: 'csharp2-ch07',
+    id: "csharp2-ch07",
     group: '第一部分 基础入门',
     icon: '⚙️',
     title: '方法（函数）',
-    content: `## 方法（函数）
+    content: `## 第七章　方法（函数）
 
 ### 一、方法基础
 
@@ -1899,7 +1906,7 @@ PrintInfo("数字", 1, 2, 3);
 
 ### 三、默认参数与命名参数
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 默认参数：参数有默认值
 void CreatePerson(string name, int age = 18, string city = "北京")
 {
@@ -1945,7 +1952,7 @@ Console.WriteLine($"config2: {config2.Host}:{config2.Port}, SSL={config2.UseSsl}
 
 ### 四、方法重载
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 方法重载：同名方法，参数列表不同
 class Calculator
 {
@@ -2075,7 +2082,7 @@ Method2();
 
 ### 六、扩展方法
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 扩展方法：为现有类型添加方法，无需修改原类型
 // 必须定义在静态类中，第一个参数用 this 修饰
 
@@ -2177,11 +2184,11 @@ Console.WriteLine($"文件大小：{fileSize.ToFileSize()}");  // 1.5 KB
   // 第八章：异常处理
   // ============================================================
   {
-    id: 'csharp2-ch08',
+    id: "csharp2-ch08",
     group: '第一部分 基础入门',
     icon: '🚨',
     title: '异常处理',
-    content: `## 异常处理
+    content: `## 第八章　异常处理
 
 ### 一、try-catch 基础
 
@@ -2220,7 +2227,8 @@ catch (Exception ex)
 // 常见异常类型
 try
 {
-    int result = 10 / 0;  // DivideByZeroException
+    int zero = 0;
+    int result = 10 / zero;  // DivideByZeroException
 }
 catch (DivideByZeroException ex)
 {
@@ -2248,7 +2256,7 @@ catch (OverflowException ex)
 
 ### 二、finally 块
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // finally：无论是否发生异常都会执行
 // 常用于释放资源（文件、数据库连接等）
 
@@ -2292,7 +2300,7 @@ Console.WriteLine(content3);
 
 ### 三、抛出异常
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // throw：主动抛出异常
 int Divide(int a, int b)
 {
@@ -2351,7 +2359,7 @@ catch (IndexOutOfRangeException ex)
 
 ### 四、自定义异常
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 自定义异常类
 class InsufficientFundsException : Exception
 {
@@ -2423,11 +2431,12 @@ catch (ArgumentException ex)
 
 ### 五、异常筛选器
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 异常筛选器：when 子句
 try
 {
-    int result = 10 / 0;
+    int zero = 0;
+    int result = 10 / zero;
 }
 catch (DivideByZeroException ex) when (ex.Message.Contains("零"))
 {
@@ -2473,11 +2482,12 @@ catch (Exception ex) when (LogException(ex))
 
 ### 六、最佳实践
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 1. 只捕获能处理的异常
 try
 {
-    int result = 10 / 0;
+    int zero = 0;
+    int result = 10 / zero;
 }
 catch (DivideByZeroException ex)
 {
@@ -2568,15 +2578,15 @@ catch (Exception ex)
   // 第九章：命名空间与程序结构
   // ============================================================
   {
-    id: 'csharp2-ch09',
+    id: "csharp2-ch09",
     group: '第一部分 基础入门',
     icon: '📁',
     title: '命名空间与程序结构',
-    content: `## 命名空间与程序结构
+    content: `## 第九章　命名空间与程序结构
 
 ### 一、命名空间基础
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 命名空间：用于组织代码，避免命名冲突
 
 // 定义命名空间
@@ -2622,7 +2632,7 @@ service2.AddUser(user2.Name);
 
 ### 二、命名空间嵌套
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 命名空间可以嵌套
 namespace Company.Product.Module
 {
@@ -2669,7 +2679,7 @@ comp3.DoWork();
 
 ### 三、命名空间别名
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 当两个命名空间有同名类时，使用别名
 namespace Namespace1
 {
@@ -2749,7 +2759,7 @@ class MyClass
 
 ### 五、隐式 using（.NET 6+）
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // .NET 6+ 默认启用隐式 using
 // 编译器自动添加常用的 using 指令
 
@@ -2778,12 +2788,15 @@ var task = Task.Run(() => Console.WriteLine("异步任务"));  // 不需要 usin
 // </ItemGroup>
 
 // 然后可以直接使用：
+// 说明：本页沙箱的 csproj 没有配 <Using Include="System.Console" Static="true" />，
+// 所以块里补一句 using static，保证点「运行」能过（真实项目里二选一即可）。
+using static System.Console;
 WriteLine("Hello");  // 等价于 Console.WriteLine
 \`\`\`
 
 ### 六、程序结构
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 一个完整的 C# 程序结构
 
 // 1. using 指令
@@ -2840,7 +2853,7 @@ obj.Method();
 
 ### 七、文件作用域命名空间（C# 10+）
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 文件作用域命名空间：整个文件都在一个命名空间中
 // 减少一层缩进
 
@@ -2886,362 +2899,7 @@ namespace MyApp.Models
 - 程序结构：顶级语句 vs 传统 \`Main\` 方法
 - 文件作用域命名空间（C# 10+）
 
-下一章我们学习调试技巧与最佳实践。`,
-  },
-
-  // ============================================================
-  // 第十章：调试技巧与最佳实践
-  // ============================================================
-  {
-    id: 'csharp2-ch10',
-    group: '第一部分 基础入门',
-    icon: '🔍',
-    title: '调试技巧与最佳实践',
-    content: `## 调试技巧与最佳实践
-
-### 一、Console 输出调试
-
-\`\`\`csharp
-// 最简单的调试方式：Console 输出
-
-// 1. 输出变量值
-int x = 10;
-string name = "张三";
-Console.WriteLine($"调试：x = {x}, name = {name}");
-
-// 2. 输出到标准错误
-Console.Error.WriteLine("错误信息");
-
-// 3. 条件输出（只在调试时输出）
-#if DEBUG
-Console.WriteLine("仅在 Debug 模式下输出");
-#endif
-
-// 4. 使用 Debug 类
-System.Diagnostics.Debug.WriteLine("调试信息");
-System.Diagnostics.Debug.WriteLineIf(x > 5, "x 大于 5");
-
-// 5. 使用 Trace 类
-System.Diagnostics.Trace.WriteLine("跟踪信息");
-System.Diagnostics.Trace.TraceInformation("信息");
-System.Diagnostics.Trace.TraceWarning("警告");
-System.Diagnostics.Trace.TraceError("错误");
-\`\`\`
-
-### 二、断言
-
-\`\`\`csharp
-// 断言：验证条件是否为真，失败时抛出异常
-
-// Debug.Assert：仅在 Debug 模式下有效
-System.Diagnostics.Debug.Assert(x > 0, "x 必须大于 0");
-System.Diagnostics.Debug.Assert(!string.IsNullOrEmpty(name), "name 不能为空");
-
-// 如果条件为 false，会弹出对话框（Debug 模式）或抛出异常
-
-// 自定义断言方法
-void Assert(bool condition, string message)
-{
-    if (!condition)
-    {
-        throw new Exception($"断言失败：{message}");
-    }
-}
-
-Assert(x > 0, "x 必须大于 0");
-Assert(name.Length > 0, "name 不能为空");
-
-// 使用 Contract（代码契约）
-// 需要安装 System.Diagnostics.Contracts NuGet 包
-// Contracts.Requires(x > 0);  // 前置条件
-// Contracts.Ensures(Contracts.Result<int>() > 0);  // 后置条件
-\`\`\`
-
-### 三、条件编译
-
-\`\`\`csharp
-// 条件编译：根据编译符号包含或排除代码
-
-// 定义编译符号（在 .csproj 中）
-// <PropertyGroup>
-//   <DefineConstants>DEBUG;TRACE;MY_SYMBOL</DefineConstants>
-// </PropertyGroup>
-
-// 使用条件编译
-#if DEBUG
-Console.WriteLine("Debug 模式");
-#elif RELEASE
-Console.WriteLine("Release 模式");
-#else
-Console.WriteLine("其他模式");
-#endif
-
-// 多个条件
-#if DEBUG && TRACE
-Console.WriteLine("Debug 且 Trace");
-#endif
-
-#if DEBUG || TRACE
-Console.WriteLine("Debug 或 Trace");
-#endif
-
-// 条件特性
-[Conditional("DEBUG")]
-void DebugOnlyMethod()
-{
-    Console.WriteLine("仅在 Debug 模式下编译");
-}
-
-DebugOnlyMethod();  // Release 模式下这行代码会被忽略
-
-// 条件特性必须返回 void
-// 常用于日志方法
-[Conditional("LOG_ENABLED")]
-void Log(string message)
-{
-    Console.WriteLine($"[LOG] {message}");
-}
-
-Log("这是一条日志");
-\`\`\`
-
-### 四、Debugger 特性
-
-\`\`\`csharp
-// Debugger 特性：控制调试器行为
-
-// DebuggerDisplay：自定义调试器显示
-[System.Diagnostics.DebuggerDisplay("User: {Name}, Age: {Age}")]
-class User
-{
-    public string Name { get; set; }
-    public int Age { get; set; }
-}
-
-var user = new User { Name = "张三", Age = 25 };
-// 调试器中显示：User: 张三, Age: 25
-
-// DebuggerBrowsable：控制调试器是否显示成员
-class MyClass
-{
-    [System.Diagnostics.DebuggerBrowsable(System.Diagnostics.DebuggerBrowsableState.Never)]
-    private int _internalValue;  // 调试器中不显示
-    
-    public int PublicValue { get; set; }  // 调试器中显示
-}
-
-// DebuggerStepThrough：调试器跳过此方法
-[System.Diagnostics.DebuggerStepThrough]
-void SimpleMethod()
-{
-    // 调试时不会进入这个方法
-    Console.WriteLine("Simple");
-}
-
-// DebuggerHidden：完全隐藏方法
-[System.Diagnostics.DebuggerHidden]
-void HiddenMethod()
-{
-    Console.WriteLine("Hidden");
-}
-\`\`\`
-
-### 五、日志记录
-
-\`\`\`csharp
-// 简单的日志类
-class Logger
-{
-    public enum LogLevel
-    {
-        Debug,
-        Info,
-        Warning,
-        Error
-    }
-    
-    private LogLevel _minLevel;
-    
-    public Logger(LogLevel minLevel = LogLevel.Info)
-    {
-        _minLevel = minLevel;
-    }
-    
-    public void Log(LogLevel level, string message)
-    {
-        if (level >= _minLevel)
-        {
-            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-            Console.WriteLine($"[{timestamp}] [{level}] {message}");
-        }
-    }
-    
-    public void Debug(string message) => Log(LogLevel.Debug, message);
-    public void Info(string message) => Log(LogLevel.Info, message);
-    public void Warning(string message) => Log(LogLevel.Warning, message);
-    public void Error(string message) => Log(LogLevel.Error, message);
-}
-
-// 使用日志
-var logger = new Logger(Logger.LogLevel.Debug);
-
-logger.Debug("这是调试信息");
-logger.Info("这是普通信息");
-logger.Warning("这是警告信息");
-logger.Error("这是错误信息");
-
-// 带上下文的日志
-void ProcessData(string data, Logger logger)
-{
-    logger.Info($"开始处理数据：{data}");
-    
-    try
-    {
-        // 处理数据
-        if (string.IsNullOrEmpty(data))
-        {
-            throw new ArgumentException("数据不能为空");
-        }
-        
-        logger.Info("数据处理成功");
-    }
-    catch (Exception ex)
-    {
-        logger.Error($"处理失败：{ex.Message}");
-        throw;
-    }
-}
-
-ProcessData("test data", logger);
-\`\`\`
-
-### 六、性能测量
-
-\`\`\`csharp
-// 使用 Stopwatch 测量代码执行时间
-var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-
-// 要测量的代码
-int sum = 0;
-for (int i = 0; i < 1000000; i++)
-{
-    sum += i;
-}
-
-stopwatch.Stop();
-Console.WriteLine($"执行时间：{stopwatch.ElapsedMilliseconds}ms");
-Console.WriteLine($"精确时间：{stopwatch.Elapsed}");
-
-// 多次测量取平均
-const int iterations = 100;
-var times = new List<long>();
-
-for (int i = 0; i < iterations; i++)
-{
-    var sw = System.Diagnostics.Stopwatch.StartNew();
-    
-    // 要测量的代码
-    var result = Enumerable.Range(1, 10000).Sum();
-    
-    sw.Stop();
-    times.Add(sw.ElapsedMilliseconds);
-}
-
-Console.WriteLine($"平均时间：{times.Average():F2}ms");
-Console.WriteLine($"最小时间：{times.Min()}ms");
-Console.WriteLine($"最大时间：{times.Max()}ms");
-
-// 使用 DateTime（精度较低，不推荐）
-var start = DateTime.Now;
-// 要测量的代码
-var end = DateTime.Now;
-Console.WriteLine($"耗时：{(end - start).TotalMilliseconds}ms");
-\`\`\`
-
-### 七、最佳实践总结
-
-\`\`\`csharp
-// 1. 命名规范
-// - 类名：PascalCase（如 UserService）
-// - 方法名：PascalCase（如 GetUserById）
-// - 参数名：camelCase（如 userName）
-// - 局部变量：camelCase（如 totalCount）
-// - 私有字段：_camelCase（如 _connectionString）
-// - 常量：PascalCase 或全大写（如 MaxCount 或 MAX_COUNT）
-
-// 2. 代码组织
-// - 一个类一个文件
-// - 文件名与类名一致
-// - 使用命名空间组织相关类
-
-// 3. 注释
-// - 公共 API 必须有 XML 文档注释
-// - 复杂逻辑需要注释说明"为什么"
-// - 不要注释"是什么"（代码本身应该清晰）
-
-/// <summary>
-/// 根据用户 ID 获取用户信息
-/// </summary>
-/// <param name="userId">用户 ID</param>
-/// <returns>用户对象，如果不存在返回 null</returns>
-User GetUserById(int userId)
-{
-    // 从数据库查询用户
-    return null;
-}
-
-// 4. 错误处理
-// - 不要吞掉异常
-// - 使用特定的异常类型
-// - 提供有意义的错误信息
-
-// 5. 代码简洁
-// - 避免过长的方法（建议不超过 50 行）
-// - 避免过深的嵌套（建议不超过 3 层）
-// - 使用 LINQ 简化集合操作
-
-// 6. 使用 var
-// - 当右侧类型明显时使用 var
-var list = new List<string>();  // 好
-List<string> list2 = new List<string>();  // 冗余
-
-// 7. 字符串处理
-// - 少量拼接用插值：$"{a} + {b} = {a + b}"
-// - 大量拼接用 StringBuilder
-// - 多行字符串用原始字符串字面量
-
-// 8. 空值处理
-// - 使用 ?. 避免 NullReferenceException
-// - 使用 ?? 提供默认值
-// - 使用 ??= 赋值
-
-string name = null;
-string displayName = name ?? "匿名用户";
-name ??= "默认值";
-
-// 9. 使用模式匹配
-if (obj is string s && s.Length > 10)
-{
-    Console.WriteLine($"长字符串：{s}");
-}
-
-// 10. 常量与只读
-// - 编译时确定的值用 const
-// - 运行时确定的值用 readonly
-\`\`\`
-
-### 八、小结
-
-本章学到了：
-- Console 输出调试
-- 断言验证条件
-- 条件编译
-- Debugger 特性
-- 日志记录
-- 性能测量
-- C# 编程最佳实践
-
-第一部分基础入门到此结束！接下来我们进入第二部分：面向对象编程。`,
+第一部分到此结束，接下来进入面向对象的世界。`,
   },
 ];
 

@@ -1,5 +1,5 @@
 // =============================================================
-// C# 大全 - 第九批章节（第九部分 IO 与序列化，共 4 章）
+// C# 大全 - 第八批章节（第八部分 IO 与序列化，共 4 章）
 // -------------------------------------------------------------
 // 本批包含 4 章：
 //   csharp2-ch43 : 第四十三章 文件与目录操作
@@ -19,17 +19,17 @@ const chapters = [
   // 第四十三章：文件与目录操作
   // ============================================================
   {
-    id: 'csharp2-ch43',
-    group: '第九部分 IO 与序列化',
+    id: "csharp2-ch43",
+    group: '第八部分 IO 与序列化',
     icon: '📁',
-    title: '第四十三章 文件与目录操作',
+    title: '文件与目录操作',
     content: `## 第四十三章　文件与目录操作
 
 文件 IO 是程序与磁盘打交道的入口：读写配置、记录日志、批量处理。C# 在 \`System.IO\` 命名空间下提供了一整套静态类与实例类，让你不必关心底层 syscall，专注业务。
 
 ### 一、System.IO 全家福
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System.IO;
 
 // 静态工具类（用得最多）
@@ -305,10 +305,10 @@ catch (IOException ex) { Console.WriteLine($"IO 错误: {ex.Message}"); }
   // 第四十四章：Stream 流读写
   // ============================================================
   {
-    id: 'csharp2-ch44',
-    group: '第九部分 IO 与序列化',
+    id: "csharp2-ch44",
+    group: '第八部分 IO 与序列化',
     icon: '🌊',
-    title: '第四十四章 Stream 流读写',
+    title: 'Stream 流读写',
     content: `## 第四十四章　Stream 流读写
 
 上一章 \`File.ReadAllText\` 一次性读全文——读 1MB 文件没问题，读 10GB 视频就崩了。本章学「流」（Stream）：**像水管一样，分块读写数据**，不论 1KB 还是 10TB 内存都不会爆。
@@ -317,7 +317,7 @@ catch (IOException ex) { Console.WriteLine($"IO 错误: {ex.Message}"); }
 
 \`System.IO.Stream\` 是所有流的抽象基类，定义了流的标准接口：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 这是类定义说明，不是可执行代码——放在示例开头说明概念
 public abstract class Stream
 {
@@ -673,10 +673,10 @@ File.Delete(csv);
   // 第四十五章：JSON 序列化
   // ============================================================
   {
-    id: 'csharp2-ch45',
-    group: '第九部分 IO 与序列化',
+    id: "csharp2-ch45",
+    group: '第八部分 IO 与序列化',
     icon: '📦',
-    title: '第四十五章 JSON 序列化',
+    title: 'JSON 序列化',
     content: `## 第四十五章　JSON 序列化
 
 JSON 是当今最通用的数据交换格式——API 响应、配置文件、NoSQL 存储全是它。.NET 8 内置 \`System.Text.Json\`，性能吊打 Newtonsoft.Json，是默认推荐方案。
@@ -1125,10 +1125,10 @@ public class User
   // 第四十六章：正则表达式
   // ============================================================
   {
-    id: 'csharp2-ch46',
-    group: '第九部分 IO 与序列化',
+    id: "csharp2-ch46",
+    group: '第八部分 IO 与序列化',
     icon: '🔎',
-    title: '第四十六章 正则表达式',
+    title: '正则表达式',
     content: `## 第四十六章　正则表达式
 
 正则表达式（Regular Expression，简称 regex）是文本匹配的「瑞士军刀」——验证邮箱、提取 URL、解析日志、批量替换，一行代码搞定字符串处理逻辑。C# 的 \`System.Text.RegularExpressions.Regex\` 类提供完整支持。

@@ -1,5 +1,5 @@
 // =============================================================
-// C# 大全 - 第五批章节（第五部分 泛型与集合，共 7 章）
+// C# 大全 - 第四批章节（第四部分 泛型与集合，共 7 章）
 // -------------------------------------------------------------
 // 本批包含 7 章：
 //   csharp2-ch20 : 第二十章 泛型入门
@@ -20,8 +20,8 @@ const chapters = [
   // 第二十章：泛型入门
   // ============================================================
   {
-    id: 'csharp2-ch20',
-    group: '第五部分 泛型与集合',
+    id: "csharp2-ch20",
+    group: '第四部分 泛型与集合',
     icon: '🎯',
     title: '泛型入门',
     content: `## 第二十章　泛型入门
@@ -30,7 +30,7 @@ const chapters = [
 
 在没有泛型的年代（.NET 1.0），通用容器靠 \`ArrayList\` 实现——它存的是 \`object\`：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 var list = new System.Collections.ArrayList();
 list.Add(1);        // int 装箱成 object（值类型→引用类型，产生堆分配）
 list.Add("hello");  // string 本身就是引用类型，直接存
@@ -270,8 +270,8 @@ public class MyStack<T>
   // 第二十一章：泛型约束与方法
   // ============================================================
   {
-    id: 'csharp2-ch21',
-    group: '第五部分 泛型与集合',
+    id: "csharp2-ch21",
+    group: '第四部分 泛型与集合',
     icon: '🔗',
     title: '泛型约束与方法',
     content: `## 第二十一章　泛型约束与方法
@@ -356,7 +356,7 @@ public class Animal { public string Name { get; set; } = ""; }
 
 一个 \`T\` 可以同时满足多个约束，用逗号分隔：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 只有类型定义，没有调用代码——没有可执行语句在类型后面，可以直接定义
 public class SortedFactory<T> where T : class, IComparable<T>, new()
 {
@@ -537,8 +537,8 @@ public class User { public string Name { get; set; } = ""; }
   // 第二十二章：List<T> 集合
   // ============================================================
   {
-    id: 'csharp2-ch22',
-    group: '第五部分 泛型与集合',
+    id: "csharp2-ch22",
+    group: '第四部分 泛型与集合',
     icon: '📋',
     title: 'List<T> 集合',
     content: `## 第二十二章　List<T> 集合
@@ -781,8 +781,8 @@ IReadOnlyList<int> readOnly = list.AsReadOnly();  // 防止外部修改
   // 第二十三章：Dictionary 字典
   // ============================================================
   {
-    id: 'csharp2-ch23',
-    group: '第五部分 泛型与集合',
+    id: "csharp2-ch23",
+    group: '第四部分 泛型与集合',
     icon: '🗂️',
     title: 'Dictionary 字典',
     content: `## 第二十三章　Dictionary 字典
@@ -985,8 +985,8 @@ foreach (var kv in freq.OrderByDescending(kv => kv.Value))
   // 第二十四章：HashSet / Queue / Stack / LinkedList
   // ============================================================
   {
-    id: 'csharp2-ch24',
-    group: '第五部分 泛型与集合',
+    id: "csharp2-ch24",
+    group: '第四部分 泛型与集合',
     icon: '📚',
     title: 'HashSet / Queue / Stack / LinkedList',
     content: `## 第二十四章　HashSet / Queue / Stack / LinkedList
@@ -1173,8 +1173,8 @@ RunNext();  // [普通] 清理日志
   // 第二十五章：IEnumerable 与迭代器
   // ============================================================
   {
-    id: 'csharp2-ch25',
-    group: '第五部分 泛型与集合',
+    id: "csharp2-ch25",
+    group: '第四部分 泛型与集合',
     icon: '🔄',
     title: 'IEnumerable 与迭代器',
     content: `## 第二十五章　IEnumerable 与迭代器
@@ -1183,7 +1183,7 @@ RunNext();  // [普通] 清理日志
 
 \`IEnumerable<T>\` 是所有可 \`foreach\` 遍历集合的"最小公约数"。
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 核心接口定义（类型声明）
 public interface IEnumerable<out T> : IEnumerable
 {
@@ -1453,8 +1453,8 @@ foreach (var f in Fibonacci().Take(10))
   // 第二十六章：元组与 ValueTuple
   // ============================================================
   {
-    id: 'csharp2-ch26',
-    group: '第五部分 泛型与集合',
+    id: "csharp2-ch26",
+    group: '第四部分 泛型与集合',
     icon: '🎁',
     title: '元组与 ValueTuple',
     content: `## 第二十六章　元组与 ValueTuple
@@ -1566,7 +1566,9 @@ var sessions = new Dictionary<(int userId, string deviceId), DateTime>
     [(1, "web")] = DateTime.Now.AddMinutes(-5),
 };
 
-var key = (1, "web");
+// 注意：写成 var key = (1, "web") 得到的是「未命名元组」，只能 .Item1/.Item2，
+// 访问 key.userId 会编译失败（CS1061）。要按名字访问，声明时就带上元素名：
+(int userId, string deviceId) key = (1, "web");
 if (sessions.TryGetValue(key, out var lastSeen))
     Console.WriteLine(\$"用户{key.userId}最后在线：{lastSeen:HH:mm}");
 \`\`\`

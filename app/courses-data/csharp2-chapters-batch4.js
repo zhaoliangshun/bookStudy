@@ -1,5 +1,5 @@
 // =============================================================
-// C# 大全 - 第四批章节（第四部分 面向对象进阶，共 5 章）
+// C# 大全 - 第三批章节（第三部分 面向对象进阶，共 5 章）
 // -------------------------------------------------------------
 // 本批包含 5 章：
 //   csharp2-ch15 : 第十五章 多态：virtual 与 override
@@ -20,10 +20,10 @@ const chapters = [
   // 第十五章：多态：virtual 与 override
   // ============================================================
   {
-    id: 'csharp2-ch15',
-    group: '第四部分 面向对象进阶',
+    id: "csharp2-ch15",
+    group: '第三部分 面向对象进阶',
     icon: '🎭',
-    title: '第十五章 多态：virtual 与 override',
+    title: '多态：virtual 与 override',
     content: `## 第十五章　多态：virtual 与 override
 
 继承解决「代码复用」，多态解决「同一调用、不同行为」。这是 OOP 最强大的特性之一。
@@ -32,7 +32,7 @@ const chapters = [
 
 **多态（Polymorphism）**：同一条方法调用，根据对象的实际类型，执行不同的实现。
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 父类引用指向子类对象——多态的前提
 // Animal a = new Dog();
 // Animal b = new Cat();
@@ -161,7 +161,7 @@ class Derived : Base {
 
 **多态最大的价值：解耦调用方与实现方**。
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 调用方只依赖父类/接口，不依赖具体子类
 // 注意：PrintArea 是局部函数（不是类型声明），不需要移到代码后面。
 // 局部函数在顶级语句中是「Main 方法内的方法」，不受 CS8803 约束。
@@ -308,10 +308,10 @@ class Duck : Animal {
   // 第十六章：抽象类与接口
   // ============================================================
   {
-    id: 'csharp2-ch16',
-    group: '第四部分 面向对象进阶',
+    id: "csharp2-ch16",
+    group: '第三部分 面向对象进阶',
     icon: '📐',
-    title: '第十六章 抽象类与接口',
+    title: '抽象类与接口',
     content: `## 第十六章　抽象类与接口
 
 继承到一定程度会遇到「这个方法父类没法实现，必须让子类自己写」——这就需要抽象类和接口。
@@ -393,7 +393,7 @@ class Square : Shape {
 
 接口是**纯契约**：只定义方法/属性签名，不包含实现（C# 8 之前）。
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 接口命名约定：I 开头（IShape, IComparable, IDisposable...）
 // 接口只定义「能做什么」，不定义「怎么做」。
 // 接口成员默认 public abstract，不能写访问修饰符（C# 8 之前）。
@@ -413,7 +413,7 @@ interface IShape {
 
 \`\`\`csharp
 // 用接口类型变量接收——「面向接口编程」
-IShape s = new Circle { Radius = 2 };
+IShape s = new Circle(2);   // Circle 的构造函数要求传半径，只能用 new Circle(2)，不能用 new Circle { Radius = 2 }
 Console.WriteLine($"面积：{s.Area():F2}");  // 12.57
 // s.Radius = 5;  // ❌ 编译错误：IShape 没有 Radius 属性，接口变量只能看到接口成员
 
@@ -483,7 +483,7 @@ class Image : IDrawable, IResizable, IComparable<Image> {
 
 C# 8 起接口可以提供默认实现，不破坏旧代码：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 var logger = new ConsoleLogger();
 logger.Log("普通日志");
 logger.LogError("出错了");  // 调用默认实现——ConsoleLogger 没有自己写 LogError
@@ -630,10 +630,10 @@ class FileLogger : LoggerBase {
   // 第十七章：值类型与引用类型
   // ============================================================
   {
-    id: 'csharp2-ch17',
-    group: '第四部分 面向对象进阶',
+    id: "csharp2-ch17",
+    group: '第三部分 面向对象进阶',
     icon: '⚖️',
-    title: '第十七章 值类型与引用类型',
+    title: '值类型与引用类型',
     content: `## 第十七章　值类型与引用类型
 
 这是 C# 最容易踩坑的概念之一。理解了值类型 vs 引用类型，调试内存相关 bug 会轻松很多。
@@ -945,10 +945,10 @@ class Person { public string Name = ""; }
   // 第十八章：枚举与结构体
   // ============================================================
   {
-    id: 'csharp2-ch18',
-    group: '第四部分 面向对象进阶',
+    id: "csharp2-ch18",
+    group: '第三部分 面向对象进阶',
     icon: '🔢',
-    title: '第十八章 枚举与结构体',
+    title: '枚举与结构体',
     content: `## 第十八章　枚举与结构体
 
 枚举和结构体都是值类型，但用途完全不同：枚举定义「有限的命名常量」，结构体定义「轻量数据容器」。
@@ -1311,10 +1311,10 @@ readonly struct Point {
   // 第十九章：可空类型 Nullable
   // ============================================================
   {
-    id: 'csharp2-ch19',
-    group: '第四部分 面向对象进阶',
+    id: "csharp2-ch19",
+    group: '第三部分 面向对象进阶',
     icon: '❓',
-    title: '第十九章 可空类型 Nullable',
+    title: '可空类型 Nullable',
     content: `## 第十九章　可空类型 Nullable
 
 数据库字段可能没值、API 返回可能为空、配置项可能没填——这些场景需要表达「没有值」。C# 用 \`Nullable\` 处理。
@@ -1496,7 +1496,7 @@ if (maybeName is not null) {
 
 或代码顶部加（文件级别）：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 #nullable enable
 // 这之后开启可空检查
 // #nullable disable 可以在文件内局部关闭

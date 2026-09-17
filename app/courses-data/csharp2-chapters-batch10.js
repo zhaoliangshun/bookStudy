@@ -1,14 +1,15 @@
 // =============================================================
-// C# 大全 —— 第十批章节（最后一批）
-// 主题：第十部分 工程化与实战 + 结语，共 6 章（47-52）
+// C# 大全 - 第九批章节（最后一批）
+// 主题：第九部分 工程化与实战 + 结语，共 7 章（47-53）
 // -------------------------------------------------------------
-// 本批包含 6 章：
+// 本批包含 7 章：
 //   csharp2-ch47 : 第四十七章 异常处理最佳实践
 //   csharp2-ch48 : 第四十八章 日期时间与时区
 //   csharp2-ch49 : 第四十九章 命名空间与程序集
 //   csharp2-ch50 : 第五十章 HttpClient 网络请求
 //   csharp2-ch51 : 第五十一章 内存管理与 GC
-//   csharp2-ch52 : 第五十二章 综合项目：任务管理系统 + 结语
+//   csharp2-ch52 : 第五十二章 调试技巧与最佳实践
+//   csharp2-ch53 : 第五十三章 综合项目：任务管理系统 + 结语
 //
 // 所有 C# 代码示例均可在交互式编辑器中运行（基于顶级语句）。
 // 适用版本：.NET 8 LTS / C# 12
@@ -19,8 +20,8 @@ const chapters = [
   // 第四十七章：异常处理最佳实践
   // ============================================================
   {
-    id: 'csharp2-ch47',
-    group: '第十部分 工程化与实战',
+    id: "csharp2-ch47",
+    group: '第九部分 工程化与实战',
     icon: '⚠️',
     title: '异常处理最佳实践',
     content: `## 第四十七章　异常处理最佳实践
@@ -115,7 +116,7 @@ catch (Exception ex)
 
 ❌ **错误写法**——丢失原始堆栈：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 try { throw new InvalidOperationException("原始"); }
 catch (Exception ex)
 {
@@ -126,7 +127,7 @@ catch (Exception ex)
 
 ✅ **正确写法**——使用裸 \`throw\`：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 try { throw new InvalidOperationException("原始"); }
 catch (Exception ex)
 {
@@ -165,8 +166,8 @@ User GetUser(string id)
     return user;
 }
 
-// 模拟数据库（局部函数）
-static class db { public static object Find(string id) => null; }
+// 模拟数据库（返回 User? 而不是 object，否则 return user; 会因类型不匹配报 CS0266）
+static class db { public static User? Find(string id) => null; }
 
 // ================================================
 // 类型声明放最后（顶级语句CS8803规则：类型必须在可执行代码之后）
@@ -221,7 +222,7 @@ catch (FormatException)
 
 **经典用法——日志不破坏堆栈：**
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 try { DoWork(); }
 catch (Exception ex) when (Log(ex)) { }  // Log 返回 false，异常继续传播
 
@@ -275,14 +276,14 @@ public class Address { public string City { get; set; } }
 
 ❌ **反模式**——吞掉所有异常：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 try { DoSomething(); }
 catch (Exception) { }  // ❌ 静默吞掉，bug 永远找不到
 \`\`\`
 
 ❌ **反模式**——catch 后只记日志不抛：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 try { WithdrawMoney(); }
 catch (Exception ex) { Log(ex); }  // ❌ 钱没扣成功但用户不知道
 \`\`\`
@@ -297,7 +298,7 @@ catch (Exception ex) { Log(ex); }  // ❌ 钱没扣成功但用户不知道
 
 异常"抛出"成本高（要收集堆栈），不要用异常做**控制流**：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ❌ 用异常判断解析是否成功
 int ParseInt(string s)
 {
@@ -312,7 +313,7 @@ int ParseInt(string s) =>
 
 ### 十、实战 demo：安全的配置加载
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System.Text.Json;
 
 // ================================================
@@ -431,8 +432,8 @@ public class ConfigLoader
   // 第四十八章：日期时间与时区
   // ============================================================
   {
-    id: 'csharp2-ch48',
-    group: '第十部分 工程化与实战',
+    id: "csharp2-ch48",
+    group: '第九部分 工程化与实战',
     icon: '📅',
     title: '日期时间与时区',
     content: `## 第四十八章　日期时间与时区
@@ -458,7 +459,7 @@ Console.WriteLine(today);  // 2026-07-18 00:00:00
 
 ### 二、DateTime 构造
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 new DateTime(2026, 7, 18);                    // 2026-07-18 00:00:00
 new DateTime(2026, 7, 18, 14, 30, 0);         // 2026-07-18 14:30:00
 new DateTime(2026, 7, 18, 14, 30, 0, 500);    // 带毫秒
@@ -649,7 +650,7 @@ ShowCountdown(newYear, "2027 元旦");
 
 ### 十一、实战 demo 3：定时任务（每分钟跑一次）
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System.Threading;
 
 var cts = new CancellationTokenSource();
@@ -706,8 +707,8 @@ cts.Cancel();
   // 第四十九章：命名空间与程序集
   // ============================================================
   {
-    id: 'csharp2-ch49',
-    group: '第十部分 工程化与实战',
+    id: "csharp2-ch49",
+    group: '第九部分 工程化与实战',
     icon: '📦',
     title: '命名空间与程序集',
     content: `## 第四十九章　命名空间与程序集
@@ -718,7 +719,7 @@ cts.Cancel();
 
 命名空间是类的"姓氏"，用来分组相关类型、避免重名冲突。
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 namespace MyShop.Orders
 {
     public class Order { /* ... */ }
@@ -777,7 +778,7 @@ class Program
 
 传统 \`using\` 必须在每个文件重复写。C# 10 引入 \`global using\`，一次声明全项目生效：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 放在任意 .cs 文件顶部（通常建一个 GlobalUsings.cs）
 global using System;
 global using System.Collections.Generic;
@@ -791,7 +792,7 @@ global using System.Threading.Tasks;
 
 传统命名空间要包裹整个文件，缩进多一层：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 旧写法
 namespace MyShop.Orders
 {
@@ -802,7 +803,7 @@ namespace MyShop.Orders
 
 C# 10 引入文件范围命名空间，一行搞定：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 新写法
 namespace MyShop.Orders;
 
@@ -816,7 +817,7 @@ public class OrderItem { /* ... */ }
 
 遇到重名类型时，用别名消歧义：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System.Collections.Generic;
 using MyDict = System.Collections.Generic.Dictionary<string, int>;
 
@@ -868,7 +869,7 @@ MyShop/
 
 \`internal\` 表示"只在当前程序集内可见"——是组件化设计的核心工具。
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // MyShop.Core.dll
 namespace MyShop.Core;
 
@@ -998,8 +999,8 @@ App ──引用──> Infrastructure ──引用──> Core
   // 第五十章：HttpClient 网络请求
   // ============================================================
   {
-    id: 'csharp2-ch50',
-    group: '第十部分 工程化与实战',
+    id: "csharp2-ch50",
+    group: '第九部分 工程化与实战',
     icon: '🌐',
     title: 'HttpClient 网络请求',
     content: `## 第五十章　HttpClient 网络请求
@@ -1010,7 +1011,7 @@ App ──引用──> Infrastructure ──引用──> Core
 
 \`HttpClient\` 是发送 HTTP 请求、接收 HTTP 响应的主要类。
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using System.Net.Http;
 
 using HttpClient client = new();
@@ -1195,7 +1196,7 @@ HttpResponseMessage resp = await client.SendAsync(req);
 
 HTTP 请求必须设超时——否则服务器挂了你这边永远等下去：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 var client = new HttpClient
 {
     Timeout = TimeSpan.FromSeconds(10)  // 全局超时
@@ -1214,7 +1215,7 @@ catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
 
 **单次请求超时**用 \`CancellationTokenSource\`：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
 try
 {
@@ -1232,7 +1233,7 @@ catch (OperationCanceledException)
 
 ❌ **错误用法**（高频坑）：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 每次请求都 new
 using var client = new HttpClient();
 var resp = await client.GetAsync("https://api.com");
@@ -1280,7 +1281,7 @@ public static class HttpHelper
 
 ✅ **正确用法 2：HttpClientFactory（推荐，ASP.NET Core 场景）⭐**
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // Program.cs
 builder.Services.AddHttpClient("github", c =>
 {
@@ -1320,7 +1321,7 @@ public class GithubService
 
 **三种使用方式：**
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 1. 命名客户端（推荐）
 builder.Services.AddHttpClient("github", c => c.BaseAddress = new Uri("https://api.github.com/"));
 var client = factory.CreateClient("github");
@@ -1504,8 +1505,8 @@ public class PostApiClient : IDisposable
   // 第五十一章：内存管理与 GC
   // ============================================================
   {
-    id: 'csharp2-ch51',
-    group: '第十部分 工程化与实战',
+    id: "csharp2-ch51",
+    group: '第九部分 工程化与实战',
     icon: '♻️',
     title: '内存管理与 GC',
     content: `## 第五十一章　内存管理与 GC
@@ -1820,7 +1821,7 @@ Console.WriteLine($"栈分配数组求和: {stackArr[0] + stackArr[1] + stackArr
 | \`Span<T>\` | ref struct，栈上 | ❌ 不能做字段、不能装箱、不能跨 await |
 | \`Memory<T>\` | 普通结构体 | ✅ 可以放堆、可以跨 await |
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 async Task ProcessAsync(Memory<byte> buffer)
 {
     await Task.Delay(100);
@@ -1833,7 +1834,7 @@ async Task ProcessAsync(Memory<byte> buffer)
 
 \`ref struct\` 强制只能在栈上，用于高性能场景：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ================================================
 // 【GC代龄机制说明】
 // Gen0：新对象（短命），回收最频繁，成本最低
@@ -2082,21 +2083,378 @@ public class GoodSubscriber : IDisposable
 
 ## 下一章预告
 
-学了这么多，是时候把所有知识串起来做项目了。下一章是**全书综合实战**——任务管理系统，以及我们的结语。
+学了这么多，还差最后一块实战拼图——**调试技巧**：断点、日志、性能测量，这些是定位问题的日常武器。补完它，下一章就是**全书综合实战**——任务管理系统，以及我们的结语。
+`,
+  },
+
+
+  // ============================================================
+  // 第五十二章：调试技巧与最佳实践（原第一部分收尾章节，移至工程化部分）
+  // ============================================================
+  {
+    id: "csharp2-ch52",
+    group: '第九部分 工程化与实战',
+    icon: '🔍',
+    title: '调试技巧与最佳实践',
+    content: `## 第五十二章　调试技巧与最佳实践
+
+### 一、Console 输出调试
+
+\`\`\`csharp
+// 最简单的调试方式：Console 输出
+
+// 1. 输出变量值
+int x = 10;
+string name = "张三";
+Console.WriteLine($"调试：x = {x}, name = {name}");
+
+// 2. 输出到标准错误
+Console.Error.WriteLine("错误信息");
+
+// 3. 条件输出（只在调试时输出）
+#if DEBUG
+Console.WriteLine("仅在 Debug 模式下输出");
+#endif
+
+// 4. 使用 Debug 类
+System.Diagnostics.Debug.WriteLine("调试信息");
+System.Diagnostics.Debug.WriteLineIf(x > 5, "x 大于 5");
+
+// 5. 使用 Trace 类
+System.Diagnostics.Trace.WriteLine("跟踪信息");
+System.Diagnostics.Trace.TraceInformation("信息");
+System.Diagnostics.Trace.TraceWarning("警告");
+System.Diagnostics.Trace.TraceError("错误");
+\`\`\`
+
+### 二、断言
+
+\`\`\`csharp-snippet
+// 断言：验证条件是否为真，失败时抛出异常
+
+// Debug.Assert：仅在 Debug 模式下有效
+System.Diagnostics.Debug.Assert(x > 0, "x 必须大于 0");
+System.Diagnostics.Debug.Assert(!string.IsNullOrEmpty(name), "name 不能为空");
+
+// 如果条件为 false，会弹出对话框（Debug 模式）或抛出异常
+
+// 自定义断言方法
+void Assert(bool condition, string message)
+{
+    if (!condition)
+    {
+        throw new Exception($"断言失败：{message}");
+    }
+}
+
+Assert(x > 0, "x 必须大于 0");
+Assert(name.Length > 0, "name 不能为空");
+
+// 使用 Contract（代码契约）
+// 需要安装 System.Diagnostics.Contracts NuGet 包
+// Contracts.Requires(x > 0);  // 前置条件
+// Contracts.Ensures(Contracts.Result<int>() > 0);  // 后置条件
+\`\`\`
+
+### 三、条件编译
+
+\`\`\`csharp-snippet
+// 条件编译：根据编译符号包含或排除代码
+
+// 定义编译符号（在 .csproj 中）
+// <PropertyGroup>
+//   <DefineConstants>DEBUG;TRACE;MY_SYMBOL</DefineConstants>
+// </PropertyGroup>
+
+// 使用条件编译
+#if DEBUG
+Console.WriteLine("Debug 模式");
+#elif RELEASE
+Console.WriteLine("Release 模式");
+#else
+Console.WriteLine("其他模式");
+#endif
+
+// 多个条件
+#if DEBUG && TRACE
+Console.WriteLine("Debug 且 Trace");
+#endif
+
+#if DEBUG || TRACE
+Console.WriteLine("Debug 或 Trace");
+#endif
+
+// 条件特性（ConditionalAttribute 在 System.Diagnostics 下；这里用完全限定名，
+// 因为在顶级语句中间插 using 会报 CS1529——using 必须在所有语句之前）
+[System.Diagnostics.Conditional("DEBUG")]
+void DebugOnlyMethod()
+{
+    Console.WriteLine("仅在 Debug 模式下编译");
+}
+
+DebugOnlyMethod();  // Release 模式下这行代码会被忽略
+
+// 条件特性必须返回 void
+// 常用于日志方法
+[Conditional("LOG_ENABLED")]
+void Log(string message)
+{
+    Console.WriteLine($"[LOG] {message}");
+}
+
+Log("这是一条日志");
+\`\`\`
+
+### 四、Debugger 特性
+
+\`\`\`csharp-snippet
+// Debugger 特性：控制调试器行为
+
+// DebuggerDisplay：自定义调试器显示
+[System.Diagnostics.DebuggerDisplay("User: {Name}, Age: {Age}")]
+class User
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+}
+
+var user = new User { Name = "张三", Age = 25 };
+// 调试器中显示：User: 张三, Age: 25
+
+// DebuggerBrowsable：控制调试器是否显示成员
+class MyClass
+{
+    [System.Diagnostics.DebuggerBrowsable(System.Diagnostics.DebuggerBrowsableState.Never)]
+    private int _internalValue;  // 调试器中不显示
+    
+    public int PublicValue { get; set; }  // 调试器中显示
+}
+
+// DebuggerStepThrough：调试器跳过此方法
+[System.Diagnostics.DebuggerStepThrough]
+void SimpleMethod()
+{
+    // 调试时不会进入这个方法
+    Console.WriteLine("Simple");
+}
+
+// DebuggerHidden：完全隐藏方法
+[System.Diagnostics.DebuggerHidden]
+void HiddenMethod()
+{
+    Console.WriteLine("Hidden");
+}
+\`\`\`
+
+### 五、日志记录
+
+\`\`\`csharp-snippet
+// 简单的日志类
+class Logger
+{
+    public enum LogLevel
+    {
+        Debug,
+        Info,
+        Warning,
+        Error
+    }
+    
+    private LogLevel _minLevel;
+    
+    public Logger(LogLevel minLevel = LogLevel.Info)
+    {
+        _minLevel = minLevel;
+    }
+    
+    public void Log(LogLevel level, string message)
+    {
+        if (level >= _minLevel)
+        {
+            string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            Console.WriteLine($"[{timestamp}] [{level}] {message}");
+        }
+    }
+    
+    public void Debug(string message) => Log(LogLevel.Debug, message);
+    public void Info(string message) => Log(LogLevel.Info, message);
+    public void Warning(string message) => Log(LogLevel.Warning, message);
+    public void Error(string message) => Log(LogLevel.Error, message);
+}
+
+// 使用日志
+var logger = new Logger(Logger.LogLevel.Debug);
+
+logger.Debug("这是调试信息");
+logger.Info("这是普通信息");
+logger.Warning("这是警告信息");
+logger.Error("这是错误信息");
+
+// 带上下文的日志
+void ProcessData(string data, Logger logger)
+{
+    logger.Info($"开始处理数据：{data}");
+    
+    try
+    {
+        // 处理数据
+        if (string.IsNullOrEmpty(data))
+        {
+            throw new ArgumentException("数据不能为空");
+        }
+        
+        logger.Info("数据处理成功");
+    }
+    catch (Exception ex)
+    {
+        logger.Error($"处理失败：{ex.Message}");
+        throw;
+    }
+}
+
+ProcessData("test data", logger);
+\`\`\`
+
+### 六、性能测量
+
+\`\`\`csharp
+// 使用 Stopwatch 测量代码执行时间
+var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+// 要测量的代码
+int sum = 0;
+for (int i = 0; i < 1000000; i++)
+{
+    sum += i;
+}
+
+stopwatch.Stop();
+Console.WriteLine($"执行时间：{stopwatch.ElapsedMilliseconds}ms");
+Console.WriteLine($"精确时间：{stopwatch.Elapsed}");
+
+// 多次测量取平均
+const int iterations = 100;
+var times = new List<long>();
+
+for (int i = 0; i < iterations; i++)
+{
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    
+    // 要测量的代码
+    var result = Enumerable.Range(1, 10000).Sum();
+    
+    sw.Stop();
+    times.Add(sw.ElapsedMilliseconds);
+}
+
+Console.WriteLine($"平均时间：{times.Average():F2}ms");
+Console.WriteLine($"最小时间：{times.Min()}ms");
+Console.WriteLine($"最大时间：{times.Max()}ms");
+
+// 使用 DateTime（精度较低，不推荐）
+var start = DateTime.Now;
+// 要测量的代码
+var end = DateTime.Now;
+Console.WriteLine($"耗时：{(end - start).TotalMilliseconds}ms");
+\`\`\`
+
+### 七、最佳实践总结
+
+\`\`\`csharp-snippet
+// 1. 命名规范
+// - 类名：PascalCase（如 UserService）
+// - 方法名：PascalCase（如 GetUserById）
+// - 参数名：camelCase（如 userName）
+// - 局部变量：camelCase（如 totalCount）
+// - 私有字段：_camelCase（如 _connectionString）
+// - 常量：PascalCase 或全大写（如 MaxCount 或 MAX_COUNT）
+
+// 2. 代码组织
+// - 一个类一个文件
+// - 文件名与类名一致
+// - 使用命名空间组织相关类
+
+// 3. 注释
+// - 公共 API 必须有 XML 文档注释
+// - 复杂逻辑需要注释说明"为什么"
+// - 不要注释"是什么"（代码本身应该清晰）
+
+/// <summary>
+/// 根据用户 ID 获取用户信息
+/// </summary>
+/// <param name="userId">用户 ID</param>
+/// <returns>用户对象，如果不存在返回 null</returns>
+User GetUserById(int userId)
+{
+    // 从数据库查询用户
+    return null;
+}
+
+// 4. 错误处理
+// - 不要吞掉异常
+// - 使用特定的异常类型
+// - 提供有意义的错误信息
+
+// 5. 代码简洁
+// - 避免过长的方法（建议不超过 50 行）
+// - 避免过深的嵌套（建议不超过 3 层）
+// - 使用 LINQ 简化集合操作
+
+// 6. 使用 var
+// - 当右侧类型明显时使用 var
+var list = new List<string>();  // 好
+List<string> list2 = new List<string>();  // 冗余
+
+// 7. 字符串处理
+// - 少量拼接用插值：$"{a} + {b} = {a + b}"
+// - 大量拼接用 StringBuilder
+// - 多行字符串用原始字符串字面量
+
+// 8. 空值处理
+// - 使用 ?. 避免 NullReferenceException
+// - 使用 ?? 提供默认值
+// - 使用 ??= 赋值
+
+string name = null;
+string displayName = name ?? "匿名用户";
+name ??= "默认值";
+
+// 9. 使用模式匹配
+if (obj is string s && s.Length > 10)
+{
+    Console.WriteLine($"长字符串：{s}");
+}
+
+// 10. 常量与只读
+// - 编译时确定的值用 const
+// - 运行时确定的值用 readonly
+\`\`\`
+
+### 八、小结
+
+本章学到了：
+- Console 输出调试
+- 断言验证条件
+- 条件编译
+- Debugger 特性
+- 日志记录
+- 性能测量
+- C# 编程最佳实践
+
 `,
   },
 
   // ============================================================
-  // 第五十二章：综合项目 + 结语
+  // 第五十三章：综合项目 + 结语
   // ============================================================
   {
-    id: 'csharp2-ch52',
-    group: '第十部分 工程化与实战',
+    id: "csharp2-ch53",
+    group: '第九部分 工程化与实战',
     icon: '🎓',
     title: '综合项目：任务管理系统 + 结语',
-    content: `## 第五十二章　综合项目：任务管理系统 + 结语
+    content: `## 第五十三章　综合项目：任务管理系统 + 结语
 
-恭喜你走到最后一章！前面 51 章我们学了语法、OOP、泛型、LINQ、异步、IO、异常、内存……现在是时候把它们全部串起来，做一个真实可运行的小项目：**TaskManager（任务管理系统）**。
+恭喜你走到最后一章！前面 52 章我们学了语法、OOP、泛型、LINQ、异步、IO、异常、内存、调试……现在是时候把它们全部串起来，做一个真实可运行的小项目：**TaskManager（任务管理系统）**。
 
 本章会从头到尾完整实现，每个设计决策都解释"为什么"，并在最后给出全书结语。
 
@@ -2131,7 +2489,7 @@ public class GoodSubscriber : IDisposable
 > 下面是**单文件顶级语句完整实现**——可以直接复制到 Program.cs 运行。代码按照顶级语句规则组织：**using → 可执行代码 → 类型声明**。
 > （原章节分拆展示Models/Services/Storage等层次是为了讲解，这里合并为可运行版本）
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // ================================================================
 // TaskManager 综合项目 - C# 顶级语句完整可运行版本
 // 知识点覆盖：OOP/record/泛型/LINQ/asyncawait/JSON/异常/日期/IDisposable
@@ -2650,7 +3008,7 @@ public class TaskApp : IDisposable
 
 真实项目必须有测试。单元测试写在独立的测试项目中（xUnit/NUnit），不是顶级语句。下面是测试示例（与上面的单文件版本配合使用时，类型不需要namespace）：
 
-\`\`\`csharp
+\`\`\`csharp-snippet
 // 注意：这是测试项目中的代码（类库形式，非顶级语句）
 // 需要引用xunit和被测试项目
 using Xunit;
