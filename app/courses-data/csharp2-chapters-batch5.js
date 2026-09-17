@@ -30,7 +30,7 @@ const chapters = [
 
 在没有泛型的年代（.NET 1.0），通用容器靠 \`ArrayList\` 实现——它存的是 \`object\`：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 var list = new System.Collections.ArrayList();
 list.Add(1);        // int 装箱成 object（值类型→引用类型，产生堆分配）
 list.Add("hello");  // string 本身就是引用类型，直接存
@@ -356,7 +356,7 @@ public class Animal { public string Name { get; set; } = ""; }
 
 一个 \`T\` 可以同时满足多个约束，用逗号分隔：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 只有类型定义，没有调用代码——没有可执行语句在类型后面，可以直接定义
 public class SortedFactory<T> where T : class, IComparable<T>, new()
 {
@@ -1183,7 +1183,7 @@ RunNext();  // [普通] 清理日志
 
 \`IEnumerable<T>\` 是所有可 \`foreach\` 遍历集合的"最小公约数"。
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 核心接口定义（类型声明）
 public interface IEnumerable<out T> : IEnumerable
 {

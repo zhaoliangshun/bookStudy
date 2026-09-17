@@ -12,7 +12,7 @@ export default function Csharp2Tutorial() {
       bookTitle="C# 大全"
       defaultLang="cs"
       tip="点击章节开始学习 C# · 大而全 · 100% 覆盖日常开发知识点"
-      footerText="C# 12 / .NET 8 完整教程 · 54 章 · 从基础语法到高级特性 · 每章可运行 demo · 详细注释"
+      footerText="C# 12 / .NET 8 完整教程 · 54 章 · 从基础语法到高级特性 · 完整示例可在线运行，教学片段可复制 · 详细注释"
     />
   );
 }

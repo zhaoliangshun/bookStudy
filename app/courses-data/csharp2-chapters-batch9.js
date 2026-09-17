@@ -29,7 +29,7 @@ const chapters = [
 
 ### 一、System.IO 全家福
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System.IO;
 
 // 静态工具类（用得最多）
@@ -317,7 +317,7 @@ catch (IOException ex) { Console.WriteLine($"IO 错误: {ex.Message}"); }
 
 \`System.IO.Stream\` 是所有流的抽象基类，定义了流的标准接口：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 这是类定义说明，不是可执行代码——放在示例开头说明概念
 public abstract class Stream
 {

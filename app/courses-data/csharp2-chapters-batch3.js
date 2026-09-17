@@ -1830,7 +1830,7 @@ class Cat : Animal {
 
 \`sealed\` 阻止类被继承，或方法被进一步重写：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // ---------- 注意：这两个代码块只有类型定义，没有可执行代码
 // 所以不会触发 CS8803，可以按原顺序（类型在前，注释在后）----------
 
@@ -1860,7 +1860,7 @@ class SubDerived : Base {
 }
 \`\`\`
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // sealed 类：完全不能被继承
 // 为什么 sealed 一个类？① 安全考虑 ② 性能优化（JIT能内联）③ 设计上不希望被扩展
 // .NET 里 string 就是 sealed 的，你不能继承 string

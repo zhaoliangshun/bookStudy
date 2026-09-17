@@ -121,7 +121,7 @@ Console.WriteLine($"{a} * {b} = {a * b}");
 
 一个 C# 程序由以下部分组成：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 1. 命名空间（可选，用于组织代码）
 // using System;  // .NET 6+ 默认隐式引入，无需手动写
 
@@ -471,7 +471,7 @@ Console.WriteLine($"dateVal: {dateVal}");
 
 ### 八、常量与只读变量
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // const: 编译时常量，必须在声明时赋值
 const double PI = 3.14159;
 const string APP_NAME = "MyApp";
@@ -1235,7 +1235,7 @@ Console.WriteLine("程序结束");
 
 ### 四、foreach 循环
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // foreach：遍历集合中的每个元素
 int[] numbers = { 10, 20, 30, 40, 50 };
 
@@ -1906,7 +1906,7 @@ PrintInfo("数字", 1, 2, 3);
 
 ### 三、默认参数与命名参数
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 默认参数：参数有默认值
 void CreatePerson(string name, int age = 18, string city = "北京")
 {
@@ -1952,7 +1952,7 @@ Console.WriteLine($"config2: {config2.Host}:{config2.Port}, SSL={config2.UseSsl}
 
 ### 四、方法重载
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 方法重载：同名方法，参数列表不同
 class Calculator
 {
@@ -2082,7 +2082,7 @@ Method2();
 
 ### 六、扩展方法
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 扩展方法：为现有类型添加方法，无需修改原类型
 // 必须定义在静态类中，第一个参数用 this 修饰
 
@@ -2256,7 +2256,7 @@ catch (OverflowException ex)
 
 ### 二、finally 块
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // finally：无论是否发生异常都会执行
 // 常用于释放资源（文件、数据库连接等）
 
@@ -2300,7 +2300,7 @@ Console.WriteLine(content3);
 
 ### 三、抛出异常
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // throw：主动抛出异常
 int Divide(int a, int b)
 {
@@ -2359,7 +2359,7 @@ catch (IndexOutOfRangeException ex)
 
 ### 四、自定义异常
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 自定义异常类
 class InsufficientFundsException : Exception
 {
@@ -2431,7 +2431,7 @@ catch (ArgumentException ex)
 
 ### 五、异常筛选器
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 异常筛选器：when 子句
 try
 {
@@ -2482,7 +2482,7 @@ catch (Exception ex) when (LogException(ex))
 
 ### 六、最佳实践
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 1. 只捕获能处理的异常
 try
 {
@@ -2586,7 +2586,7 @@ catch (Exception ex)
 
 ### 一、命名空间基础
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 命名空间：用于组织代码，避免命名冲突
 
 // 定义命名空间
@@ -2632,7 +2632,7 @@ service2.AddUser(user2.Name);
 
 ### 二、命名空间嵌套
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 命名空间可以嵌套
 namespace Company.Product.Module
 {
@@ -2679,7 +2679,7 @@ comp3.DoWork();
 
 ### 三、命名空间别名
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 当两个命名空间有同名类时，使用别名
 namespace Namespace1
 {
@@ -2759,7 +2759,7 @@ class MyClass
 
 ### 五、隐式 using（.NET 6+）
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // .NET 6+ 默认启用隐式 using
 // 编译器自动添加常用的 using 指令
 
@@ -2796,7 +2796,7 @@ WriteLine("Hello");  // 等价于 Console.WriteLine
 
 ### 六、程序结构
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 一个完整的 C# 程序结构
 
 // 1. using 指令
@@ -2853,7 +2853,7 @@ obj.Method();
 
 ### 七、文件作用域命名空间（C# 10+）
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 文件作用域命名空间：整个文件都在一个命名空间中
 // 减少一层缩进
 

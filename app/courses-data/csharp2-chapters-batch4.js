@@ -32,7 +32,7 @@ const chapters = [
 
 **多态（Polymorphism）**：同一条方法调用，根据对象的实际类型，执行不同的实现。
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 父类引用指向子类对象——多态的前提
 // Animal a = new Dog();
 // Animal b = new Cat();
@@ -161,7 +161,7 @@ class Derived : Base {
 
 **多态最大的价值：解耦调用方与实现方**。
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 调用方只依赖父类/接口，不依赖具体子类
 // 注意：PrintArea 是局部函数（不是类型声明），不需要移到代码后面。
 // 局部函数在顶级语句中是「Main 方法内的方法」，不受 CS8803 约束。
@@ -393,7 +393,7 @@ class Square : Shape {
 
 接口是**纯契约**：只定义方法/属性签名，不包含实现（C# 8 之前）。
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 接口命名约定：I 开头（IShape, IComparable, IDisposable...）
 // 接口只定义「能做什么」，不定义「怎么做」。
 // 接口成员默认 public abstract，不能写访问修饰符（C# 8 之前）。
@@ -483,7 +483,7 @@ class Image : IDrawable, IResizable, IComparable<Image> {
 
 C# 8 起接口可以提供默认实现，不破坏旧代码：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 var logger = new ConsoleLogger();
 logger.Log("普通日志");
 logger.LogError("出错了");  // 调用默认实现——ConsoleLogger 没有自己写 LogError
@@ -1496,7 +1496,7 @@ if (maybeName is not null) {
 
 或代码顶部加（文件级别）：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 #nullable enable
 // 这之后开启可空检查
 // #nullable disable 可以在文件内局部关闭

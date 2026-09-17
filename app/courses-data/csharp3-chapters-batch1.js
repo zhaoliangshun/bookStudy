@@ -711,6 +711,17 @@ Console.WriteLine(y);       // 输出 0，y 没有变化
 ### 四、位运算符
 
 \`\`\`csharp
+// 位运算实战：权限管理
+// 先定义枚举类型（C# 要求类型定义在顶级语句之前）
+[Flags]  // 表示可以组合使用
+enum Permission
+{
+    Read = 1 << 0,    // 0001 = 1
+    Write = 1 << 1,   // 0010 = 2
+    Execute = 1 << 2, // 0100 = 4
+    Delete = 1 << 3   // 1000 = 8
+}
+
 // 位运算符直接操作二进制位，效率高，常用于底层编程
 int a = 0b0001;  // 二进制：0001（十进制 1）
 int b = 0b0011;  // 二进制：0011（十进制 3）
@@ -741,19 +752,6 @@ Console.WriteLine($"用户权限：{userPerm}");  // Read, Write
 bool canRead = (userPerm & Permission.Read) == Permission.Read;    // True
 bool canDelete = (userPerm & Permission.Delete) == Permission.Delete; // False
 Console.WriteLine($"可读：{canRead}，可删：{canDelete}");
-
-// 说明：C# 的顶级语句必须写在类型声明之前，
-// 所以演示代码放在前面，类型定义放在文件末尾。
-
-// 位运算实战：权限管理
-[Flags]  // 表示可以组合使用
-enum Permission
-{
-    Read = 1 << 0,    // 0001 = 1
-    Write = 1 << 1,   // 0010 = 2
-    Execute = 1 << 2, // 0100 = 4
-    Delete = 1 << 3   // 1000 = 8
-}
 \`\`\`
 
 ### 五、赋值运算符

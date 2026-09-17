@@ -238,7 +238,7 @@ async Task<string> FetchAsync()
 
 \`Task\` 是引用类型，每次 await 都要分配对象。如果方法经常同步完成（比如缓存命中），可以用 \`ValueTask<T>\` 避免分配：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -547,7 +547,7 @@ Console.WriteLine($"总和 = {total}");
 
 \`AsParallel()\` 让 LINQ 自动并行：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System;
 using System.Diagnostics;
 using System.Linq;
@@ -900,7 +900,7 @@ using var are = new AutoResetEvent(false);
 
 ### 八、lock this 陷阱 ⭐
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System;
 using System.Threading;
 
@@ -949,7 +949,7 @@ Console.WriteLine("演示：lock(typeof(T)) 和 lock(\"字符串\") 也危险，
 
 ### 九、实战 demo：线程安全计数器 + 生产消费
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System;
 using System.Collections.Concurrent;
 using System.Threading;
@@ -1339,7 +1339,7 @@ await Task.WhenAll(ProduceAsync(), ConsumeAsync());
 
 ### 十、实战 demo：可取消的并发日志收集
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System;
 using System.Threading;
 using System.Threading.Channels;

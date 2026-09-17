@@ -602,7 +602,7 @@ public record Point(int X, int Y);
 
 ### 十、实战 demo：消息体建模
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // ===== 为什么事件/消息用 record？ =====
 // 1. 事件是不可变的事实——一旦发生就不能改变
 // 2. 事件需要值相等——相同内容的事件应该相等（方便去重、幂等处理）
@@ -769,7 +769,7 @@ public class Sample
 
 ### 三、动态创建实例
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System.Reflection;
 
 // 可执行代码
@@ -1033,7 +1033,7 @@ public class Foo { public int Bar() => 42; }
 
 ### 九、实战 demo：迷你 ORM
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System.Reflection;
 using System.Data;
 
@@ -1858,7 +1858,7 @@ Console.WriteLine(newJson);
 
 ### 九、实战 demo：动态包装器
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System.Dynamic;
 
 // 可执行代码
@@ -2071,7 +2071,7 @@ public class Dog : Animal { }
 
 #### 协变价值：通用集合/产出接口
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System.Collections.Generic;
 using System.Linq;
 
@@ -2233,7 +2233,7 @@ public class Dog : Animal { }
 
 ### 七、实战 demo：事件总线
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System;
 using System.Collections.Generic;
 

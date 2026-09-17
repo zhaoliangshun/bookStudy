@@ -1,5 +1,0 @@
-
-########## FAIL: csharp5-ch58 特性 Attribute ##########
-Unhandled exception. System.NullReferenceException: Object reference not set to an instance of an object.
-   at Program.<Main>$(String[] args) in /private/var/folders/jc/2mc786g510g10vvkq0b45tnh0000gn/T/csharp5-batch-verify/w2/Program.cs:line 28
-

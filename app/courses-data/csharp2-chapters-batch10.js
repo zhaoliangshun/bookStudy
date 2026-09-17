@@ -116,7 +116,7 @@ catch (Exception ex)
 
 ❌ **错误写法**——丢失原始堆栈：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 try { throw new InvalidOperationException("原始"); }
 catch (Exception ex)
 {
@@ -127,7 +127,7 @@ catch (Exception ex)
 
 ✅ **正确写法**——使用裸 \`throw\`：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 try { throw new InvalidOperationException("原始"); }
 catch (Exception ex)
 {
@@ -222,7 +222,7 @@ catch (FormatException)
 
 **经典用法——日志不破坏堆栈：**
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 try { DoWork(); }
 catch (Exception ex) when (Log(ex)) { }  // Log 返回 false，异常继续传播
 
@@ -276,14 +276,14 @@ public class Address { public string City { get; set; } }
 
 ❌ **反模式**——吞掉所有异常：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 try { DoSomething(); }
 catch (Exception) { }  // ❌ 静默吞掉，bug 永远找不到
 \`\`\`
 
 ❌ **反模式**——catch 后只记日志不抛：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 try { WithdrawMoney(); }
 catch (Exception ex) { Log(ex); }  // ❌ 钱没扣成功但用户不知道
 \`\`\`
@@ -298,7 +298,7 @@ catch (Exception ex) { Log(ex); }  // ❌ 钱没扣成功但用户不知道
 
 异常"抛出"成本高（要收集堆栈），不要用异常做**控制流**：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // ❌ 用异常判断解析是否成功
 int ParseInt(string s)
 {
@@ -313,7 +313,7 @@ int ParseInt(string s) =>
 
 ### 十、实战 demo：安全的配置加载
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System.Text.Json;
 
 // ================================================
@@ -459,7 +459,7 @@ Console.WriteLine(today);  // 2026-07-18 00:00:00
 
 ### 二、DateTime 构造
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 new DateTime(2026, 7, 18);                    // 2026-07-18 00:00:00
 new DateTime(2026, 7, 18, 14, 30, 0);         // 2026-07-18 14:30:00
 new DateTime(2026, 7, 18, 14, 30, 0, 500);    // 带毫秒
@@ -650,7 +650,7 @@ ShowCountdown(newYear, "2027 元旦");
 
 ### 十一、实战 demo 3：定时任务（每分钟跑一次）
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System.Threading;
 
 var cts = new CancellationTokenSource();
@@ -719,7 +719,7 @@ cts.Cancel();
 
 命名空间是类的"姓氏"，用来分组相关类型、避免重名冲突。
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 namespace MyShop.Orders
 {
     public class Order { /* ... */ }
@@ -778,7 +778,7 @@ class Program
 
 传统 \`using\` 必须在每个文件重复写。C# 10 引入 \`global using\`，一次声明全项目生效：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 放在任意 .cs 文件顶部（通常建一个 GlobalUsings.cs）
 global using System;
 global using System.Collections.Generic;
@@ -792,7 +792,7 @@ global using System.Threading.Tasks;
 
 传统命名空间要包裹整个文件，缩进多一层：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 旧写法
 namespace MyShop.Orders
 {
@@ -803,7 +803,7 @@ namespace MyShop.Orders
 
 C# 10 引入文件范围命名空间，一行搞定：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 新写法
 namespace MyShop.Orders;
 
@@ -817,7 +817,7 @@ public class OrderItem { /* ... */ }
 
 遇到重名类型时，用别名消歧义：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System.Collections.Generic;
 using MyDict = System.Collections.Generic.Dictionary<string, int>;
 
@@ -869,7 +869,7 @@ MyShop/
 
 \`internal\` 表示"只在当前程序集内可见"——是组件化设计的核心工具。
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // MyShop.Core.dll
 namespace MyShop.Core;
 
@@ -1011,7 +1011,7 @@ App ──引用──> Infrastructure ──引用──> Core
 
 \`HttpClient\` 是发送 HTTP 请求、接收 HTTP 响应的主要类。
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using System.Net.Http;
 
 using HttpClient client = new();
@@ -1196,7 +1196,7 @@ HttpResponseMessage resp = await client.SendAsync(req);
 
 HTTP 请求必须设超时——否则服务器挂了你这边永远等下去：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 var client = new HttpClient
 {
     Timeout = TimeSpan.FromSeconds(10)  // 全局超时
@@ -1215,7 +1215,7 @@ catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
 
 **单次请求超时**用 \`CancellationTokenSource\`：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
 try
 {
@@ -1233,7 +1233,7 @@ catch (OperationCanceledException)
 
 ❌ **错误用法**（高频坑）：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 每次请求都 new
 using var client = new HttpClient();
 var resp = await client.GetAsync("https://api.com");
@@ -1281,7 +1281,7 @@ public static class HttpHelper
 
 ✅ **正确用法 2：HttpClientFactory（推荐，ASP.NET Core 场景）⭐**
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // Program.cs
 builder.Services.AddHttpClient("github", c =>
 {
@@ -1321,7 +1321,7 @@ public class GithubService
 
 **三种使用方式：**
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 1. 命名客户端（推荐）
 builder.Services.AddHttpClient("github", c => c.BaseAddress = new Uri("https://api.github.com/"));
 var client = factory.CreateClient("github");
@@ -1821,7 +1821,7 @@ Console.WriteLine($"栈分配数组求和: {stackArr[0] + stackArr[1] + stackArr
 | \`Span<T>\` | ref struct，栈上 | ❌ 不能做字段、不能装箱、不能跨 await |
 | \`Memory<T>\` | 普通结构体 | ✅ 可以放堆、可以跨 await |
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 async Task ProcessAsync(Memory<byte> buffer)
 {
     await Task.Delay(100);
@@ -1834,7 +1834,7 @@ async Task ProcessAsync(Memory<byte> buffer)
 
 \`ref struct\` 强制只能在栈上，用于高性能场景：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // ================================================
 // 【GC代龄机制说明】
 // Gen0：新对象（短命），回收最频繁，成本最低
@@ -2129,7 +2129,7 @@ System.Diagnostics.Trace.TraceError("错误");
 
 ### 二、断言
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 断言：验证条件是否为真，失败时抛出异常
 
 // Debug.Assert：仅在 Debug 模式下有效
@@ -2158,7 +2158,7 @@ Assert(name.Length > 0, "name 不能为空");
 
 ### 三、条件编译
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 条件编译：根据编译符号包含或排除代码
 
 // 定义编译符号（在 .csproj 中）
@@ -2207,7 +2207,7 @@ Log("这是一条日志");
 
 ### 四、Debugger 特性
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // Debugger 特性：控制调试器行为
 
 // DebuggerDisplay：自定义调试器显示
@@ -2248,7 +2248,7 @@ void HiddenMethod()
 
 ### 五、日志记录
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 简单的日志类
 class Logger
 {
@@ -2360,7 +2360,7 @@ Console.WriteLine($"耗时：{(end - start).TotalMilliseconds}ms");
 
 ### 七、最佳实践总结
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 1. 命名规范
 // - 类名：PascalCase（如 UserService）
 // - 方法名：PascalCase（如 GetUserById）
@@ -2489,7 +2489,7 @@ if (obj is string s && s.Length > 10)
 > 下面是**单文件顶级语句完整实现**——可以直接复制到 Program.cs 运行。代码按照顶级语句规则组织：**using → 可执行代码 → 类型声明**。
 > （原章节分拆展示Models/Services/Storage等层次是为了讲解，这里合并为可运行版本）
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // ================================================================
 // TaskManager 综合项目 - C# 顶级语句完整可运行版本
 // 知识点覆盖：OOP/record/泛型/LINQ/asyncawait/JSON/异常/日期/IDisposable
@@ -3008,7 +3008,7 @@ public class TaskApp : IDisposable
 
 真实项目必须有测试。单元测试写在独立的测试项目中（xUnit/NUnit），不是顶级语句。下面是测试示例（与上面的单文件版本配合使用时，类型不需要namespace）：
 
-\`\`\`csharp-snippet
+\`\`\`csharp
 // 注意：这是测试项目中的代码（类库形式，非顶级语句）
 // 需要引用xunit和被测试项目
 using Xunit;
