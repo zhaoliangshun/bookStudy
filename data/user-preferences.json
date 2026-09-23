@@ -125,7 +125,9 @@
       "/mantine-demo",
       "/forgerock-demo",
       "/mantine",
-      "/rhf"
+      "/rhf",
+      "/csharp",
+      "/csharp4"
     ],
     "算法与数据结构": [
       "/algo",
@@ -188,10 +190,8 @@
       "/fastapi"
     ],
     "C#开发": [
-      "/csharp",
       "/csharp2",
       "/csharp3",
-      "/csharp4",
       "/csharp5"
     ],
     "Typescript": [],
